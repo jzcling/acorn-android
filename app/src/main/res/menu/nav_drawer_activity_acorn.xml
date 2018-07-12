@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    tools:showIn="navigation_view">
+
+    <group
+        android:id="@+id/nav_menu_1"
+        android:checkableBehavior="single">
+        <item
+            android:id="@+id/nav_recent"
+            android:checked="true"
+            android:title="@string/nav_recent" />
+        <item
+            android:id="@+id/nav_trending"
+            android:title="@string/nav_trending" />
+        <item
+            android:id="@+id/nav_subscriptions"
+            android:title="@string/nav_subscriptions" />
+    </group>
+
+    <group
+        android:id="@+id/nav_menu_2"
+        android:checkableBehavior="single">
+        <item
+            android:id="@+id/nav_saved"
+            android:title="@string/nav_saved" />
+    </group>
+
+    <group
+        android:id="@+id/nav_menu_3"
+        android:checkableBehavior="none">
+        <item
+            android:id="@+id/nav_settings"
+            android:title="@string/nav_settings" />
+        <item
+            android:id="@+id/nav_themes"
+            android:title="@string/nav_themes"/>
+        <item
+            android:id="@+id/nav_login"
+            android:title="@string/nav_login"
+            android:visible="true" />
+        <item
+            android:id="@+id/nav_logout"
+            android:title="@string/nav_logout"
+            android:visible="false" />
+    </group>
+
+</menu>

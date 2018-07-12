@@ -1,0 +1,180 @@
+<?xml version="1.0" encoding="utf-8"?>
+<android.support.constraint.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/card_root"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="@color/card_background"
+    android:foreground="@drawable/ripple"
+    android:clickable="true"
+    android:focusable="true">
+
+    <TextView
+        android:id="@+id/card_title"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginEnd="12dp"
+        android:layout_marginStart="16dp"
+        android:layout_marginTop="8dp"
+        android:background="@drawable/ripple"
+        android:clickable="true"
+        android:focusable="true"
+        android:text="title"
+        android:textColor="@color/card_text_color"
+        android:textSize="@dimen/font_size_medium"
+        app:layout_constraintBottom_toTopOf="@id/metadata_layout"
+        app:layout_constraintEnd_toStartOf="@id/card_image"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <android.support.constraint.ConstraintLayout
+        android:id="@+id/metadata_layout"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="3dp"
+        app:layout_constraintBottom_toTopOf="@id/metrics_layout"
+        app:layout_constraintStart_toStartOf="@+id/card_title"
+        app:layout_constraintTop_toBottomOf="@id/card_title">
+
+        <TextView
+            android:id="@+id/card_contributor"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="contributor"
+            android:textColor="@color/card_text_color"
+            android:textSize="@dimen/font_size_small"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toStartOf="@id/card_sub_separator"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent" />
+
+        <TextView
+            android:id="@+id/card_sub_separator"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="@dimen/card_margin_start"
+            android:text="·"
+            android:textColor="@color/card_text_color"
+            android:textSize="@dimen/font_size_small"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toStartOf="@id/card_date"
+            app:layout_constraintStart_toEndOf="@id/card_contributor"
+            app:layout_constraintTop_toTopOf="parent" />
+
+        <TextView
+            android:id="@+id/card_date"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="@dimen/card_margin_start"
+            android:text="date"
+            android:textColor="@color/card_text_color"
+            android:textSize="@dimen/font_size_small"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toEndOf="@id/card_sub_separator"
+            app:layout_constraintTop_toTopOf="parent" />
+    </android.support.constraint.ConstraintLayout>
+
+    <android.support.constraint.ConstraintLayout
+        android:id="@+id/metrics_layout"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="8dp"
+        android:layout_marginTop="3dp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="@+id/card_title"
+        app:layout_constraintTop_toBottomOf="@+id/metadata_layout">
+
+        <ImageView
+            android:id="@+id/card_image_net_vote"
+            android:layout_width="16dp"
+            android:layout_height="16dp"
+            android:layout_gravity="center_vertical"
+            android:tint="@color/card_up_arrow_tint"
+            app:layout_constraintBottom_toBottomOf="@+id/card_vote_count"
+            app:layout_constraintEnd_toStartOf="@id/card_vote_count"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="@+id/card_vote_count"
+            app:srcCompat="@drawable/ic_arrow_up" />
+
+        <TextView
+            android:id="@+id/card_vote_count"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="@dimen/card_margin_start"
+            android:text="voteCnt"
+            android:textColor="@color/card_text_color"
+            android:textSize="@dimen/font_size_small"
+            app:layout_constraintBottom_toBottomOf="@+id/card_sub2_separator"
+            app:layout_constraintEnd_toStartOf="@id/card_sub2_separator"
+            app:layout_constraintStart_toEndOf="@id/card_image_net_vote"
+            app:layout_constraintTop_toTopOf="@+id/card_sub2_separator" />
+
+        <TextView
+            android:id="@+id/card_sub2_separator"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="@dimen/card_margin_start"
+            android:text="·"
+            android:textColor="@color/card_text_color"
+            android:textSize="@dimen/font_size_small"
+            app:layout_constraintBottom_toBottomOf="@+id/card_image_comment"
+            app:layout_constraintEnd_toStartOf="@id/card_image_comment"
+            app:layout_constraintStart_toEndOf="@id/card_vote_count"
+            app:layout_constraintTop_toTopOf="@+id/card_image_comment" />
+
+        <ImageView
+            android:id="@+id/card_image_comment"
+            android:layout_width="16dp"
+            android:layout_height="16dp"
+            android:layout_gravity="center_vertical"
+            android:layout_marginStart="@dimen/card_margin_start"
+            android:tint="@color/card_comment_tint"
+            app:layout_constraintBottom_toBottomOf="@id/card_comment_count"
+            app:layout_constraintEnd_toStartOf="@id/card_comment_count"
+            app:layout_constraintStart_toEndOf="@id/card_sub2_separator"
+            app:layout_constraintTop_toTopOf="@id/card_comment_count"
+            app:srcCompat="@drawable/ic_comment" />
+
+        <TextView
+            android:id="@+id/card_comment_count"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:layout_marginTop="4dp"
+            android:text="comCnt"
+            android:textColor="@color/card_text_color"
+            android:textSize="@dimen/font_size_small"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toEndOf="@id/card_image_comment"
+            app:layout_constraintTop_toTopOf="parent" />
+    </android.support.constraint.ConstraintLayout>
+
+    <ImageView
+        android:id="@+id/card_image"
+        android:layout_width="64dp"
+        android:layout_height="64dp"
+        android:layout_marginBottom="8dp"
+        android:layout_marginEnd="16dp"
+        android:layout_marginTop="8dp"
+        android:clickable="true"
+        android:contentDescription="main image"
+        android:focusable="true"
+        android:foreground="@drawable/ripple"
+        android:scaleType="centerCrop"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toEndOf="@id/card_title"
+        app:layout_constraintTop_toTopOf="parent"
+        app:srcCompat="@android:color/transparent" />
+
+    <ImageView
+        android:id="@+id/comment_card_separator"
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="@color/colorSecondaryDark"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"/>
+</android.support.constraint.ConstraintLayout>

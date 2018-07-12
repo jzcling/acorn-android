@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android">
+    <PreferenceCategory
+        android:title="@string/pref_cat_general_settings"
+        android:key="pref_key_general_settings">
+        <ListPreference
+            android:key="@string/pref_key_night_mode"
+            android:title="@string/pref_title_night_mode_checkbox"
+            android:dialogTitle="@string/pref_title_night_mode_checkbox"
+            android:entries="@array/settings_night_mode_titles"
+            android:entryValues="@array/settings_night_mode_values"
+            android:defaultValue="0"/>
+        <Preference
+            android:key="@string/pref_key_edit_themes"
+            android:title="@string/pref_title_edit_themes_pref"/>
+    </PreferenceCategory>
+    <PreferenceCategory
+        android:title="@string/pref_cat_notif_settings"
+        android:key="pref_key_notif_settings">
+        <SwitchPreference
+            android:key="@string/pref_key_notif_comment"
+            android:title="@string/pref_title_notif_comment"
+            android:defaultValue="true"
+            android:summaryOff="Disabled"
+            android:summaryOn="Enabled" />
+        <SwitchPreference
+            android:key="@string/pref_key_notif_article"
+            android:title="@string/pref_title_notif_article"
+            android:defaultValue="true"
+            android:summaryOff="Disabled"
+            android:summaryOn="Enabled" />
+
+    </PreferenceCategory>
+    <!--<PreferenceCategory-->
+        <!--android:title="@string/pref_cat_user_account_settings"-->
+        <!--android:key="pref_key_user_account_settings">-->
+        <!--<Preference-->
+            <!--android:key="pref_key_change_password"-->
+            <!--android:title="@string/pref_title_change_password" />-->
+        <!--<Preference-->
+            <!--android:key="pref_key_change_email"-->
+            <!--android:title="@string/pref_title_change_email" />-->
+        <!--<Preference-->
+            <!--android:key="pref_key_delete_account"-->
+            <!--android:title="@string/pref_title_delete_account" />-->
+    <!--</PreferenceCategory>-->
+
+</PreferenceScreen>

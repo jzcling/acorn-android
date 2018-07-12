@@ -1,0 +1,336 @@
+<?xml version="1.0" encoding="utf-8"?>
+<android.support.v7.widget.CardView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/card_view"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    app:cardUseCompatPadding="true"
+    app:cardElevation="2dp">
+
+    <android.support.constraint.ConstraintLayout xmlns:app="http://schemas.android.com/apk/res-auto"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="@color/card_background">
+
+        <TextView
+            android:id="@+id/card_theme"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="12dp"
+            android:layout_marginTop="8dp"
+            android:background="@drawable/ripple"
+            android:clickable="true"
+            android:focusable="true"
+            android:hapticFeedbackEnabled="true"
+            android:text="theme"
+            android:textColor="@color/card_text_color_faint"
+            android:textSize="@dimen/font_size_small"
+            android:textStyle="italic"
+            app:layout_constraintBottom_toTopOf="@id/card_title"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toStartOf="@id/card_top_separator"
+            app:layout_constraintTop_toTopOf="parent" />
+
+        <TextView
+            android:id="@+id/card_top_separator"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="@dimen/card_margin_start"
+            android:text="·"
+            android:textColor="@color/card_text_color_faint"
+            android:textSize="@dimen/font_size_small"
+            android:textStyle="italic"
+            app:layout_constraintBottom_toBottomOf="@id/card_theme"
+            app:layout_constraintEnd_toStartOf="@id/card_read_time"
+            app:layout_constraintStart_toEndOf="@id/card_theme"
+            app:layout_constraintTop_toTopOf="@id/card_theme" />
+
+        <TextView
+            android:id="@+id/card_read_time"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="@dimen/card_margin_start"
+            android:text="readTime"
+            android:textColor="@color/card_text_color_faint"
+            android:textSize="@dimen/font_size_small"
+            android:textStyle="italic"
+            app:layout_constraintBottom_toBottomOf="@id/card_theme"
+            app:layout_constraintStart_toEndOf="@id/card_top_separator"
+            app:layout_constraintTop_toTopOf="@id/card_theme" />
+
+        <TextView
+            android:id="@+id/card_title"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="12dp"
+            android:layout_marginStart="12dp"
+            android:layout_marginTop="2dp"
+            android:background="@drawable/ripple"
+            android:clickable="true"
+            android:focusable="true"
+            android:text="title"
+            android:textColor="@color/card_text_color"
+            android:textSize="@dimen/font_size_large"
+            app:layout_constraintBottom_toTopOf="@id/metadata_layout"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/card_theme" />
+
+        <android.support.constraint.ConstraintLayout
+            android:id="@+id/metadata_layout"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            app:layout_constraintBottom_toTopOf="@id/card_image"
+            app:layout_constraintStart_toStartOf="@id/card_title"
+            app:layout_constraintTop_toBottomOf="@id/card_title">
+
+            <TextView
+                android:id="@+id/card_contributor"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="contributor"
+                android:textColor="@color/card_text_color"
+                android:textSize="@dimen/font_size_small"
+                android:background="@drawable/ripple"
+                android:clickable="true"
+                android:focusable="true"
+                android:hapticFeedbackEnabled="true"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintEnd_toStartOf="@id/card_sub_separator"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toTopOf="parent" />
+
+            <TextView
+                android:id="@+id/card_sub_separator"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="@dimen/card_margin_start"
+                android:text="·"
+                android:textColor="@color/card_text_color"
+                android:textSize="@dimen/font_size_small"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintEnd_toStartOf="@id/card_date"
+                app:layout_constraintStart_toEndOf="@id/card_contributor"
+                app:layout_constraintTop_toTopOf="parent" />
+
+            <TextView
+                android:id="@+id/card_date"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="@dimen/card_margin_start"
+                android:text="date"
+                android:textColor="@color/card_text_color"
+                android:textSize="@dimen/font_size_small"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toEndOf="@id/card_sub_separator"
+                app:layout_constraintTop_toTopOf="parent" />
+        </android.support.constraint.ConstraintLayout>
+
+        <android.support.constraint.ConstraintLayout
+            android:id="@+id/metrics_layout"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            app:layout_constraintBottom_toBottomOf="@id/metadata_layout"
+            app:layout_constraintEnd_toEndOf="@id/card_title"
+            app:layout_constraintTop_toTopOf="@id/metadata_layout">
+
+            <ImageView
+                android:id="@+id/card_image_net_vote"
+                android:layout_width="16dp"
+                android:layout_height="16dp"
+                android:layout_gravity="center_vertical"
+                android:tint="@color/card_up_arrow_tint"
+                app:layout_constraintBottom_toBottomOf="@id/card_vote_count"
+                app:layout_constraintEnd_toStartOf="@id/card_vote_count"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toTopOf="@id/card_vote_count"
+                app:srcCompat="@drawable/ic_arrow_up" />
+
+            <TextView
+                android:id="@+id/card_vote_count"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="@dimen/card_margin_start"
+                android:text="voteCnt"
+                android:textColor="@color/card_text_color"
+                android:textSize="@dimen/font_size_small"
+                app:layout_constraintBottom_toBottomOf="@id/card_sub2_separator"
+                app:layout_constraintEnd_toStartOf="@id/card_sub2_separator"
+                app:layout_constraintStart_toEndOf="@id/card_image_net_vote"
+                app:layout_constraintTop_toTopOf="@id/card_sub2_separator" />
+
+            <TextView
+                android:id="@+id/card_sub2_separator"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="@dimen/card_margin_start"
+                android:text="·"
+                android:textColor="@color/card_text_color"
+                android:textSize="@dimen/font_size_small"
+                app:layout_constraintBottom_toBottomOf="@id/card_comment_frame"
+                app:layout_constraintEnd_toStartOf="@id/card_comment_frame"
+                app:layout_constraintStart_toEndOf="@id/card_vote_count"
+                app:layout_constraintTop_toTopOf="@id/card_comment_frame" />
+
+            <android.support.constraint.ConstraintLayout
+                android:id="@+id/card_comment_frame"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toEndOf="@id/card_sub2_separator"
+                app:layout_constraintTop_toTopOf="parent">
+                <ImageView
+                    android:id="@+id/card_image_comment"
+                    android:layout_width="16dp"
+                    android:layout_height="16dp"
+                    android:layout_marginStart="@dimen/card_margin_start"
+                    android:tint="@color/card_comment_tint"
+                    app:layout_constraintBottom_toBottomOf="parent"
+                    app:layout_constraintEnd_toStartOf="@id/card_comment_count"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintTop_toTopOf="parent"
+                    app:srcCompat="@drawable/ic_comment" />
+
+                <TextView
+                    android:id="@+id/card_comment_count"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="8dp"
+                    android:text="comCnt"
+                    android:textColor="@color/card_text_color"
+                    android:textSize="@dimen/font_size_small"
+                    app:layout_constraintBottom_toBottomOf="parent"
+                    app:layout_constraintEnd_toEndOf="parent"
+                    app:layout_constraintStart_toEndOf="@id/card_image_comment"
+                    app:layout_constraintTop_toTopOf="parent" />
+            </android.support.constraint.ConstraintLayout>
+        </android.support.constraint.ConstraintLayout>
+
+        <ImageView
+            android:id="@+id/card_image"
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:layout_marginTop="12dp"
+            android:clickable="true"
+            android:contentDescription="main image"
+            android:focusable="true"
+            android:foreground="@drawable/ripple"
+            android:scaleType="centerCrop"
+            app:layout_constraintBottom_toTopOf="@id/card_button_comment_layout"
+            app:layout_constraintDimensionRatio="H,16:9"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/metadata_layout"
+            app:srcCompat="@android:color/transparent" />
+
+        <FrameLayout
+            android:id="@+id/card_button_upvote_layout"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            app:layout_constraintBottom_toBottomOf="@id/card_button_comment_layout"
+            app:layout_constraintEnd_toStartOf="@id/card_button_downvote_layout"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="@id/card_button_comment_layout">
+
+            <CheckBox
+                android:id="@+id/card_button_upvote"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center_horizontal"
+                android:layout_margin="12dp"
+                android:background="@drawable/ic_arrow_up"
+                android:backgroundTint="@color/upvote_state_list"
+                android:button="@null"
+                android:checked="false" />
+        </FrameLayout>
+
+        <FrameLayout
+            android:id="@+id/card_button_downvote_layout"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            app:layout_constraintBottom_toBottomOf="@id/card_button_comment_layout"
+            app:layout_constraintEnd_toStartOf="@id/card_button_comment_layout"
+            app:layout_constraintStart_toEndOf="@id/card_button_upvote_layout"
+            app:layout_constraintTop_toTopOf="@id/card_button_comment_layout">
+
+            <CheckBox
+                android:id="@+id/card_button_downvote"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center_horizontal"
+                android:layout_margin="12dp"
+                android:background="@drawable/ic_arrow_down"
+                android:backgroundTint="@color/downvote_state_list"
+                android:button="@null"
+                android:checked="false" />
+        </FrameLayout>
+
+        <FrameLayout
+            android:id="@+id/card_button_comment_layout"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toStartOf="@id/card_button_favourite_layout"
+            app:layout_constraintStart_toEndOf="@id/card_button_downvote_layout"
+            app:layout_constraintTop_toBottomOf="@id/card_image">
+
+            <CheckBox
+                android:id="@+id/card_button_comment"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center_horizontal"
+                android:layout_margin="12dp"
+                android:background="@drawable/ic_comment"
+                android:backgroundTint="@color/comment_state_list"
+                android:button="@null"
+                android:checked="false" />
+        </FrameLayout>
+
+        <FrameLayout
+            android:id="@+id/card_button_favourite_layout"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            app:layout_constraintBottom_toBottomOf="@id/card_button_comment_layout"
+            app:layout_constraintEnd_toStartOf="@id/card_button_share_layout"
+            app:layout_constraintStart_toEndOf="@id/card_button_comment_layout"
+            app:layout_constraintTop_toTopOf="@id/card_button_comment_layout">
+
+            <CheckBox
+                android:id="@+id/card_button_favourite"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center_horizontal"
+                android:layout_margin="12dp"
+                android:background="@drawable/ic_star"
+                android:backgroundTint="@color/star_state_list"
+                android:button="@null"
+                android:checked="false" />
+        </FrameLayout>
+
+        <FrameLayout
+            android:id="@+id/card_button_share_layout"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            app:layout_constraintBottom_toBottomOf="@id/card_button_comment_layout"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toEndOf="@id/card_button_favourite_layout"
+            app:layout_constraintTop_toTopOf="@id/card_button_comment_layout">
+
+            <CheckBox
+                android:id="@+id/card_button_share"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center_horizontal"
+                android:layout_margin="12dp"
+                android:background="@drawable/ic_share"
+                android:backgroundTint="@color/share_state_list"
+                android:button="@null"
+                android:checked="false" />
+        </FrameLayout>
+
+
+    </android.support.constraint.ConstraintLayout>
+</android.support.v7.widget.CardView>

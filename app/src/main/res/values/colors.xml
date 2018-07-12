@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="colorPrimary">#D4AF37</color>
+    <color name="colorPrimaryDark">#292425</color>
+    <color name="colorAccent">#6689fa</color>
+    <color name="colorPrimaryLight">#e9d596</color>
+    <color name="colorSecondaryDark">#a9a9a9</color>
+    <color name="colorSecondaryMedium">#dadada</color>
+    <color name="colorSecondaryLight">#eaeaea</color>
+    <color name="colorBackground">#dcdcdc</color>
+    <color name="colorShadow">#66000000</color>
+
+    <!-- Navigation View -->
+    <color name="nav_header_background">#3A4C60</color>
+    <color name="nav_view_background">#1E2D3E</color>
+    <color name="nav_text_color">#C0CCDA</color>
+
+    <!-- Card View -->
+    <color name="card_background">#FFFFFF</color>
+    <color name="card_button_default">#BDBDBD</color>
+    <color name="card_text_color">#DE000000</color>
+    <color name="card_up_arrow_tint">#319167</color>
+    <color name="card_down_arrow_tint">#bf4f51</color>
+    <color name="card_comment_tint">#0a7e8c</color>
+    <color name="card_favourite_tint">#FFBA5C</color>
+    <color name="card_share_tint">#DE000000</color>
+    <color name="card_button_background">#FAFAFA</color>
+    <color name="card_text_color_faint">#707070</color>
+
+    <!-- Comment -->
+    <color name="comment_self_background">#ffffff</color>
+    <color name="comment_background">#EEE8AA</color>
+    <color name="comment_text_color">#292425</color>
+    <color name="comment_editText_tint">#292425</color>
+
+    <!-- Webview -->
+    <color name="webview_background">#f6f6f6</color>
+    <color name="webview_text_color">#231f20</color>
+    <color name="webview_subtitle_color">#666666</color>
+
+    <!-- User -->
+    <color name="user_background">#dcdcdc</color>
+    <color name="user_stats_background">#eaeaea</color>
+    <color name="user_name_color">#231f20</color>
+    <color name="user_stats_color">#51484a</color>
+
+    <!-- Search -->
+    <color name="search_highlight">#b5c6ff</color>
+    <color name="search_comment_highlight">#b5c6ff</color>
+
+    <!-- Theme -->
+    <color name="theme_all_button_tint">#181a1b</color>
+
+    <!-- Gray Tone -->
+    <color name="gray_tone_1">#c88691</color>
+    <color name="gray_tone_2">#ad85ba</color>
+    <color name="gray_tone_3">#95a1c3</color>
+    <color name="gray_tone_4">#74a18e</color>
+    <color name="gray_tone_5">#81adb5</color>
+    <color name="gray_tone_6">#b2c891</color>
+    <color name="gray_tone_7">#b99c6b</color>
+    <color name="gray_tone_8">#e49969</color>
+    <color name="gray_tone_9">#c9c27f</color>
+    <color name="gray_tone_10">#91867e</color>
+    <color name="gray_tone_11">#b2aaa4</color>
+    <color name="gray_tone_12">#d9d5d2</color>
+    <color name="gray_tone_13">#949494</color>
+    <color name="gray_tone_14">#b2b2b2</color>
+    <color name="gray_tone_15">#d6d6d6</color>
+    
+    <array name="gray_tone">
+        <item>@color/gray_tone_1</item>
+        <item>@color/gray_tone_2</item>
+        <item>@color/gray_tone_3</item>
+        <item>@color/gray_tone_4</item>
+        <item>@color/gray_tone_5</item>
+        <item>@color/gray_tone_6</item>
+        <item>@color/gray_tone_7</item>
+        <item>@color/gray_tone_8</item>
+        <item>@color/gray_tone_9</item>
+        <item>@color/gray_tone_10</item>
+        <item>@color/gray_tone_11</item>
+        <item>@color/gray_tone_12</item>
+        <item>@color/gray_tone_13</item>
+        <item>@color/gray_tone_14</item>
+        <item>@color/gray_tone_15</item>
+    </array>
+
+    <!-- Notifications -->
+    <color name="notif_item_bg_color">#fa315b</color>
+    <color name="notif_item_bg_text_color">#ffffff</color>
+
+    <!-- Create Post -->
+    <color name="post_background">#fffff5</color>
+</resources>
