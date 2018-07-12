@@ -7,8 +7,13 @@
     <dimen name="fab_margin">16dp</dimen>
 
     <!-- Card View -->
-    <dimen name="card_margin_start">8dp</dimen>
-    <dimen name="font_size_large">20sp</dimen>
-    <dimen name="font_size_medium">16sp</dimen>
-    <dimen name="font_size_small">14sp</dimen>
+    <dimen name="card_margin_start">12dp</dimen>
+    <dimen name="card_margin_in_between">8dp</dimen>
+    <dimen name="card_margin_top_large">12dp</dimen>
+    <dimen name="card_margin_top_medium">10dp</dimen>
+    <dimen name="card_margin_top_small">4dp</dimen>
+    <dimen name="font_size_large">19sp</dimen>
+    <dimen name="font_size_medium">15sp</dimen>
+    <dimen name="font_size_small">12sp</dimen>
+    <dimen name="font_size_xs">10sp</dimen>
 </resources>
