@@ -248,7 +248,7 @@ public class CreatePostActivity extends AppCompatActivity {
                     clearPostImage();
                     mLink = m.group(1);
                     Log.d(TAG, "callback added");
-                    handler.postDelayed(addPreview, 1000);
+                    handler.postDelayed(addPreview, 500);
                     addPreviewPending = true;
                 }
             }

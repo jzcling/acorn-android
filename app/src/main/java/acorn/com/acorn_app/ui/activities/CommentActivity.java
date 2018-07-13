@@ -362,7 +362,7 @@ public class CommentActivity extends AppCompatActivity implements View.OnTouchLi
                     clearPreview();
                     mPreviewLink = m.group(1);
                     Log.d(TAG, "callback added");
-                    handler.postDelayed(addPreview, 1000);
+                    handler.postDelayed(addPreview, 500);
                     addPreviewPending = true;
                 }
             }
@@ -473,36 +473,40 @@ public class CommentActivity extends AppCompatActivity implements View.OnTouchLi
                 mSearchText = searchEditText.getText().toString();
                 mSearchPos = ((CommentAdapter) mAdapter).findText(mSearchText);
                 mCurrentIndex = 0;
-                mCommentRecyclerView.scrollToPosition(
-                        Math.min(mAdapter.getItemCount() - 1, mSearchPos.get(mCurrentIndex) + 5));
-                for (Integer position : mSearchPos) {
-                    CommentViewHolder vh = (CommentViewHolder) mCommentRecyclerView
-                            .findViewHolderForAdapterPosition(position);
-                    if (vh != null) {
-                        String originalText = vh.commentTextView.getText().toString();
-                        SpannableString highlightedText = new SpannableString(originalText);
-                        Pattern p = Pattern.compile(mSearchText, Pattern.CASE_INSENSITIVE);
-                        Matcher m = p.matcher(originalText);
-                        while (m.find()) {
-                            highlightedText.setSpan(new BackgroundColorSpan(
-                                    getResources().getColor(R.color.search_comment_highlight)),
-                                    m.start(), m.end(), SPAN_INCLUSIVE_INCLUSIVE);
+                if (mSearchPos.size() > 0) {
+                    mCommentRecyclerView.scrollToPosition(
+                            Math.min(mAdapter.getItemCount() - 1, mSearchPos.get(mCurrentIndex) + 5));
+                    for (Integer position : mSearchPos) {
+                        CommentViewHolder vh = (CommentViewHolder) mCommentRecyclerView
+                                .findViewHolderForAdapterPosition(position);
+                        if (vh != null) {
+                            String originalText = vh.commentTextView.getText().toString();
+                            SpannableString highlightedText = new SpannableString(originalText);
+                            Pattern p = Pattern.compile(mSearchText, Pattern.CASE_INSENSITIVE);
+                            Matcher m = p.matcher(originalText);
+                            while (m.find()) {
+                                highlightedText.setSpan(new BackgroundColorSpan(
+                                                getResources().getColor(R.color.search_comment_highlight)),
+                                        m.start(), m.end(), SPAN_INCLUSIVE_INCLUSIVE);
+                            }
+                            vh.commentTextView.setText(highlightedText);
                         }
-                        vh.commentTextView.setText(highlightedText);
                     }
+
+                    Log.d(TAG, "positions: " + mSearchPos);
+                    View view = getCurrentFocus();
+                    if (view != null) {
+                        InputMethodManager imm = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
+                        imm.hideSoftInputFromWindow(view.getWindowToken(), 0);
+                    }
+
+                    mAdapter.notifyDataSetChanged();
+
+                    searchChevronUp.setVisible(true);
+                    searchChevronDown.setVisible(true);
+                } else {
+                    createToast(this, "No results returned for " + mSearchText, Toast.LENGTH_SHORT);
                 }
-
-                Log.d(TAG, "positions: " + mSearchPos);
-                View view = getCurrentFocus();
-                if (view != null) {
-                    InputMethodManager imm = (InputMethodManager)getSystemService(Context.INPUT_METHOD_SERVICE);
-                    imm.hideSoftInputFromWindow(view.getWindowToken(), 0);
-                }
-
-                mAdapter.notifyDataSetChanged();
-
-                searchChevronUp.setVisible(true);
-                searchChevronDown.setVisible(true);
             }
             return false;
         });
@@ -531,15 +535,17 @@ public class CommentActivity extends AppCompatActivity implements View.OnTouchLi
                 searchChevronUp.setVisible(false);
                 searchChevronDown.setVisible(false);
 
-                for (Integer position : mSearchPos) {
-                    CommentViewHolder vh = (CommentViewHolder) mCommentRecyclerView
-                            .findViewHolderForAdapterPosition(position);
-                    if (vh != null) {
-                        String originalText = vh.commentTextView.getText().toString();
-                        vh.commentTextView.setText(originalText);
+                if (mSearchPos.size() > 0) {
+                    for (Integer position : mSearchPos) {
+                        CommentViewHolder vh = (CommentViewHolder) mCommentRecyclerView
+                                .findViewHolderForAdapterPosition(position);
+                        if (vh != null) {
+                            String originalText = vh.commentTextView.getText().toString();
+                            vh.commentTextView.setText(originalText);
+                        }
                     }
+                    mAdapter.notifyDataSetChanged();
                 }
-                mAdapter.notifyDataSetChanged();
                 mSearchText = null;
                 mSearchPos = null;
                 mCurrentIndex = -1;

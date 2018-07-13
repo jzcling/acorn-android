@@ -132,47 +132,51 @@ public class WebViewActivity extends AppCompatActivity {
 //                Log.d(TAG, mArticle.getTitle());
 
                 // get data to set up card
-                link = mArticle.getLink();
-                title = mArticle.getTitle();
-                author = mArticle.getAuthor();
-                source = mArticle.getSource();
-                date = DateUtils.parseDate(mArticle.getPubDate());
-                if (!isArticleLoaded) {
-                    if (mArticle.getType() != null && mArticle.getType().equals("article")) {
-                        genHtml();
-                    } else {
-                        webView.loadUrl(link);
+                if (mArticle != null) {
+                    link = mArticle.getLink();
+                    title = mArticle.getTitle();
+                    author = mArticle.getAuthor();
+                    source = mArticle.getSource();
+                    date = DateUtils.parseDate(mArticle.getPubDate());
+                    if (!isArticleLoaded) {
+                        if (mArticle.getType() != null && mArticle.getType().equals("article")) {
+                            genHtml();
+                        } else {
+                            webView.loadUrl(link);
+                        }
+                        isArticleLoaded = true;
                     }
-                    isArticleLoaded = true;
-                }
 
-                // set up bottom toolbar
-                if (mArticle.upvoters.containsKey(mUid)) {
-                    upVoteView.setChecked(true);
-                } else {
-                    upVoteView.setChecked(false);
-                }
-                if (mArticle.downvoters.containsKey(mUid)) {
-                    downVoteView.setChecked(true);
-                } else {
-                    downVoteView.setChecked(false);
-                }
-                if (mArticle.commenters.containsKey(mUid)) {
-                    commentView.setChecked(true);
-                } else {
-                    commentView.setChecked(false);
-                }
-                if (mArticle.savers.containsKey(mUid)) {
-                    favView.setChecked(true);
-                } else {
-                    favView.setChecked(false);
-                }
+                    // set up bottom toolbar
+                    if (mArticle.upvoters.containsKey(mUid)) {
+                        upVoteView.setChecked(true);
+                    } else {
+                        upVoteView.setChecked(false);
+                    }
+                    if (mArticle.downvoters.containsKey(mUid)) {
+                        downVoteView.setChecked(true);
+                    } else {
+                        downVoteView.setChecked(false);
+                    }
+                    if (mArticle.commenters.containsKey(mUid)) {
+                        commentView.setChecked(true);
+                    } else {
+                        commentView.setChecked(false);
+                    }
+                    if (mArticle.savers.containsKey(mUid)) {
+                        favView.setChecked(true);
+                    } else {
+                        favView.setChecked(false);
+                    }
 
-                upVoteView.setOnClickListener(onClickListener(mArticle, "upvote"));
-                downVoteView.setOnClickListener(onClickListener(mArticle, "downvote"));
-                commentView.setOnClickListener(onClickListener(mArticle, "comment"));
-                favView.setOnClickListener(onClickListener(mArticle, "favourite"));
-                shareView.setOnClickListener(onClickListener(mArticle, "share"));
+                    upVoteView.setOnClickListener(onClickListener(mArticle, "upvote"));
+                    downVoteView.setOnClickListener(onClickListener(mArticle, "downvote"));
+                    commentView.setOnClickListener(onClickListener(mArticle, "comment"));
+                    favView.setOnClickListener(onClickListener(mArticle, "favourite"));
+                    shareView.setOnClickListener(onClickListener(mArticle, "share"));
+                } else {
+                    createToast(WebViewActivity.this, "Failed to fetch article", Toast.LENGTH_SHORT);
+                }
             }
 
             @Override
