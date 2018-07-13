@@ -185,6 +185,12 @@ public class CreatePostActivity extends AppCompatActivity {
                                 createToast(this, "Post created!", Toast.LENGTH_SHORT);
                                 finish();
                             });
+                        }).addOnFailureListener(e ->  {
+                            mExecutors.mainThread().execute(() -> {
+                                e.printStackTrace();
+                                createToast(this, "Post creation failed!", Toast.LENGTH_SHORT);
+                                finish();
+                            });
                         });
                     });
                 } else {
@@ -197,6 +203,12 @@ public class CreatePostActivity extends AppCompatActivity {
                         mExecutors.networkIO().execute(() -> updateUserData(objectID, postDate));
                         mExecutors.mainThread().execute(() -> {
                             createToast(this, "Post created!", Toast.LENGTH_SHORT);
+                            finish();
+                        });
+                    }).addOnFailureListener(e ->  {
+                        mExecutors.mainThread().execute(() -> {
+                            e.printStackTrace();
+                            createToast(this, "Post creation failed!", Toast.LENGTH_SHORT);
                             finish();
                         });
                     });

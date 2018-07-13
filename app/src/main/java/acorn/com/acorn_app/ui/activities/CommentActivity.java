@@ -856,6 +856,10 @@ public class CommentActivity extends AppCompatActivity implements View.OnTouchLi
             createToast(this, "Please verify your email to comment", Toast.LENGTH_SHORT);
             return;
         }
+        if (commentText.length() > 1000) {
+            createToast(this, "Your comment should be less than 1000 characters", Toast.LENGTH_SHORT);
+            return;
+        }
 
         Long pubDate = -1L * (new Date().getTime());
         String key = ref.push().getKey();
