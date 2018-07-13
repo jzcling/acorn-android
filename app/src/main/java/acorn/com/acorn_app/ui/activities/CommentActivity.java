@@ -779,6 +779,8 @@ public class CommentActivity extends AppCompatActivity implements View.OnTouchLi
                 Log.d(TAG, "notificationToken: " + notificationToken);
                 if (notificationToken == null) {
                     Log.d(TAG, "updateNotificationTokens: Could not find notification tokens");
+                    Log.d(TAG, "token: " + mUserToken);
+                    Log.d(TAG, mArticleRef.child("notificationTokens/" + mUid).toString());
                     mArticleRef.child("notificationTokens/" + mUid).setValue(mUserToken);
                     return Transaction.success(mutableData);
                 }
