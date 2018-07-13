@@ -57,6 +57,7 @@ import acorn.com.acorn_app.utils.AppExecutors;
 import static acorn.com.acorn_app.ui.activities.AcornActivity.ID_OFFSET;
 import static acorn.com.acorn_app.ui.activities.AcornActivity.TRENDING_INDEX_OFFSET;
 import static acorn.com.acorn_app.ui.activities.AcornActivity.mUid;
+import static acorn.com.acorn_app.ui.activities.AcornActivity.mUserToken;
 import static acorn.com.acorn_app.ui.activities.AcornActivity.mUsername;
 import static acorn.com.acorn_app.utils.UiUtils.createToast;
 
@@ -179,6 +180,7 @@ public class CreatePostActivity extends AppCompatActivity {
                         Article article = new Article(entityId, objectID, type, mUid, postAuthor, postText,
                                 postImageUrl, postDate, title, source, postDate, trendingIndex, imageUrl,
                                 link, null, mainTheme, null);
+                        article.notificationTokens.put(mUid, mUserToken);
                         postRef.child(objectID).setValue(article).addOnSuccessListener(aVoid -> {
                             mExecutors.networkIO().execute(() -> updateUserData(objectID, postDate));
                             mExecutors.mainThread().execute(() -> {
@@ -199,6 +201,7 @@ public class CreatePostActivity extends AppCompatActivity {
                     Article article = new Article(entityId, objectID, type, mUid, postAuthor, postText,
                             postImageUrl, postDate, title, source, postDate, trendingIndex, imageUrl,
                             link, null, mainTheme, null);
+                    article.notificationTokens.put(mUid, mUserToken);
                     postRef.child(objectID).setValue(article).addOnSuccessListener(aVoid -> {
                         mExecutors.networkIO().execute(() -> updateUserData(objectID, postDate));
                         mExecutors.mainThread().execute(() -> {
