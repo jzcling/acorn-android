@@ -255,12 +255,13 @@ public class CommentActivity extends AppCompatActivity implements View.OnTouchLi
                 // Set up on click interface for article
                 if (mArticle.getLink() != null && !mArticle.getLink().equals("")) {
                     mArticleTitleView.setOnClickListener(v ->
-                        mExecutors.mainThread().execute(() -> startWebViewActivity())
+                            mExecutors.mainThread().execute(() -> startWebViewActivity())
                     );
                     mArticleImageView.setOnClickListener(v ->
                             mExecutors.mainThread().execute(() -> startWebViewActivity())
                     );
-                } else {
+                } else if (mArticle.getImageUrl() != null && !mArticle.getImageUrl().equals("") ||
+                        mArticle.getPostImageUrl() != null && !mArticle.getPostImageUrl().equals("")){
                     mArticleTitleView.setOnClickListener(v -> {
                         StorageReference imageUri;
                         if (mArticle.getPostImageUrl() != null) {
