@@ -21,7 +21,9 @@ public class DateUtils {
             int diffMinutes = (int) Math.round(diff / (1000D * 60D));
             int diffHours = (int) Math.round(diff / (1000D * 60D * 60D));
 
-            if (diffSeconds < 60) {
+            if (diff < 0) {
+                return "";
+            } else if (diffSeconds < 60) {
                 return diffSeconds + "s ago";
             } else if (diffMinutes < 60) {
                 return diffMinutes + "m ago";
