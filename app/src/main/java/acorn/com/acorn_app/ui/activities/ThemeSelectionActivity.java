@@ -36,6 +36,7 @@ import acorn.com.acorn_app.R;
 import acorn.com.acorn_app.ui.viewModels.UserThemeViewModel;
 import acorn.com.acorn_app.models.User;
 
+import static acorn.com.acorn_app.ui.activities.AcornActivity.isFirstTimeLogin;
 import static acorn.com.acorn_app.ui.activities.AcornActivity.mUid;
 import static acorn.com.acorn_app.utils.UiUtils.createToast;
 
@@ -109,7 +110,7 @@ public class ThemeSelectionActivity extends AppCompatActivity {
             mUserThemeList.addAll(mLastSavedState);
         } else {
             Log.d(TAG, "user theme data does not exist");
-            mUserThemeList.addAll(mThemeList);
+//            mUserThemeList.addAll(mThemeList);
         }
 
         if (mUserThemeList.containsAll(mThemeList)) {
@@ -148,6 +149,12 @@ public class ThemeSelectionActivity extends AppCompatActivity {
 
     @Override
     public void onBackPressed() {
+        if (isFirstTimeLogin) {
+            if (mUserThemeList.size() < 1) {
+                createToast(this, "Please select at least one theme", Toast.LENGTH_SHORT);
+                return;
+            }
+        }
         isBackPressed = true;
         if (!(mUserThemeList.containsAll(mLastSavedState)
                 && mLastSavedState.containsAll(mUserThemeList))) {
@@ -217,6 +224,7 @@ public class ThemeSelectionActivity extends AppCompatActivity {
                             "Failed to save theme subscriptions", Toast.LENGTH_SHORT);
                 }
                 if (isBackPressed) finish();
+                if (isFirstTimeLogin) finish();
             }
         });
     }

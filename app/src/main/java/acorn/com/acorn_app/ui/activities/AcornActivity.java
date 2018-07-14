@@ -103,6 +103,7 @@ public class AcornActivity extends AppCompatActivity
     public static final String LEVEL_3 = "Wise Oak";
 
     //Theme
+    public static boolean isFirstTimeLogin;
     public static String mThemeSearchKey;
     public static String mThemeSearchFilter;
 
@@ -685,6 +686,7 @@ public class AcornActivity extends AppCompatActivity
                     User retrievedUser = dataSnapshot.getValue(User.class);
                     String userToken = FirebaseInstanceId.getInstance().getToken();
                     if (retrievedUser == null) {
+                        isFirstTimeLogin = true;
                         if (!user.isEmailVerified()) {
                             user.sendEmailVerification();
                         } else {
@@ -705,13 +707,9 @@ public class AcornActivity extends AppCompatActivity
                         mUid = newUser.getUid();
                         mUsername = newUser.getDisplayName();
                         mUserToken = newUser.getToken();
-                        mUserThemePrefs = new ArrayList<>();
-                        String[] themeArray = getResources().getStringArray(R.array.theme_array);
-                        Collections.addAll(mUserThemePrefs, themeArray);
                         mUserStatus = LEVEL_0;
                         lastRecArticlesPushTime = 0L;
                         lastRecArticlesScheduleTime = 0L;
-                        buildThemeKeyAndFilter(mUserThemePrefs);
 
                         if (mUsernameTextView != null) {
                             mUsernameTextView.setText(mUsername);
@@ -721,6 +719,14 @@ public class AcornActivity extends AppCompatActivity
                             mUserStatusTextView.setText(mUserStatus);
                             mUserStatusTextView.setOnClickListener(v -> startActivity(new Intent(AcornActivity.this, UserActivity.class)));
                         }
+
+                        mUserThemePrefs = new ArrayList<>();
+//                        String[] themeArray = getResources().getStringArray(R.array.theme_array);
+//                        Collections.addAll(mUserThemePrefs, themeArray);
+                        Intent editThemeIntent = new Intent(AcornActivity.this, ThemeSelectionActivity.class);
+                        editThemeIntent.putStringArrayListExtra("themePrefs", mUserThemePrefs);
+                        startActivityForResult(editThemeIntent, RC_THEME_PREF);
+                        buildThemeKeyAndFilter(mUserThemePrefs);
                     } else {
                         Log.d(TAG, "user email verified: " + user.isEmailVerified());
                         if (!user.isEmailVerified()) {
