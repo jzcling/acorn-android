@@ -536,7 +536,7 @@ public class CommentActivity extends AppCompatActivity implements View.OnTouchLi
                 searchChevronUp.setVisible(false);
                 searchChevronDown.setVisible(false);
 
-                if (mSearchPos.size() > 0) {
+                if (mSearchPos != null && mSearchPos.size() > 0) {
                     for (Integer position : mSearchPos) {
                         CommentViewHolder vh = (CommentViewHolder) mCommentRecyclerView
                                 .findViewHolderForAdapterPosition(position);
