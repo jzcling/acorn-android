@@ -16,6 +16,8 @@
 package acorn.com.acorn_app.data;
 
 import android.content.Context;
+import android.content.SharedPreferences;
+import android.preference.PreferenceManager;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.util.Log;
@@ -52,8 +54,6 @@ import acorn.com.acorn_app.models.FbQuery;
 import acorn.com.acorn_app.services.RecArticlesJobService;
 import acorn.com.acorn_app.utils.AppExecutors;
 
-import static acorn.com.acorn_app.ui.activities.AcornActivity.mThemeSearchFilter;
-import static acorn.com.acorn_app.ui.activities.AcornActivity.mThemeSearchKey;
 import static acorn.com.acorn_app.ui.activities.AcornActivity.mUid;
 
 public class NetworkDataSource {
@@ -70,6 +70,9 @@ public class NetworkDataSource {
 
     // Recommended articles
     public static List<Article> mRecArticleList;
+    private SharedPreferences mSharedPrefs;
+    private String mThemeSearchKey;
+    private String mThemeSearchFilter;
 
     // Algolia
     private static final Client ALGOLIA_CLIENT =
@@ -87,6 +90,9 @@ public class NetworkDataSource {
     private NetworkDataSource(Context context, AppExecutors executors) {
         mContext = context;
         mExecutors = executors;
+        mSharedPrefs = PreferenceManager.getDefaultSharedPreferences(mContext);
+        mThemeSearchKey = mSharedPrefs.getString("themeSearchKey", "");
+        mThemeSearchFilter = mSharedPrefs.getString("themeSearchFilter", "");
     }
 
     /**
@@ -263,8 +269,10 @@ public class NetworkDataSource {
     }
 
     public void recordLastRecArticlesPushTime() {
+        Long lastRecArticlesPushTime = (new Date()).getTime();
         mDatabaseReference.child(USER_REF).child(mUid)
-                .child("lastRecArticlesPushTime").setValue((new Date()).getTime());
+                .child("lastRecArticlesPushTime").setValue(lastRecArticlesPushTime);
+        mSharedPrefs.edit().putLong("lastRecArticlesPushTime", lastRecArticlesPushTime);
     }
 
     public void recordLastRecArticlesScheduleTime() {

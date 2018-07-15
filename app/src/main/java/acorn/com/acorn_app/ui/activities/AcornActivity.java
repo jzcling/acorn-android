@@ -921,8 +921,9 @@ public class AcornActivity extends AppCompatActivity
             }
         }
         mThemeSearchKey = searchKeyBuilder.toString();
-        mSharedPreferences.edit().putString("themeSearchKey", mThemeSearchKey).apply();
         mThemeSearchFilter = filterStringBuilder.toString();
+        mSharedPreferences.edit().putString("themeSearchKey", mThemeSearchKey)
+                .putString("themeSearchFilter", mThemeSearchFilter).apply();
     }
 
     private void setUpInitialViewModelObserver() {

@@ -48,6 +48,8 @@ public class RecArticlesJobService extends JobService {
         mExecutors = AppExecutors.getInstance();
         mDataSource = NetworkDataSource.getInstance(this, mExecutors);
         sharedPrefs = PreferenceManager.getDefaultSharedPreferences(this);
+        Long lastRecArticlesPushTime = sharedPrefs.getLong("lastRecArticlesPushTime", 0L);
+        Long timeNow = (new Date()).getTime();
         Log.d(TAG, "themeSearchKey: " + sharedPrefs.getString("themeSearchKey",""));
         //Log.d(TAG, "searchRef: " + SEARCH_REF);
         themeSearchKey = sharedPrefs.getString("themeSearchKey", "");
@@ -59,10 +61,12 @@ public class RecArticlesJobService extends JobService {
             mDataSource.getThemeData(() -> {
                 mDataSource.getRecommendedArticles(hitsRef, () -> {
                     mExecutors.networkIO().execute(() -> {
-                        sendRecArticlesNotification();
+                        if (timeNow - lastRecArticlesPushTime > 6L * 60L * 60L * 1000L) { // 6 hours
+                            sendRecArticlesNotification();
+                            mDataSource.recordLastRecArticlesPushTime();
+                        }
                         jobFinished(params,true);
                         Log.d(TAG, "job finished: " + params.getTag());
-                        mDataSource.recordLastRecArticlesPushTime();
                     });
                 });
             });

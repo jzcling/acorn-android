@@ -1,3 +1,8 @@
+v1.1a1
+Creating a post now registers user as a follower
+Made some UI changes to improve cluttered look
+Fixed some crash events
+
 v1.0a1, v1.0a2, v1.0a3, v1.0a4, v1.0a5
 Added functionality to create posts
 Added search for comments
