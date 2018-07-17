@@ -70,9 +70,6 @@ public class NetworkDataSource {
 
     // Recommended articles
     public static List<Article> mRecArticleList;
-    private SharedPreferences mSharedPrefs;
-    private String mThemeSearchKey;
-    private String mThemeSearchFilter;
 
     // Algolia
     private static final Client ALGOLIA_CLIENT =
@@ -83,16 +80,19 @@ public class NetworkDataSource {
     private static final Object LOCK = new Object();
     private static NetworkDataSource sInstance;
     private final Context mContext;
-
-    private DatabaseReference mDatabaseReference = FirebaseDatabase.getInstance().getReference();
+    private final SharedPreferences mSharedPrefs;
+    private final DatabaseReference mDatabaseReference;
     private final AppExecutors mExecutors;
+
+    // Theme
+    private String mThemeSearchKey;
+    private String mThemeSearchFilter;
 
     private NetworkDataSource(Context context, AppExecutors executors) {
         mContext = context;
         mExecutors = executors;
         mSharedPrefs = PreferenceManager.getDefaultSharedPreferences(mContext);
-        mThemeSearchKey = mSharedPrefs.getString("themeSearchKey", "");
-        mThemeSearchFilter = mSharedPrefs.getString("themeSearchFilter", "");
+        mDatabaseReference = FirebaseDatabase.getInstance().getReference();
     }
 
     /**
@@ -147,25 +147,28 @@ public class NetworkDataSource {
 
     public void getThemeData(Runnable bindToUi) {
         mExecutors.networkIO().execute(() -> {
+            mThemeSearchKey = mSharedPrefs.getString("themeSearchKey", "");
+            mThemeSearchFilter = mSharedPrefs.getString("themeSearchFilter", "");
+            Log.d(TAG, "mThemeSearchKey: " + mThemeSearchKey + ", mThemeSearchFilter: " + mThemeSearchFilter);
             DatabaseReference resultRef = mDatabaseReference.child(SEARCH_REF).child(mThemeSearchKey);
             resultRef.addListenerForSingleValueEvent(new ValueEventListener() {
                 @Override
                 public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
                     if (dataSnapshot.getValue() == null) {
                         Log.d(TAG, "searchRef: " + mThemeSearchKey + " does not exist");
-                        searchThemeArticles(bindToUi);
+                        searchThemeArticles(mThemeSearchKey, mThemeSearchFilter, bindToUi);
                     } else {
                         Long timeNow = (new Date().getTime());
                         Long lastQueryTimestamp = (Long) dataSnapshot.child("lastQueryTimestamp").getValue();
                         if (lastQueryTimestamp == null) {
-                            searchThemeArticles(bindToUi);
+                            searchThemeArticles(mThemeSearchKey, mThemeSearchFilter, bindToUi);
                         } else {
                             Log.d(TAG, "timeNow: " + timeNow + ", lastQueryTimestamp: "
                                     + lastQueryTimestamp + ", diff: " + (timeNow - lastQueryTimestamp));
                             if (timeNow - lastQueryTimestamp < 12L * 60L * 60L * 1000L) { // 12 hours
                                 mExecutors.mainThread().execute(bindToUi);
                             } else {
-                                searchThemeArticles(bindToUi);
+                                searchThemeArticles(mThemeSearchKey, mThemeSearchFilter, bindToUi);
                             }
                         }
                     }
@@ -179,12 +182,12 @@ public class NetworkDataSource {
         });
     }
 
-    private void searchThemeArticles(Runnable bindToUi) {
+    private void searchThemeArticles(String themeSearchKey, String themeSearchFilter, Runnable bindToUi) {
         mExecutors.networkIO().execute(() -> {
-            DatabaseReference resultRef = mDatabaseReference.child(SEARCH_REF).child(mThemeSearchKey);
+            DatabaseReference resultRef = mDatabaseReference.child(SEARCH_REF).child(themeSearchKey);
             com.algolia.search.saas.Query query = new com.algolia.search.saas.Query();
     //        query.setFacets("*");
-            query.setFilters(mThemeSearchFilter);
+            query.setFilters(themeSearchFilter);
 
             ALGOLIA_ARTICLE_INDEX.searchAsync(query, (jsonObject, e) -> {
                 Log.d(TAG, jsonObject.toString());
