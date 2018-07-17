@@ -166,6 +166,9 @@ public class AcornActivity extends AppCompatActivity
 
     //Notifications
     private NotificationBadge notificationBadge;
+    
+    //Menu
+    private Menu navMenu;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -295,9 +298,9 @@ public class AcornActivity extends AppCompatActivity
         View navHeaderLayout = navigationView.getHeaderView(0);
         mUsernameTextView = (TextView) navHeaderLayout.findViewById(R.id.nav_user_name_text_view);
         mUserStatusTextView = (TextView) navHeaderLayout.findViewById(R.id.nav_user_status_text_view);
-        Menu nav_menu = (Menu) navigationView.getMenu();
-        MenuItem signInMenuItem = (MenuItem) nav_menu.findItem(R.id.nav_login);
-        MenuItem signOutMenuItem = (MenuItem) nav_menu.findItem(R.id.nav_logout);
+        if (navMenu == null) navMenu = (Menu) navigationView.getMenu();
+        MenuItem signInMenuItem = (MenuItem) navMenu.findItem(R.id.nav_login);
+        MenuItem signOutMenuItem = (MenuItem) navMenu.findItem(R.id.nav_logout);
 
         final MenuItem notificationItem = menu.findItem(R.id.action_notifications);
         ConstraintLayout notificationView = (ConstraintLayout) notificationItem.getActionView();
@@ -431,10 +434,12 @@ public class AcornActivity extends AppCompatActivity
                 mFirebaseUser = FirebaseAuth.getInstance().getCurrentUser();
                 setupUser(mFirebaseUser);
 
-                NavigationView navigationView = (NavigationView) findViewById(R.id.nav_view);
-                Menu nav_menu = (Menu) navigationView.getMenu();
-                MenuItem signInMenuItem = (MenuItem) nav_menu.findItem(R.id.nav_login);
-                MenuItem signOutMenuItem = (MenuItem) nav_menu.findItem(R.id.nav_logout);
+                if (navMenu == null) {
+                    NavigationView navigationView = (NavigationView) findViewById(R.id.nav_view);
+                    navMenu = (Menu) navigationView.getMenu();
+                }
+                MenuItem signInMenuItem = (MenuItem) navMenu.findItem(R.id.nav_login);
+                MenuItem signOutMenuItem = (MenuItem) navMenu.findItem(R.id.nav_logout);
 
                 if (mFirebaseUser != null) {
                     signInMenuItem.setVisible(false);
@@ -491,6 +496,13 @@ public class AcornActivity extends AppCompatActivity
                 mUserThemePrefs = new ArrayList<>();
                 mUserThemePrefs.addAll(data.getStringArrayListExtra("themePrefs"));
                 buildThemeKeyAndFilter(mUserThemePrefs);
+
+                if (navMenu == null) {
+                    NavigationView navigationView = (NavigationView) findViewById(R.id.nav_view);
+                    navMenu = (Menu) navigationView.getMenu();
+                }
+                navMenu.findItem(R.id.nav_subscriptions).setChecked(true);
+                getThemeData();
             }
         } else if (requestCode == RC_SHARE) {
             if (resultCode == RESULT_OK) {
@@ -624,7 +636,7 @@ public class AcornActivity extends AppCompatActivity
         mRecyclerView.scrollToPosition(0);
 
         mAdapter.clear();
-        mLoadedList.clear();
+        if (mLoadedList != null) mLoadedList.clear();
         if (mObservedList.size() > 0) {
             for (LiveData<List<Article>> liveData : mObservedList.keySet()) {
                 liveData.removeObserver(mObservedList.get(liveData));
@@ -826,12 +838,10 @@ public class AcornActivity extends AppCompatActivity
     }
 
     private void createBackPressedDialog() {
-        NavigationView navigationView = (NavigationView) findViewById(R.id.nav_view);
-        Menu nav_menu = (Menu) navigationView.getMenu();
-        MenuItem recentMenuItem = (MenuItem) nav_menu.findItem(R.id.nav_recent);
-        MenuItem trendingMenuItem = (MenuItem) nav_menu.findItem(R.id.nav_trending);
-        MenuItem subscriptionsMenuItem = (MenuItem) nav_menu.findItem(R.id.nav_subscriptions);
-        MenuItem savedMenuItem = (MenuItem) nav_menu.findItem(R.id.nav_saved);
+        MenuItem recentMenuItem = (MenuItem) navMenu.findItem(R.id.nav_recent);
+        MenuItem trendingMenuItem = (MenuItem) navMenu.findItem(R.id.nav_trending);
+        MenuItem subscriptionsMenuItem = (MenuItem) navMenu.findItem(R.id.nav_subscriptions);
+        MenuItem savedMenuItem = (MenuItem) navMenu.findItem(R.id.nav_saved);
 
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         //builder.setIcon(R.drawable.ic_launcher);

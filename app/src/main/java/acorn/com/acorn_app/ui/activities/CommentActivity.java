@@ -39,7 +39,6 @@ import android.view.animation.Animation;
 import android.view.animation.AnimationUtils;
 import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputMethodManager;
-import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageButton;
 import android.widget.ImageView;
@@ -122,7 +121,7 @@ public class CommentActivity extends AppCompatActivity implements View.OnTouchLi
     private ValueEventListener mArticleListener;
     private ChildEventListener mFollowListener;
 
-    private Button mSendButton;
+    private ImageButton mSendButton;
     private Menu mOptionsMenu;
     private RecyclerView mCommentRecyclerView;
     private LinearLayoutManager mLinearLayoutManager;
@@ -412,7 +411,7 @@ public class CommentActivity extends AppCompatActivity implements View.OnTouchLi
             });
         });
 
-        mSendButton = (Button) findViewById(R.id.comment_sendButton);
+        mSendButton = (ImageButton) findViewById(R.id.comment_sendButton);
         mSendButton.setOnClickListener(view -> {
             String commentText = mCommentEditText.getText().toString();
             sendComment(mCommentRef, commentText, null);

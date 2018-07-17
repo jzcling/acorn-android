@@ -1,5 +1,7 @@
 package acorn.com.acorn_app.utils;
 
+import android.util.Log;
+
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
@@ -39,7 +41,7 @@ public class ArticleTextExtractor {
     // Most likely negative candidates
     private static final Pattern NEGATIVE = Pattern.compile("nav($|igation)|user|com(ment|bx)|(^com-)|contact|"
             + "foot|masthead|(me(dia|ta))|outbrain|promo|related|scroll|(sho(utbox|pping))|"
-            + "sidebar|sponsor|tags|tool|widget|player|disclaimer|toc|infobox|vcard");
+            + "sidebar|sponsor|tags|tool|widget|player|disclaimer|toc|infobox|vcard|footer");
 
     private static final Pattern NEGATIVE_STYLE =
             Pattern.compile("hidden|display: ?none|font-size: ?small");
@@ -68,7 +70,8 @@ public class ArticleTextExtractor {
 
         for (Element entry : nodes) {
             int currentWeight = getWeight(entry);
-//            Log.d(TAG, "weight: " + currentWeight);
+            if (currentWeight > 0)
+                Log.d(TAG, "entry: " + entry.toString().substring(0, Math.min(entry.toString().length(), 50)) + ", weight: " + currentWeight);
             if (currentWeight > maxWeight) {
                 maxWeight = currentWeight;
                 bestMatchElement = entry;
@@ -286,6 +289,18 @@ public class ArticleTextExtractor {
         for (Element item : shares) {
             item.remove();
         }
+
+        Elements singPromosFbLikes = doc.select(
+                "iframe[src~=facebook.*like]");
+        for (Element item : singPromosFbLikes) {
+            item.remove();
+        }
+
+        Elements singPromosFbShares = doc.select(
+                "p[id~=shareOnFacebook]");
+        for (Element item : singPromosFbShares) {
+            item.remove();
+        }
     }
 
     private static void removeAds(Document doc) {
@@ -351,6 +366,12 @@ public class ArticleTextExtractor {
 
         //related
         misc = doc.select("div[class~=.*related.*]");
+        for (Element item : misc) {
+            item.remove();
+        }
+
+        //copyright
+        misc = doc.select("p[class~=copyright]");
         for (Element item : misc) {
             item.remove();
         }
