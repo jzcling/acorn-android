@@ -786,6 +786,9 @@ public class AcornActivity extends AppCompatActivity
                         }
                     }
 
+                    // put uid in sharedPrefs
+                    mSharedPreferences.edit().putString("uid", mUid).apply();
+
                     // Schedule recommended article push service unless explicitly disabled by user
                     if (articleNotifValue) {
                         long now = (new Date()).getTime();

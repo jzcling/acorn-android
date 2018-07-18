@@ -273,12 +273,14 @@ public class NetworkDataSource {
 
     public void recordLastRecArticlesPushTime() {
         Long lastRecArticlesPushTime = (new Date()).getTime();
+        if (mUid == null) mUid = mSharedPrefs.getString("uid", "");
         mDatabaseReference.child(USER_REF).child(mUid)
                 .child("lastRecArticlesPushTime").setValue(lastRecArticlesPushTime);
-        mSharedPrefs.edit().putLong("lastRecArticlesPushTime", lastRecArticlesPushTime);
+        mSharedPrefs.edit().putLong("lastRecArticlesPushTime", lastRecArticlesPushTime).apply();
     }
 
     public void recordLastRecArticlesScheduleTime() {
+        if (mUid == null) mUid = mSharedPrefs.getString("uid", "");
         mDatabaseReference.child(USER_REF).child(mUid)
                 .child("lastRecArticlesScheduleTime").setValue((new Date()).getTime());
     }

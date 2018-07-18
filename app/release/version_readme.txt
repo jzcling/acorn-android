@@ -1,4 +1,4 @@
-v1.1a1
+v1.1a1, v1.1a2, v1.1a3
 Creating a post now registers user as a follower
 Made some UI changes to improve cluttered look
 Fixed some crash events
