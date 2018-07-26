@@ -181,6 +181,7 @@ public class CreatePostActivity extends AppCompatActivity {
                                 postImageUrl, postDate, title, source, postDate, trendingIndex, imageUrl,
                                 link, null, mainTheme, null);
                         article.notificationTokens.put(mUid, mUserToken);
+                        article.theme.add(mainTheme);
                         postRef.child(objectID).setValue(article).addOnSuccessListener(aVoid -> {
                             mExecutors.networkIO().execute(() -> updateUserData(objectID, postDate));
                             mExecutors.mainThread().execute(() -> {
