@@ -1,3 +1,10 @@
+v1.2b1, v1.2b2, v1.2b3
+Revamp of sources to be more inclusive - now includes top lifestyle/food/travel/beauty/parenting blogs
+Subscriptions screen now default
+Fixed repeating articles on long click of theme/source
+Fixed in-article pictures not loading
+Fixed in-article table formatting
+
 v1.1a1, v1.1a2, v1.1a3
 Creating a post now registers user as a follower
 Made some UI changes to improve cluttered look

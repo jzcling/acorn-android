@@ -62,7 +62,7 @@ public class ThemeSelectionActivity extends AppCompatActivity {
     private ThemeAdapter mAdapter;
 
     // Views
-    private static CheckBox mAllThemesCb;
+    private CheckBox mAllThemesCb;
     private Button mSaveButton;
 
     // Result
@@ -176,9 +176,7 @@ public class ThemeSelectionActivity extends AppCompatActivity {
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         builder.setMessage("Would you like to save your theme subscriptions?")
                 .setCancelable(true)
-                .setPositiveButton("Yes", (dialog, which) -> {
-                    saveThemePrefs();
-                })
+                .setPositiveButton("Yes", (dialog, which) -> saveThemePrefs())
                 .setNegativeButton("No", (dialog, which) -> {
                     dialog.cancel();
                     finish();
@@ -230,7 +228,7 @@ public class ThemeSelectionActivity extends AppCompatActivity {
     }
 
     private class ThemeAdapter extends RecyclerView.Adapter<ThemeAdapter.ThemeViewHolder> {
-        private List<String> themeList = new ArrayList<>();
+        private final List<String> themeList = new ArrayList<>();
 
         public ThemeAdapter(List<String> themeList) {
             this.themeList.addAll(themeList);
@@ -292,7 +290,7 @@ public class ThemeSelectionActivity extends AppCompatActivity {
         }
 
         public class ThemeViewHolder extends RecyclerView.ViewHolder {
-            CheckBox checkBox;
+            final CheckBox checkBox;
             public ThemeViewHolder(View v) {
                 super(v);
                 this.checkBox = v.findViewById(R.id.theme_checkBox);

@@ -22,8 +22,8 @@ public class ArticleListLiveData extends LiveData<List<Article>> {
     private final Query query;
     private final MyChildEventListener childListener = new MyChildEventListener();
 
-    private List<String> mArticleIds = new ArrayList<>();
-    private List<Article> mArticleList = new ArrayList<>();
+    private final List<String> mArticleIds = new ArrayList<>();
+    private final List<Article> mArticleList = new ArrayList<>();
 
     private boolean listenerRemovePending = false;
     private final Handler handler = new Handler();

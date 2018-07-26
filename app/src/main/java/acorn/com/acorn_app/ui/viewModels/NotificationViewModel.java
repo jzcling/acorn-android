@@ -14,9 +14,9 @@ import acorn.com.acorn_app.models.Notif;
 import acorn.com.acorn_app.utils.UiUtils;
 
 public class NotificationViewModel extends AndroidViewModel {
-    private Application application;
+    private final Application application;
 
-    public static MutableLiveData<SharedPreferences> sharedPrefs = new MutableLiveData<>();
+    public static final MutableLiveData<SharedPreferences> sharedPrefs = new MutableLiveData<>();
 
     public NotificationViewModel(@NonNull Application application) {
         super(application);

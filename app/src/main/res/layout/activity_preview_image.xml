@@ -51,6 +51,7 @@
             android:layout_height="wrap_content"
             android:layout_marginStart="16dp"
             android:hint="@string/preview_text_hint"
+            android:inputType="textMultiLine"
             android:textColorHint="@color/colorSecondaryLight"
             android:textColor="@color/colorSecondaryLight"
             app:layout_constraintBottom_toBottomOf="parent"

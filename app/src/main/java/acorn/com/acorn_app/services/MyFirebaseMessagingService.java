@@ -12,6 +12,8 @@ import android.support.v4.app.NotificationCompat;
 import android.support.v4.app.TaskStackBuilder;
 import android.util.Log;
 
+import com.google.firebase.database.DatabaseReference;
+import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.messaging.FirebaseMessagingService;
 import com.google.firebase.messaging.RemoteMessage;
 
@@ -25,6 +27,7 @@ import acorn.com.acorn_app.ui.activities.CommentActivity;
 import acorn.com.acorn_app.ui.viewModels.NotificationViewModel;
 import acorn.com.acorn_app.utils.AppExecutors;
 
+import static acorn.com.acorn_app.ui.activities.AcornActivity.mUid;
 import static acorn.com.acorn_app.ui.activities.CommentActivity.mCommentOpenObjectID;
 import static android.support.v4.app.NotificationCompat.CATEGORY_SOCIAL;
 import static android.support.v4.app.NotificationCompat.DEFAULT_SOUND;
@@ -46,6 +49,18 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
     private static NotificationCompat.Builder notificationBuilder;
     private static NotificationCompat.Builder summaryNotificationBuilder;
     private static NotificationManager notificationManager;
+
+    private void sendRegistrationToServer(String token) {
+        DatabaseReference user = FirebaseDatabase.getInstance()
+                .getReference("user/" + mUid + "/instanceId");
+        user.setValue(token);
+    }
+
+    @Override
+    public void onNewToken(String s) {
+        super.onNewToken(s);
+        sendRegistrationToServer(s);
+    }
 
     @Override
     public void onCreate() {

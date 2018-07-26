@@ -41,7 +41,8 @@ public class ArticleTextExtractor {
     // Most likely negative candidates
     private static final Pattern NEGATIVE = Pattern.compile("nav($|igation)|user|com(ment|bx)|(^com-)|contact|"
             + "foot|masthead|(me(dia|ta))|outbrain|promo|related|scroll|(sho(utbox|pping))|"
-            + "sidebar|sponsor|tags|tool|widget|player|disclaimer|toc|infobox|vcard|footer");
+            + "sidebar|sponsor|tags|tool|widget|player|disclaimer|toc|infobox|vcard|footer|"
+            + "mh-loop|mh-excerpt");
 
     private static final Pattern NEGATIVE_STYLE =
             Pattern.compile("hidden|display: ?none|font-size: ?small");
@@ -352,6 +353,22 @@ public class ArticleTextExtractor {
             item.remove();
         }
 
+        //title
+        misc = doc.select("meta[property~=og:title]");
+        for (Element item : misc) {
+            item.remove();
+        }
+
+        //Miss Tam Chiak
+        misc = doc.select("h1[class~=page-title]");
+        for (Element item : misc) {
+            item.remove();
+        }
+        misc = doc.select("div[class~=single-post-meta]");
+        for (Element item : misc) {
+            item.remove();
+        }
+
         //forms
         misc = doc.select("form");
         for (Element item : misc) {
@@ -414,6 +431,7 @@ public class ArticleTextExtractor {
                 nodes.add(el);
             }
         }
+        Log.d(TAG, "body: " + nodes);
         return nodes;
     }
 }

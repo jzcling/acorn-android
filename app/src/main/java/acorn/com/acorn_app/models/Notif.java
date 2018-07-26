@@ -1,16 +1,16 @@
 package acorn.com.acorn_app.models;
 
 public class Notif {
-    public String type;
+    public final String type;
 //    public List<Integer> index;
-    public String articleId;
-    public String text;
-    public String title;
-    public String source;
-    public String imageUrl;
-    public String theme;
-    public String extra;
-    public Long timestamp;
+    public final String articleId;
+    public final String text;
+    public final String title;
+    public final String source;
+    public final String imageUrl;
+    public final String theme;
+    public final String extra;
+    public final Long timestamp;
 
     public Notif(String type, String articleId, String text, String title,
                  String source, String imageUrl, String theme, String extra, Long timestamp) {

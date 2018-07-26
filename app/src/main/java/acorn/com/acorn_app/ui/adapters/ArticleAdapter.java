@@ -32,7 +32,7 @@ public class ArticleAdapter extends RecyclerView.Adapter<ArticleViewHolder> {
     private final OnLongClickListener longClickListener;
     private List<Article> mArticleList = new ArrayList<>();
 
-    private Map<DatabaseReference, ValueEventListener> mRefObservedList = new HashMap<>();
+    private final Map<DatabaseReference, ValueEventListener> mRefObservedList = new HashMap<>();
 
     public ArticleAdapter(final Context context, String cardType,
                           OnLongClickListener longClickListener) {

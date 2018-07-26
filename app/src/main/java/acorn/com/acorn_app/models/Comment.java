@@ -12,7 +12,7 @@ public class Comment {
     private String urlDesc;
     private String urlLink;
 
-    public Comment() {};
+    public Comment() {}
 
     public Comment(String uid, String userDisplayName, String commentText,
                    String imageUrl, String localImageUri, Long pubDate,

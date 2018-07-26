@@ -19,12 +19,12 @@ public class User {
     private Long lastRecArticlesPushTime = 0L;
     private Long lastRecArticlesScheduleTime = 0L;
     private ArrayList<String> subscriptions = new ArrayList<>();
-    public Map<String, Long> createdPosts = new HashMap<>();
-    public Map<String, Long> upvotedItems = new HashMap<>();
-    public Map<String, Long> downvotedItems = new HashMap<>();
-    public Map<String, Integer> commentedItems = new HashMap<>();
-    public Map<String, Long> savedItems = new HashMap<>();
-    public Map<String, Long> sharedItems = new HashMap<>();
+    public final Map<String, Long> createdPosts = new HashMap<>();
+    public final Map<String, Long> upvotedItems = new HashMap<>();
+    public final Map<String, Long> downvotedItems = new HashMap<>();
+    public final Map<String, Integer> commentedItems = new HashMap<>();
+    public final Map<String, Long> savedItems = new HashMap<>();
+    public final Map<String, Long> sharedItems = new HashMap<>();
     private Integer subscriptionsCount = 0;
     private Integer createdPostCount = 0;
     private Integer upvotedItemsCount = 0;
@@ -33,7 +33,7 @@ public class User {
     private Integer savedItemsCount = 0;
     private Integer sharedItemsCount = 0;
 
-    public User() {};
+    public User() {}
 
     public User(String uid, String displayName, String token, String email,
                 Long creationTimeStamp, Long lastSignInTimeStamp) {

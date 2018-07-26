@@ -163,7 +163,7 @@ public class CommentActivity extends AppCompatActivity implements View.OnTouchLi
         addPreview();
         addPreviewPending = false;
     };
-    private Handler handler = new Handler();
+    private final Handler handler = new Handler();
 
     private Animation slideDownAnim;
     private Animation slideUpAnim;

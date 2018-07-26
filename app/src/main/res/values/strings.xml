@@ -28,7 +28,7 @@
     <string name="action_search_down">Find down</string>
 
     <!-- Search -->
-    <string name="search_hint">Search articles...</string>
+    <string name="search_hint">Search articles…</string>
 
     <!-- Login -->
     <string name="sign_in_cancelled">Sign in cancelled</string>
@@ -72,17 +72,17 @@
     <string name="theme_save">Save</string>
     <string name="theme_all">All themes</string>
     <string name="theme_0">Please select</string>
-    <string name="theme_1">Credit Cards</string>
-    <string name="theme_2">Savings</string>
-    <string name="theme_3">Investing</string>
-    <string name="theme_4">Insurance</string>
-    <string name="theme_5">Housing</string>
-    <string name="theme_6">Loans</string>
-    <string name="theme_7">Travel</string>
-    <string name="theme_8">Deals</string>
-    <string name="theme_9">Lifestyle</string>
-    <string name="theme_10">Innovation</string>
-    <string name="theme_11">Opinion</string>
+    <string name="theme_1">Lifestyle</string>
+    <string name="theme_2">Food</string>
+    <string name="theme_3">Travel</string>
+    <string name="theme_4">Deals</string>
+    <string name="theme_5">Credit Cards</string>
+    <string name="theme_6">Housing</string>
+    <string name="theme_7">Savings and Loans</string>
+    <string name="theme_8">Parenting</string>
+    <string name="theme_9">Beauty and Fashion</string>
+    <string name="theme_10">Investing</string>
+    <string name="theme_11">Innovation</string>
 
     <array name="theme_array">
         <item>@string/theme_1</item>
@@ -150,6 +150,6 @@
 
     <!-- Post -->
     <string name="post_send">Post</string>
-    <string name="post_text_hint">Write something...</string>
+    <string name="post_text_hint">Write something…</string>
     <string name="post_theme_title">Theme</string>
 </resources>

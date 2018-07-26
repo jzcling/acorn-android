@@ -7,15 +7,15 @@
         android:id="@+id/nav_menu_1"
         android:checkableBehavior="single">
         <item
+            android:id="@+id/nav_subscriptions"
+            android:title="@string/nav_subscriptions"
+            android:checked="true"/>
+        <item
             android:id="@+id/nav_recent"
-            android:checked="true"
             android:title="@string/nav_recent" />
         <item
             android:id="@+id/nav_trending"
             android:title="@string/nav_trending" />
-        <item
-            android:id="@+id/nav_subscriptions"
-            android:title="@string/nav_subscriptions" />
     </group>
 
     <group

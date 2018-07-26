@@ -57,20 +57,14 @@ public class RecArticlesJobService extends JobService {
         Log.d(TAG, "hitsRef: " + hitsRef);
 
         Log.d(TAG, "job started: " + params.getTag());
-        mExecutors.networkIO().execute(() -> {
-            mDataSource.getThemeData(() -> {
-                mDataSource.getRecommendedArticles(hitsRef, () -> {
-                    mExecutors.networkIO().execute(() -> {
-                        if (timeNow - lastRecArticlesPushTime > 6L * 60L * 60L * 1000L) { // 6 hours
-                            sendRecArticlesNotification();
-                            mDataSource.recordLastRecArticlesPushTime();
-                        }
-                        jobFinished(params,true);
-                        Log.d(TAG, "job finished: " + params.getTag());
-                    });
-                });
-            });
-        });
+        mExecutors.networkIO().execute(() -> mDataSource.getThemeData(() -> mDataSource.getRecommendedArticles(hitsRef, () -> mExecutors.networkIO().execute(() -> {
+                    if (timeNow - lastRecArticlesPushTime > 6L * 60L * 60L * 1000L) { // 6 hours
+                        sendRecArticlesNotification();
+                        mDataSource.recordLastRecArticlesPushTime();
+                    }
+                    jobFinished(params,true);
+                    Log.d(TAG, "job finished: " + params.getTag());
+                }))));
 
         return true;
     }

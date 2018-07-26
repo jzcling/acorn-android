@@ -27,9 +27,9 @@ public class NotificationViewHolder extends RecyclerView.ViewHolder {
     private final TextView title;
     private final TextView contributor;
     private final ImageView mainImage;
-    private TextView extra;
-    public ConstraintLayout viewBackground;
-    public ConstraintLayout viewForeground;
+    private final TextView extra;
+    public final ConstraintLayout viewBackground;
+    public final ConstraintLayout viewForeground;
 
     public NotificationViewHolder(Context context, View view) {
         super(view);

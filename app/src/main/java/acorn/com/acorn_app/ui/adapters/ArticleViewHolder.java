@@ -116,8 +116,8 @@ public class ArticleViewHolder extends RecyclerView.ViewHolder {
     }
 
     public class ArticleOnLongClickListener implements View.OnLongClickListener {
-        private Article article;
-        private ArticleAdapter.OnLongClickListener longClickListener;
+        private final Article article;
+        private final ArticleAdapter.OnLongClickListener longClickListener;
 
         public ArticleOnLongClickListener(Article article,
                                           ArticleAdapter.OnLongClickListener longClickListener) {

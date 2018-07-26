@@ -9,7 +9,7 @@ import java.util.List;
 
 public class UserThemeViewModel extends ViewModel {
 
-    private MutableLiveData<List<String>> userThemeList = new MutableLiveData<>();
+    private final MutableLiveData<List<String>> userThemeList = new MutableLiveData<>();
 
     public LiveData<List<String>> getThemes() {
         return Transformations.switchMap(userThemeList, UserThemeListLiveData::new);

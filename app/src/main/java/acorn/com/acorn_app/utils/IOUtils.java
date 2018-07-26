@@ -51,9 +51,7 @@ public class IOUtils {
                 final Bitmap[] bitmap = new Bitmap[1];
                 StorageReference ref = FirebaseStorage.getInstance().getReferenceFromUrl(imageUrl);
                 File localFile = File.createTempFile("images", "jpg");
-                ref.getFile(localFile).addOnSuccessListener(taskSnapshot -> {
-                    bitmap[0] = BitmapFactory.decodeFile(localFile.getAbsolutePath());
-                });
+                ref.getFile(localFile).addOnSuccessListener(taskSnapshot -> bitmap[0] = BitmapFactory.decodeFile(localFile.getAbsolutePath()));
                 return bitmap[0];
             } catch (Exception e) {
                 e.printStackTrace();

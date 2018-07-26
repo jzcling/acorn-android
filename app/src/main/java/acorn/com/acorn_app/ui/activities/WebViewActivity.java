@@ -107,9 +107,7 @@ public class WebViewActivity extends AppCompatActivity {
         webView.getSettings().setLoadsImagesAutomatically(true);
         webView.setWebViewClient(new MyWebViewClient());
         webView.setOnScrollChangeListener(
-                (ObservableWebView.OnScrollChangeListener) (v, scrollX, scrollY, oldScrollX, oldScrollY) -> {
-            lastScrollPercent = getScrollPercent(webView);
-        });
+                (ObservableWebView.OnScrollChangeListener) (v, scrollX, scrollY, oldScrollX, oldScrollY) -> lastScrollPercent = getScrollPercent(webView));
 
         // Set up action buttons
         upVoteView = (CheckBox) findViewById(R.id.button_upvote);

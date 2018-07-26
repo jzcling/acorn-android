@@ -8,8 +8,6 @@ import com.algolia.instantsearch.ui.views.AlgoliaHitView;
 
 import org.json.JSONObject;
 
-import java.util.Date;
-
 import acorn.com.acorn_app.utils.DateUtils;
 
 public class TimestampHitView extends AppCompatTextView implements AlgoliaHitView {

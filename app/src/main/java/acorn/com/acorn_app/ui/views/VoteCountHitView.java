@@ -2,7 +2,6 @@ package acorn.com.acorn_app.ui.views;
 
 import android.content.Context;
 import android.support.v7.widget.AppCompatImageView;
-import android.support.v7.widget.AppCompatTextView;
 import android.util.AttributeSet;
 
 import com.algolia.instantsearch.ui.views.AlgoliaHitView;
@@ -10,7 +9,6 @@ import com.algolia.instantsearch.ui.views.AlgoliaHitView;
 import org.json.JSONObject;
 
 import acorn.com.acorn_app.R;
-import acorn.com.acorn_app.utils.DateUtils;
 
 public class VoteCountHitView extends AppCompatImageView implements AlgoliaHitView {
     public VoteCountHitView(Context context, AttributeSet attrs) {

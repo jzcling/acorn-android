@@ -81,6 +81,7 @@ public class SearchActivity extends AppCompatActivity {
         final MenuItem itemSearch = amvMenu.findItem(R.id.action_search);
         mSearchBox = (SearchBox) itemSearch.getActionView();
         mSearchBox.requestFocus();
+
         return true;
     }
 

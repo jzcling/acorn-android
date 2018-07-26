@@ -117,8 +117,6 @@ public class AcornActivity extends AppCompatActivity
     private FirebaseDatabase mDatabase;
     private DatabaseReference mDatabaseReference;
     public static FbQuery mQuery;
-    private static final FbQuery INIT_QUERY =
-            new FbQuery(0, null, -1);
 
     //Firebase analytics
     private FirebaseAnalytics mFirebaseAnalytics;
@@ -136,7 +134,7 @@ public class AcornActivity extends AppCompatActivity
 
     //View Models
     private ArticleViewModel mArticleViewModel;
-    private Map<LiveData<List<Article>>, Observer<List<Article>>> mObservedList = new HashMap<>();
+    private final Map<LiveData<List<Article>>, Observer<List<Article>>> mObservedList = new HashMap<>();
     private NotificationViewModel mNotifViewModel;
 
     //Current loaded articles
@@ -170,8 +168,11 @@ public class AcornActivity extends AppCompatActivity
     //Menu
     private Menu navMenu;
 
+    private Bundle mSavedInstanceState;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        mSavedInstanceState = savedInstanceState;
         mSharedPreferences = PreferenceManager.getDefaultSharedPreferences(this);
         mNotificationsPref = getSharedPreferences(getString(R.string.notif_pref_id), MODE_PRIVATE);
         dayNightValue = Integer.parseInt(mSharedPreferences.getString(
@@ -225,19 +226,6 @@ public class AcornActivity extends AppCompatActivity
         ((SimpleItemAnimator) mRecyclerView.getItemAnimator()).setSupportsChangeAnimations(false);
         mAdapter = new ArticleAdapter(this, ARTICLE_CARD_TYPE, this);
         mRecyclerView.setAdapter(mAdapter);
-
-        // Set up view model
-        ArticleViewModelFactory factory = InjectorUtils.provideArticleViewModelFactory(this.getApplicationContext());
-        mArticleViewModel = ViewModelProviders.of(this, factory).get(ArticleViewModel.class);
-        Log.d(TAG, "setQuery: onCreate");
-        if (savedInstanceState != null) {
-            mQuery = savedInstanceState.getParcelable("Query");
-        } else {
-            mQuery = INIT_QUERY;
-        }
-        setUpInitialViewModelObserver();
-        Log.d(TAG, "AdapterCount: " + mAdapter.getItemCount());
-
         mRecyclerView.addOnScrollListener(new RecyclerView.OnScrollListener() {
             @Override
             public void onScrolled(RecyclerView recyclerView, int dx, int dy) {
@@ -447,7 +435,7 @@ public class AcornActivity extends AppCompatActivity
                 }
 
                 Log.d(TAG, "setQuery: onSignInResult");
-                mArticleViewModel.newQuery.postValue(mQuery);
+                if (mArticleViewModel != null) mArticleViewModel.newQuery.postValue(mQuery);
             } else {
                 // Sign in failed
                 if (response == null) {
@@ -570,8 +558,10 @@ public class AcornActivity extends AppCompatActivity
 
     private void handleIntent(Intent intent) {
         mSwipeRefreshLayout.setRefreshing(false);
-        Log.d(TAG, "setQuery: onHandleIntent");
-        mArticleViewModel.newQuery.postValue(mQuery);
+        if (mArticleViewModel != null) {
+            Log.d(TAG, "setQuery: onHandleIntent");
+            mArticleViewModel.newQuery.postValue(mQuery);
+        }
     }
 
     private void loadMoreArticles() {
@@ -604,11 +594,11 @@ public class AcornActivity extends AppCompatActivity
                     index = lastArticle.savers.get(mUid);
                     break;
                 case -1:
-                    index = lastArticle.getMainTheme();
-                    break;
+//                    index = lastArticle.getMainTheme();
+                    return;
                 case -2:
-                    index = lastArticle.getSource();
-                    break;
+//                    index = lastArticle.getSource();
+                    return;
             }
             Log.d(TAG, "lastArticleTitle: " + lastArticle.getTitle() + ", lastArticleIndex: " + index);
 
@@ -696,113 +686,132 @@ public class AcornActivity extends AppCompatActivity
                 @Override
                 public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
                     User retrievedUser = dataSnapshot.getValue(User.class);
-                    String userToken = FirebaseInstanceId.getInstance().getToken();
-                    if (retrievedUser == null) {
-                        isFirstTimeLogin = true;
-                        if (!user.isEmailVerified()) {
-                            user.sendEmailVerification();
-                        } else {
-                            isUserAuthenticated = true;
-                        }
-                        String uid = user.getUid();
-                        String displayName = user.getDisplayName();
-                        String email = user.getEmail();
-                        Long creationTimeStamp = user.getMetadata().getCreationTimestamp();
-                        Long lastSignInTimeStamp = user.getMetadata().getLastSignInTimestamp();
-
-                        User newUser = new User(uid, displayName, userToken, email,
-                                creationTimeStamp, lastSignInTimeStamp);
-                        userRef.setValue(newUser);
-
-                        Log.d("setupUser", "New user created: " + displayName);
-
-                        mUid = newUser.getUid();
-                        mUsername = newUser.getDisplayName();
-                        mUserToken = newUser.getToken();
-                        mUserStatus = LEVEL_0;
-                        lastRecArticlesPushTime = 0L;
-                        lastRecArticlesScheduleTime = 0L;
-
-                        if (mUsernameTextView != null) {
-                            mUsernameTextView.setText(mUsername);
-                            mUsernameTextView.setOnClickListener(v -> startActivity(new Intent(AcornActivity.this, UserActivity.class)));
-                        }
-                        if (mUserStatusTextView != null) {
-                            mUserStatusTextView.setText(mUserStatus);
-                            mUserStatusTextView.setOnClickListener(v -> startActivity(new Intent(AcornActivity.this, UserActivity.class)));
-                        }
-
-                        mUserThemePrefs = new ArrayList<>();
-//                        String[] themeArray = getResources().getStringArray(R.array.theme_array);
-//                        Collections.addAll(mUserThemePrefs, themeArray);
-                        Intent editThemeIntent = new Intent(AcornActivity.this, ThemeSelectionActivity.class);
-                        editThemeIntent.putStringArrayListExtra("themePrefs", mUserThemePrefs);
-                        startActivityForResult(editThemeIntent, RC_THEME_PREF);
-                        buildThemeKeyAndFilter(mUserThemePrefs);
-                    } else {
-                        Log.d(TAG, "user email verified: " + user.isEmailVerified());
-                        if (!user.isEmailVerified()) {
-                            AlertDialog.Builder builder = new AlertDialog.Builder(AcornActivity.this);
-                            builder.setMessage("Please verify your email address")
-                                    .setNeutralButton("Re-send verification email", (dialog, which) -> {
+                    FirebaseInstanceId.getInstance().getInstanceId().addOnSuccessListener(
+                            instanceIdResult -> {
+                                String userToken = instanceIdResult.getToken();
+                                if (retrievedUser == null) {
+                                    isFirstTimeLogin = true;
+                                    if (!user.isEmailVerified()) {
                                         user.sendEmailVerification();
-                                    });
-                            AlertDialog alertDialog = builder.create();
-                            alertDialog.show();
-                        } else {
-                            isUserAuthenticated = true;
-                        }
+                                    } else {
+                                        isUserAuthenticated = true;
+                                    }
+                                    String uid = user.getUid();
+                                    String displayName = user.getDisplayName();
+                                    String email = user.getEmail();
+                                    Long creationTimeStamp = user.getMetadata().getCreationTimestamp();
+                                    Long lastSignInTimeStamp = user.getMetadata().getLastSignInTimestamp();
 
-                        retrievedUser.setDisplayName(user.getDisplayName());
-                        retrievedUser.setEmail(user.getEmail());
-                        retrievedUser.setLastSignInTimeStamp(user.getMetadata().getLastSignInTimestamp());
-                        retrievedUser.setToken(userToken);
+                                    User newUser = new User(uid, displayName, userToken, email,
+                                            creationTimeStamp, lastSignInTimeStamp);
+                                    userRef.setValue(newUser);
 
-                        userRef.updateChildren(retrievedUser.toMap());
-                        Log.d(TAG, "User retrieved: " + retrievedUser.getDisplayName());
-                        Log.d(TAG, "User retrieved: " + retrievedUser.getUid());
+                                    Log.d("setupUser", "New user created: " + displayName);
 
-                        mUid = retrievedUser.getUid();
-                        mUsername = retrievedUser.getDisplayName();
-                        mUserToken = retrievedUser.getToken();
-                        mUserThemePrefs = retrievedUser.getSubscriptions();
-                        if (mUserThemePrefs.size() < 1) {
-                            mUserThemePrefs = new ArrayList<>();
-                            String[] themeArray = getResources().getStringArray(R.array.theme_array);
-                            Collections.addAll(mUserThemePrefs, themeArray);
-                        }
-                        mUserStatus = setUserStatus(retrievedUser.getStatus());
-                        lastRecArticlesPushTime = retrievedUser.getLastRecArticlesPushTime();
-                        lastRecArticlesScheduleTime = retrievedUser.getLastRecArticlesScheduleTime();
-                        buildThemeKeyAndFilter(mUserThemePrefs);
+                                    mUid = newUser.getUid();
+                                    mUsername = newUser.getDisplayName();
+                                    mUserToken = newUser.getToken();
+                                    mUserStatus = LEVEL_0;
+                                    lastRecArticlesPushTime = 0L;
+                                    lastRecArticlesScheduleTime = 0L;
 
-                        if (mUsernameTextView != null) {
-                            mUsernameTextView.setText(mUsername);
-                            mUsernameTextView.setOnClickListener(v -> startActivity(new Intent(AcornActivity.this, UserActivity.class)));
-                        }
-                        if (mUserStatusTextView != null) {
-                            mUserStatusTextView.setText(mUserStatus);
-                            mUserStatusTextView.setOnClickListener(v -> startActivity(new Intent(AcornActivity.this, UserActivity.class)));
-                        }
-                    }
+                                    if (mUsernameTextView != null) {
+                                        mUsernameTextView.setText(mUsername);
+                                        mUsernameTextView.setOnClickListener(v -> startActivity(new Intent(AcornActivity.this, UserActivity.class)));
+                                    }
+                                    if (mUserStatusTextView != null) {
+                                        mUserStatusTextView.setText(mUserStatus);
+                                        mUserStatusTextView.setOnClickListener(v -> startActivity(new Intent(AcornActivity.this, UserActivity.class)));
+                                    }
 
-                    // put uid in sharedPrefs
-                    mSharedPreferences.edit().putString("uid", mUid).apply();
+                                    mUserThemePrefs = new ArrayList<>();
+                                    Intent editThemeIntent = new Intent(AcornActivity.this, ThemeSelectionActivity.class);
+                                    editThemeIntent.putStringArrayListExtra("themePrefs", mUserThemePrefs);
+                                    startActivityForResult(editThemeIntent, RC_THEME_PREF);
+                                    buildThemeKeyAndFilter(mUserThemePrefs);
 
-                    // Schedule recommended article push service unless explicitly disabled by user
-                    if (articleNotifValue) {
-                        long now = (new Date()).getTime();
-                        long timeElapsedSinceLastPush = now - lastRecArticlesPushTime;
-                        Log.d(TAG, "sharedPref: " + !mSharedPreferences.getBoolean("isRecArticlesScheduled", false));
-                        Log.d(TAG, "lastPushTime: " + (timeElapsedSinceLastPush > 24L * 60L * 60L * 1000L));
-                        Log.d(TAG, "lastScheduleTime: " + (lastRecArticlesScheduleTime < lastRecArticlesPushTime));
-                        if (!mSharedPreferences.getBoolean("isRecArticlesScheduled", false) ||
-                                (timeElapsedSinceLastPush > 24L * 60L * 60L * 1000L && // if last push time is longer than a day
-                                lastRecArticlesScheduleTime < lastRecArticlesPushTime)) { // and last scheduled time is before last push time
-                            mDataSource.scheduleRecArticlesPush();
-                            mSharedPreferences.edit().putBoolean("isRecArticlesScheduled", true).apply();
-                        }
-                    }
+                                    Log.d(TAG, "setQuery: onCreate");
+                                    if (mSavedInstanceState != null) {
+                                        mQuery = mSavedInstanceState.getParcelable("Query");
+                                    } else {
+                                        String hitsRef = SEARCH_REF + "/" + mThemeSearchKey + "/hits";
+                                        mQuery = new FbQuery(3, hitsRef, "pubDate");
+                                    }
+                                    setUpInitialViewModelObserver();
+                                } else {
+                                    Log.d(TAG, "user email verified: " + user.isEmailVerified());
+                                    if (!user.isEmailVerified()) {
+                                        AlertDialog.Builder builder = new AlertDialog.Builder(AcornActivity.this);
+                                        builder.setMessage("Please verify your email address")
+                                                .setNeutralButton("Re-send verification email", (dialog, which) -> {
+                                                    user.sendEmailVerification();
+                                                });
+                                        AlertDialog alertDialog = builder.create();
+                                        alertDialog.show();
+                                    } else {
+                                        isUserAuthenticated = true;
+                                    }
+
+                                    retrievedUser.setDisplayName(user.getDisplayName());
+                                    retrievedUser.setEmail(user.getEmail());
+                                    retrievedUser.setLastSignInTimeStamp(user.getMetadata().getLastSignInTimestamp());
+                                    retrievedUser.setToken(userToken);
+
+                                    userRef.updateChildren(retrievedUser.toMap());
+                                    Log.d(TAG, "User retrieved: " + retrievedUser.getDisplayName());
+                                    Log.d(TAG, "User retrieved: " + retrievedUser.getUid());
+
+                                    mUid = retrievedUser.getUid();
+                                    mUsername = retrievedUser.getDisplayName();
+                                    mUserToken = retrievedUser.getToken();
+                                    mUserThemePrefs = retrievedUser.getSubscriptions();
+                                    if (mUserThemePrefs.size() < 1) {
+                                        mUserThemePrefs = new ArrayList<>();
+                                        String[] themeArray = getResources().getStringArray(R.array.theme_array);
+                                        Collections.addAll(mUserThemePrefs, themeArray);
+                                    }
+                                    mUserStatus = setUserStatus(retrievedUser.getStatus());
+                                    lastRecArticlesPushTime = retrievedUser.getLastRecArticlesPushTime();
+                                    lastRecArticlesScheduleTime = retrievedUser.getLastRecArticlesScheduleTime();
+                                    buildThemeKeyAndFilter(mUserThemePrefs);
+
+                                    Log.d(TAG, "setQuery: onCreate");
+                                    if (mSavedInstanceState != null) {
+                                        mQuery = mSavedInstanceState.getParcelable("Query");
+                                    } else {
+                                        String hitsRef = SEARCH_REF + "/" + mThemeSearchKey + "/hits";
+                                        mQuery = new FbQuery(3, hitsRef, "pubDate");
+                                    }
+                                    setUpInitialViewModelObserver();
+
+                                    if (mUsernameTextView != null) {
+                                        mUsernameTextView.setText(mUsername);
+                                        mUsernameTextView.setOnClickListener(v -> startActivity(new Intent(AcornActivity.this, UserActivity.class)));
+                                    }
+                                    if (mUserStatusTextView != null) {
+                                        mUserStatusTextView.setText(mUserStatus);
+                                        mUserStatusTextView.setOnClickListener(v -> startActivity(new Intent(AcornActivity.this, UserActivity.class)));
+                                    }
+                                }
+
+                                // put uid in sharedPrefs
+                                mSharedPreferences.edit().putString("uid", mUid).apply();
+
+                                // Schedule recommended article push service unless explicitly disabled by user
+                                if (articleNotifValue) {
+                                    long now = (new Date()).getTime();
+                                    long timeElapsedSinceLastPush = now - lastRecArticlesPushTime;
+                                    Log.d(TAG, "sharedPref: " + !mSharedPreferences.getBoolean("isRecArticlesScheduled", false));
+                                    Log.d(TAG, "lastPushTime: " + (timeElapsedSinceLastPush > 24L * 60L * 60L * 1000L));
+                                    Log.d(TAG, "lastScheduleTime: " + (lastRecArticlesScheduleTime < lastRecArticlesPushTime));
+                                    if (!mSharedPreferences.getBoolean("isRecArticlesScheduled", false) ||
+                                            (timeElapsedSinceLastPush > 24L * 60L * 60L * 1000L && // if last push time is longer than a day
+                                                    lastRecArticlesScheduleTime < lastRecArticlesPushTime)) { // and last scheduled time is before last push time
+                                        mDataSource.scheduleRecArticlesPush();
+                                        mSharedPreferences.edit().putBoolean("isRecArticlesScheduled", true).apply();
+                                    }
+                                }
+                            });
                 }
 
                 @Override
@@ -852,9 +861,9 @@ public class AcornActivity extends AppCompatActivity
 
         final ArrayAdapter<String> arrayAdapter =
                 new ArrayAdapter<>(this, R.layout.item_simple_list);
+        arrayAdapter.add("Subscriptions");
         arrayAdapter.add("Recent");
         arrayAdapter.add("Trending");
-        arrayAdapter.add("Subscriptions");
         arrayAdapter.add("Saved Articles");
         arrayAdapter.add("Exit App");
 
@@ -940,6 +949,11 @@ public class AcornActivity extends AppCompatActivity
     }
 
     private void setUpInitialViewModelObserver() {
+        // Set up view model
+        ArticleViewModelFactory factory = InjectorUtils.provideArticleViewModelFactory(this.getApplicationContext());
+        mArticleViewModel = ViewModelProviders.of(this, factory).get(ArticleViewModel.class);
+        Log.d(TAG, "AdapterCount: " + mAdapter.getItemCount());
+
         mArticleViewModel.newQuery.setValue(mQuery);
         LiveData<List<Article>> articleListLD = mArticleViewModel.getArticles();
         Observer<List<Article>> articleListObserver = articles -> {

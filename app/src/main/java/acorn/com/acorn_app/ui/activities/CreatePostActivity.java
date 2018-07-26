@@ -97,7 +97,7 @@ public class CreatePostActivity extends AppCompatActivity {
         addPreview();
         addPreviewPending = false;
     };
-    private Handler handler = new Handler();
+    private final Handler handler = new Handler();
 
     private String mCurrentImagePath;
     private Uri mImageUri;
@@ -187,13 +187,11 @@ public class CreatePostActivity extends AppCompatActivity {
                                 createToast(this, "Post created!", Toast.LENGTH_SHORT);
                                 finish();
                             });
-                        }).addOnFailureListener(e ->  {
-                            mExecutors.mainThread().execute(() -> {
-                                e.printStackTrace();
-                                createToast(this, "Post creation failed!", Toast.LENGTH_SHORT);
-                                finish();
-                            });
-                        });
+                        }).addOnFailureListener(e -> mExecutors.mainThread().execute(() -> {
+                            e.printStackTrace();
+                            createToast(this, "Post creation failed!", Toast.LENGTH_SHORT);
+                            finish();
+                        }));
                     });
                 } else {
                     String postImageUrl = null;
@@ -208,13 +206,11 @@ public class CreatePostActivity extends AppCompatActivity {
                             createToast(this, "Post created!", Toast.LENGTH_SHORT);
                             finish();
                         });
-                    }).addOnFailureListener(e ->  {
-                        mExecutors.mainThread().execute(() -> {
-                            e.printStackTrace();
-                            createToast(this, "Post creation failed!", Toast.LENGTH_SHORT);
-                            finish();
-                        });
-                    });
+                    }).addOnFailureListener(e -> mExecutors.mainThread().execute(() -> {
+                        e.printStackTrace();
+                        createToast(this, "Post creation failed!", Toast.LENGTH_SHORT);
+                        finish();
+                    }));
                 }
             });
         });

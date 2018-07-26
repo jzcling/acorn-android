@@ -8,7 +8,7 @@ import static acorn.com.acorn_app.ui.activities.AcornActivity.mUid;
 import static acorn.com.acorn_app.ui.viewModels.ArticleViewModel.QUERY_LIMIT;
 
 public class FbQuery implements Parcelable {
-    public int state;
+    public final int state;
     public String dbRef = "article";
     public String orderByChild;
     public String strStartAt = "";

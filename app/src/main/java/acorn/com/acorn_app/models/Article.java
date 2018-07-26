@@ -29,15 +29,15 @@ public class Article {
     private Integer shareCount = 0;
     public List<String> category = new ArrayList<>();
     public List<String> theme = new ArrayList<>();
-    public Map<String, Long> upvoters = new HashMap<>();
-    public Map<String, Long> downvoters = new HashMap<>();
-    public Map<String, Integer> commenters = new HashMap<>();
-    public Map<String, Long> savers = new HashMap<>();
-    public Map<String, Long> sharers = new HashMap<>();
-    public Map<String, String> notificationTokens = new HashMap<>();
+    public final Map<String, Long> upvoters = new HashMap<>();
+    public final Map<String, Long> downvoters = new HashMap<>();
+    public final Map<String, Integer> commenters = new HashMap<>();
+    public final Map<String, Long> savers = new HashMap<>();
+    public final Map<String, Long> sharers = new HashMap<>();
+    public final Map<String, String> notificationTokens = new HashMap<>();
     public boolean changedSinceLastJob = true;
 
-    public Article() {};
+    public Article() {}
 
     public Article(Integer entityId, String objectID, String type, String postAuthorUid, String postAuthor,
                    String postText, String postImageUrl, Long postDate, String title, String source, Long pubDate,

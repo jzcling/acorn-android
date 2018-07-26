@@ -111,20 +111,21 @@ public class NetworkDataSource {
 
     public ArticleListLiveData getArticles(FbQuery query) {
         DatabaseReference ref = mDatabaseReference.child(query.dbRef);
-        Query tempQuery = ref.orderByChild(query.orderByChild)
-                .limitToFirst(query.limit);
+        Query tempQuery = ref.orderByChild(query.orderByChild);
         if (!query.strStartAt.equals("")) {
             Log.d(TAG,"state: " + query.state + ", strStartAt: " + query.strStartAt);
-            tempQuery = tempQuery.startAt(query.strStartAt);
+            tempQuery = tempQuery.startAt(query.strStartAt).limitToFirst(query.limit);
         } else if (query.numStartAt != Long.MAX_VALUE) {
-            Log.d(TAG,"state: " + query.state + ", numStartAt: " + query.numStartAt);
-            tempQuery = tempQuery.startAt(query.numStartAt);
+            Log.d(TAG, "state: " + query.state + ", numStartAt: " + query.numStartAt);
+            tempQuery = tempQuery.startAt(query.numStartAt).limitToFirst(query.limit);
         } else if (!query.strEqualTo.equals("")) {
             Log.d(TAG,"state: " + query.state + ", strEqualTo: " + query.strEqualTo);
-            tempQuery = tempQuery.equalTo(query.strEqualTo);
+            tempQuery = tempQuery.equalTo(query.strEqualTo).limitToFirst(50);
         } else if (query.numEqualTo != Long.MAX_VALUE) {
             Log.d(TAG,"state: " + query.state + ", numEqualTo: " + query.numEqualTo);
-            tempQuery = tempQuery.equalTo(query.numEqualTo);
+            tempQuery = tempQuery.equalTo(query.numEqualTo).limitToFirst(50);
+        } else {
+            tempQuery = tempQuery.limitToFirst(query.limit);
         }
         tempQuery.keepSynced(true);
 
@@ -165,7 +166,7 @@ public class NetworkDataSource {
                         } else {
                             Log.d(TAG, "timeNow: " + timeNow + ", lastQueryTimestamp: "
                                     + lastQueryTimestamp + ", diff: " + (timeNow - lastQueryTimestamp));
-                            if (timeNow - lastQueryTimestamp < 12L * 60L * 60L * 1000L) { // 12 hours
+                            if (timeNow - lastQueryTimestamp < 3L * 60L * 60L * 1000L) { // 3 hours
                                 mExecutors.mainThread().execute(bindToUi);
                             } else {
                                 searchThemeArticles(mThemeSearchKey, mThemeSearchFilter, bindToUi);

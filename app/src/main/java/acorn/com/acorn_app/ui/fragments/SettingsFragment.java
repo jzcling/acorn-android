@@ -85,7 +85,7 @@ public class SettingsFragment extends PreferenceFragment {
         }
     }
 
-    private Preference.OnPreferenceChangeListener sBindPreferenceSummaryToValueListener = (preference, value) -> {
+    private final Preference.OnPreferenceChangeListener sBindPreferenceSummaryToValueListener = (preference, value) -> {
         String stringValue = value.toString();
 
         if (preference instanceof ListPreference) {

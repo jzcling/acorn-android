@@ -13,13 +13,13 @@ import acorn.com.acorn_app.models.FbQuery;
 
 public class ArticleViewModel extends ViewModel {
     public static final int QUERY_LIMIT = 10;
-    private NetworkDataSource mDataSource;
+    private final NetworkDataSource mDataSource;
 
     public ArticleViewModel(NetworkDataSource dataSource) {
         mDataSource = dataSource;
     }
 
-    public MutableLiveData<FbQuery> newQuery = new MutableLiveData<>();
+    public final MutableLiveData<FbQuery> newQuery = new MutableLiveData<>();
     private FbQuery queryPlaceholder;
 
     public LiveData<List<Article>> getArticles() {

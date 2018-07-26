@@ -3,7 +3,6 @@ package acorn.com.acorn_app.ui.activities;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.support.v7.app.AppCompatActivity;
-import android.support.v7.widget.Toolbar;
 import android.util.Log;
 import android.view.ViewGroup;
 import android.widget.ImageView;
