@@ -1,5 +1,7 @@
 package acorn.com.acorn_app.ui.adapters;
 
+import android.content.ClipData;
+import android.content.ClipboardManager;
 import android.content.Context;
 import android.support.constraint.ConstraintLayout;
 import android.support.v7.widget.CardView;
@@ -27,6 +29,7 @@ import acorn.com.acorn_app.utils.DateUtils;
 import static acorn.com.acorn_app.ui.activities.AcornActivity.mUid;
 import static acorn.com.acorn_app.utils.UiUtils.createToast;
 import static acorn.com.acorn_app.utils.UiUtils.increaseTouchArea;
+import static android.content.Context.CLIPBOARD_SERVICE;
 
 public class ArticleViewHolder extends RecyclerView.ViewHolder {
     private static final String TAG = "ArticleViewHolder";
@@ -230,6 +233,13 @@ public class ArticleViewHolder extends RecyclerView.ViewHolder {
         if (mCardType.equals("card")) {
             if (mArticleType.equals("article")) {
                 title.setOnClickListener(onClickListener(article, "title"));
+                title.setOnLongClickListener(v -> {
+                    ClipboardManager clipboard = (ClipboardManager) mContext.getSystemService(CLIPBOARD_SERVICE);
+                    ClipData clip = ClipData.newPlainText("simple text", article.getLink());
+                    clipboard.setPrimaryClip(clip);
+                    createToast(mContext, "Link copied", 1000);
+                    return true;
+                });
                 contributor.setOnClickListener(v -> {
                     createToast(mContext, "Hold to filter by source", 1000);
                     contributor.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY);
@@ -239,6 +249,13 @@ public class ArticleViewHolder extends RecyclerView.ViewHolder {
             } else {
                 if (article.getLink() != null) {
                     cardArticle.setOnClickListener(onClickListener(article, "title"));
+                    cardArticle.setOnLongClickListener(v -> {
+                        ClipboardManager clipboard = (ClipboardManager) mContext.getSystemService(CLIPBOARD_SERVICE);
+                        ClipData clip = ClipData.newPlainText("simple text", article.getLink());
+                        clipboard.setPrimaryClip(clip);
+                        createToast(mContext, "Link copied", 1000);
+                        return true;
+                    });
                 } else {
                     postImage.setOnClickListener(onClickListener(article, "postImage"));
                     cardArticle.setOnClickListener(onClickListener(article, "postImage"));
