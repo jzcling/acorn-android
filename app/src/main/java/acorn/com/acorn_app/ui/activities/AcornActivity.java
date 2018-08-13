@@ -936,10 +936,10 @@ public class AcornActivity extends AppCompatActivity
         for (int i = 0; i < themePrefs.size(); i++) {
             if (i == 0) {
                 searchKeyBuilder.append(themePrefs.get(i));
-                filterStringBuilder.append("theme: \"").append(themePrefs.get(i)).append("\"");
+                filterStringBuilder.append("mainTheme: \"").append(themePrefs.get(i)).append("\"");
             } else {
                 searchKeyBuilder.append("_").append(themePrefs.get(i));
-                filterStringBuilder.append(" OR theme: \"").append(themePrefs.get(i)).append("\"");
+                filterStringBuilder.append(" OR mainTheme: \"").append(themePrefs.get(i)).append("\"");
             }
         }
         mThemeSearchKey = searchKeyBuilder.toString();

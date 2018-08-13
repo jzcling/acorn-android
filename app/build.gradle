@@ -16,9 +16,9 @@ android {
     defaultConfig {
         applicationId "acorn.com.acorn_app"
         minSdkVersion 21
-        targetSdkVersion 27
+        targetSdkVersion 28
         versionCode 22
-        versionName "1.2b4"
+        versionName "1.3b1"
         testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
     }
     buildTypes {
