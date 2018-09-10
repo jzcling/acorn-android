@@ -723,6 +723,35 @@ public class CommentActivity extends AppCompatActivity implements View.OnTouchLi
 //        }
     }
 
+    private void updateArticleData() {
+        mArticleRef.runTransaction(new Transaction.Handler() {
+            @NonNull
+            @Override
+            public Transaction.Result doTransaction(@NonNull MutableData mutableData) {
+                Article article = mutableData.getValue(Article.class);
+                if (article == null) {
+                    Log.d(TAG, "updateArticleData: Could not find article");
+                    return Transaction.success(mutableData);
+                }
+
+                int userCommentCount = article.commenters.get(mUid);
+                int articleCommentCount = article.getCommentCount();
+
+                article.commenters.put(mUid, userCommentCount + 1);
+                article.setCommentCount(articleCommentCount + 1);
+                article.notificationTokens.put(mUid, mUserToken);
+
+                mutableData.setValue(article);
+                return Transaction.success(mutableData);
+            }
+
+            @Override
+            public void onComplete(@Nullable DatabaseError databaseError, boolean b, @Nullable DataSnapshot dataSnapshot) {
+                Log.d(TAG, "updateArticleData: " + databaseError);
+            }
+        });
+    }
+
     private void updateCommentCount() {
         mArticleRef.child("commentCount").runTransaction(new Transaction.Handler() {
             @NonNull
@@ -834,7 +863,7 @@ public class CommentActivity extends AppCompatActivity implements View.OnTouchLi
                     mExecutors.mainThread().execute(()->createToast(CommentActivity.this,
                             "Congratulations! You have grown into a " + newStatus, Toast.LENGTH_SHORT));
                 }
-                userRef.setValue(user);
+                mutableData.setValue(user);
 
                 return Transaction.success(mutableData);
             }
@@ -876,9 +905,10 @@ public class CommentActivity extends AppCompatActivity implements View.OnTouchLi
                     commentText, null, null,
                     pubDate, false, null, null);
             ref.child(key).setValue(tempComment);
-            updateCommentCount();
-            updateUserCommentCount();
-            updateNotificationTokens();
+//            updateCommentCount();
+//            updateUserCommentCount();
+//            updateNotificationTokens();
+            updateArticleData();
             updateUserData(()->pushUrlComment(ref, pubDate));
         } else {
             Uri tempUri = imageUri;
@@ -904,9 +934,10 @@ public class CommentActivity extends AppCompatActivity implements View.OnTouchLi
                                                 imageUrl, imagePath, pubDate,
                                                 false, null, null);
                                 ref.child(key).setValue(comment);
-                                updateCommentCount();
-                                updateUserCommentCount();
-                                updateNotificationTokens();
+//                                updateCommentCount();
+//                                updateUserCommentCount();
+//                                updateNotificationTokens();
+                                updateArticleData();
                                 updateUserData(()->pushUrlComment(ref, pubDate));
                             } else {
                                 Log.w(TAG, "Image comment upload was not successful.",

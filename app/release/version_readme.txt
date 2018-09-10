@@ -1,7 +1,8 @@
 v1.3b1
 Subscriptions now filter by main themes instead of all themes
-TODO: savedarticles index
-TODO: revamp get articles methods
+Saved articles feed now populates more quickly
+TODO: notification log in (comments)
+TODO: sharing for posts
 
 v1.2b1, v1.2b2, v1.2b3, v1.2b4
 Revamp of sources to be more inclusive - now includes top lifestyle/food/travel/beauty/parenting blogs
