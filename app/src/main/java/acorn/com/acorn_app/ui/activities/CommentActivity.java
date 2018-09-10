@@ -740,6 +740,7 @@ public class CommentActivity extends AppCompatActivity implements View.OnTouchLi
                 article.commenters.put(mUid, userCommentCount + 1);
                 article.setCommentCount(articleCommentCount + 1);
                 article.notificationTokens.put(mUid, mUserToken);
+                article.changedSinceLastJob = true;
 
                 mutableData.setValue(article);
                 return Transaction.success(mutableData);
