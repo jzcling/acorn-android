@@ -71,6 +71,10 @@ public class NetworkDataSource {
     // Recommended articles
     public static List<Article> mRecArticleList;
 
+    // Saved articles lists
+    private List<String> mSavedArticlesIdList = new ArrayList<>();
+    private List<Query> mSavedArticlesQueryList = new ArrayList<>();
+
     // Algolia
     private static final Client ALGOLIA_CLIENT =
             new Client("O96PPLSF19", "3b42d937aceab4818e2377325c76abf1"); // TODO: fetch key from server
@@ -110,40 +114,52 @@ public class NetworkDataSource {
     }
 
     public ArticleListLiveData getArticles(FbQuery query) {
-        DatabaseReference ref = mDatabaseReference.child(query.dbRef);
-        Query tempQuery = ref.orderByChild(query.orderByChild);
-        if (!query.strStartAt.equals("")) {
-            Log.d(TAG,"state: " + query.state + ", strStartAt: " + query.strStartAt);
-            tempQuery = tempQuery.startAt(query.strStartAt).limitToFirst(query.limit);
-        } else if (query.numStartAt != Long.MAX_VALUE) {
-            Log.d(TAG, "state: " + query.state + ", numStartAt: " + query.numStartAt);
-            tempQuery = tempQuery.startAt(query.numStartAt).limitToFirst(query.limit);
-        } else if (!query.strEqualTo.equals("")) {
-            Log.d(TAG,"state: " + query.state + ", strEqualTo: " + query.strEqualTo);
-            tempQuery = tempQuery.equalTo(query.strEqualTo).limitToFirst(50);
-        } else if (query.numEqualTo != Long.MAX_VALUE) {
-            Log.d(TAG,"state: " + query.state + ", numEqualTo: " + query.numEqualTo);
-            tempQuery = tempQuery.equalTo(query.numEqualTo).limitToFirst(50);
-        } else {
-            tempQuery = tempQuery.limitToFirst(query.limit);
-        }
-        tempQuery.keepSynced(true);
+        if (query.state != 2) {
+            DatabaseReference ref = mDatabaseReference.child(query.dbRef);
+            Query tempQuery = ref.orderByChild(query.orderByChild);
+            if (!query.strStartAt.equals("")) {
+                Log.d(TAG, "state: " + query.state + ", strStartAt: " + query.strStartAt);
+                tempQuery = tempQuery.startAt(query.strStartAt).limitToFirst(query.limit);
+            } else if (query.numStartAt != Long.MAX_VALUE) {
+                Log.d(TAG, "state: " + query.state + ", numStartAt: " + query.numStartAt);
+                tempQuery = tempQuery.startAt(query.numStartAt).limitToFirst(query.limit);
+            } else if (!query.strEqualTo.equals("")) {
+                Log.d(TAG, "state: " + query.state + ", strEqualTo: " + query.strEqualTo);
+                tempQuery = tempQuery.equalTo(query.strEqualTo).limitToFirst(50);
+            } else if (query.numEqualTo != Long.MAX_VALUE) {
+                Log.d(TAG, "state: " + query.state + ", numEqualTo: " + query.numEqualTo);
+                tempQuery = tempQuery.equalTo(query.numEqualTo).limitToFirst(50);
+            } else {
+                tempQuery = tempQuery.limitToFirst(query.limit);
+            }
+            tempQuery.keepSynced(true);
 
-        return new ArticleListLiveData(tempQuery);
+            return new ArticleListLiveData(tempQuery);
+        } else {
+            Query tempQuery = mDatabaseReference.child(USER_REF + mUid + "/savedItems");
+            return new ArticleListLiveData(tempQuery, query.state, query.limit, query.numStartAt.intValue());
+        }
     }
 
     public ArticleListLiveData getAdditionalArticles(FbQuery query, Object index, int indexType) {
-        DatabaseReference ref = mDatabaseReference.child(query.dbRef);
-        Query tempQuery = ref.orderByChild(query.orderByChild)
-                .limitToFirst(query.limit + 1);
-        if (indexType == 0) {
-            if (index instanceof String) tempQuery = tempQuery.startAt((String) index);
-            if (index instanceof Number) tempQuery = tempQuery.startAt(((Number) index).longValue());
-        } else if (indexType == 1) {
-            if (index instanceof String) tempQuery = tempQuery.equalTo((String) index);
-            if (index instanceof Number) tempQuery = tempQuery.equalTo(((Number) index).longValue());
+        if (query.state != 2) {
+            DatabaseReference ref = mDatabaseReference.child(query.dbRef);
+            Query tempQuery = ref.orderByChild(query.orderByChild)
+                    .limitToFirst(query.limit + 1);
+            if (indexType == 0) {
+                if (index instanceof String) tempQuery = tempQuery.startAt((String) index);
+                if (index instanceof Number)
+                    tempQuery = tempQuery.startAt(((Number) index).longValue());
+            } else if (indexType == 1) {
+                if (index instanceof String) tempQuery = tempQuery.equalTo((String) index);
+                if (index instanceof Number)
+                    tempQuery = tempQuery.equalTo(((Number) index).longValue());
+            }
+            return new ArticleListLiveData(tempQuery);
+        } else {
+            Query tempQuery = mDatabaseReference.child(USER_REF + mUid + "/savedItems");
+            return new ArticleListLiveData(tempQuery, query.state, query.limit, query.numStartAt.intValue());
         }
-        return new ArticleListLiveData(tempQuery);
     }
 
     public void getThemeData(Runnable bindToUi) {

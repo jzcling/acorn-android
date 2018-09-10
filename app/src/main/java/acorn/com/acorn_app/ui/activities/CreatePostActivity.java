@@ -470,9 +470,9 @@ public class CreatePostActivity extends AppCompatActivity {
             public void onChildAdded(@NonNull DataSnapshot dataSnapshot, @Nullable String s) {
                 User user = dataSnapshot.getValue(User.class);
                 userQuery.removeEventListener(this);
-                int postCount = user.getCreatedPostCount();
+                int postCount = user.getCreatedPostsCount();
                 user.createdPosts.put(objectID, postDate);
-                user.setCreatedPostCount(postCount + 1);
+                user.setCreatedPostsCount(postCount + 1);
                 Log.d(TAG, "uid: " + user.getUid() + ", posts: " + user.createdPosts);
                 userRef.setValue(user);
             }

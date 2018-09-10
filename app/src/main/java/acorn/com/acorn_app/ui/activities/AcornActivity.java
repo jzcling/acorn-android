@@ -93,6 +93,7 @@ public class AcornActivity extends AppCompatActivity
     public static final int RC_THEME_PREF = 1003;
     public static final int RC_SHARE = 1004;
     private static final String ARTICLE_CARD_TYPE = "card";
+    private static final String ARTICLE_LIST_TYPE = "list";
 
     // User status
     private DatabaseReference mUserStatusRef;
@@ -377,7 +378,7 @@ public class AcornActivity extends AppCompatActivity
             case R.id.nav_saved:
                 if (mQuery.state == 2) break;
                 mLlmState = null;
-                mQuery = new FbQuery(2, 1, 0);
+                mQuery = new FbQuery(2, 0, 0);
                 resetView(mQuery);
                 break;
             case R.id.nav_subscriptions:
@@ -591,7 +592,8 @@ public class AcornActivity extends AppCompatActivity
                     index = lastArticle.getTrendingIndex();
                     break;
                 case 2:
-                    index = lastArticle.savers.get(mUid);
+                    index = "";
+//                    index = lastArticle.savers.get(mUid);
                     break;
                 case -1:
 //                    index = lastArticle.getMainTheme();
@@ -636,7 +638,7 @@ public class AcornActivity extends AppCompatActivity
         }
 
         if (mQuery.state == 2) {
-            mAdapter = new ArticleAdapter(this, "list", this);
+            mAdapter = new ArticleAdapter(this, ARTICLE_LIST_TYPE, this);
             mRecyclerView.setAdapter(mAdapter);
         } else {
             mAdapter = new ArticleAdapter(this, ARTICLE_CARD_TYPE, this);
@@ -888,7 +890,7 @@ public class AcornActivity extends AppCompatActivity
                         break;
                     case "Saved Articles":
                         if (mQuery.state == 2) break;
-                        mQuery = new FbQuery(2, 1, 0);
+                        mQuery = new FbQuery(2, 0, 0);
                         resetView(mQuery);
                         savedMenuItem.setChecked(true);
                         break;

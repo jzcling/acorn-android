@@ -114,7 +114,7 @@ public class ArticleTextExtractor {
      */
     private static int getWeight(Element e) {
         int weight = calcWeight(e);
-        weight += (int) Math.round(e.ownText().length() / 100.0 * 10);
+        weight += e.ownText().length() / 10;
         weight += weightChildNodes(e);
         return weight;
     }
@@ -133,7 +133,6 @@ public class ArticleTextExtractor {
      */
     private static int weightChildNodes(Element rootEl) {
         int weight = 0;
-        Element caption = null;
         List<Element> pEls = new ArrayList<>(5);
         for (Element child : rootEl.children()) {
             String text = child.text();
@@ -156,19 +155,14 @@ public class ArticleTextExtractor {
                     pEls.add(child);
 
                 if (child.className().toLowerCase().equals("caption"))
-                    caption = child;
+                    weight += 30;
             }
         }
-
-        // use caption and image
-        if (caption != null)
-            weight += 30;
 
         if (pEls.size() >= 2) {
             for (Element subEl : rootEl.children()) {
                 if ("h1;h2;h3;h4;h5;h6".contains(subEl.tagName())) {
                     weight += 20;
-                    // headerEls.add(subEl);
                 }
             }
         }

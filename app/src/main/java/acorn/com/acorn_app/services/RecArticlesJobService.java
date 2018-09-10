@@ -150,7 +150,7 @@ public class RecArticlesJobService extends JobService {
                     .getPendingIntent(i, PendingIntent.FLAG_UPDATE_CURRENT);
 
             Bitmap bitmap = IOUtils.getBitmapFromUrl(imageUrl);
-            contentText = source != null ? source + " · " + article.getMainTheme() : article.getMainTheme();
+            contentText = (source != null && !source.equals("")) ? source + " · " + article.getMainTheme() : article.getMainTheme();
 
             NotificationCompat.Builder notificationBuilder =
                     new NotificationCompat.Builder(this, CHANNEL_ID)

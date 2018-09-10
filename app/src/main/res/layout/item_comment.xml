@@ -102,11 +102,11 @@
                 android:textStyle="bold"
                 android:textColor="@color/comment_text_color"
                 app:layout_constraintTop_toTopOf="parent"
-                app:layout_constraintBottom_toTopOf="@id/urlDescription"
+                app:layout_constraintBottom_toTopOf="@id/urlSource"
                 app:layout_constraintStart_toStartOf="parent"/>
 
             <TextView
-                android:id="@+id/urlDescription"
+                android:id="@+id/urlSource"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:paddingStart="3dp"

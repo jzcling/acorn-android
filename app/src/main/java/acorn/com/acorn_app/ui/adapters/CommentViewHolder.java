@@ -50,7 +50,7 @@ public class CommentViewHolder extends RecyclerView.ViewHolder {
     private final ImageView commentDownloadImageView;
     private final ViewGroup urlLayout;
     private final TextView urlTitleView;
-    private final TextView urlDescView;
+    private final TextView urlSourceView;
     private final ImageView urlImageView;
 
     private final DisplayMetrics displayMetrics;
@@ -68,7 +68,7 @@ public class CommentViewHolder extends RecyclerView.ViewHolder {
         commentDownloadImageView = (ImageView) itemView.findViewById(R.id.commentDownloadImageView);
         urlLayout = (ConstraintLayout) itemView.findViewById(R.id.urlLayout);
         urlTitleView = (TextView) itemView.findViewById(R.id.urlTitle);
-        urlDescView = (TextView) itemView.findViewById(R.id.urlDescription);
+        urlSourceView = (TextView) itemView.findViewById(R.id.urlSource);
         urlImageView = (ImageView) itemView.findViewById(R.id.urlImage);
 
         displayMetrics = mContext.getResources().getDisplayMetrics();
@@ -91,11 +91,11 @@ public class CommentViewHolder extends RecyclerView.ViewHolder {
             urlLayout.setVisibility(View.VISIBLE);
             urlTitleView.setText(comment.getCommentText());
             urlTitleView.setMaxWidth(maxUrlWidth);
-            if (comment.getUrlDesc() != null) {
-                urlDescView.setText(comment.getUrlDesc());
-                urlDescView.setMaxWidth(maxUrlWidth);
+            if (comment.geturlSource() != null) {
+                urlSourceView.setText(comment.geturlSource());
+                urlSourceView.setMaxWidth(maxUrlWidth);
             } else {
-                urlDescView.setVisibility(View.GONE);
+                urlSourceView.setVisibility(View.GONE);
             }
             if (comment.getImageUrl() != null) {
                 Glide.with(mContext)

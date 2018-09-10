@@ -9,14 +9,14 @@ public class Comment {
     private String localImageUri;
     private Long pubDate;
     private boolean isUrl;
-    private String urlDesc;
+    private String urlSource;
     private String urlLink;
 
     public Comment() {}
 
     public Comment(String uid, String userDisplayName, String commentText,
                    String imageUrl, String localImageUri, Long pubDate,
-                   boolean isUrl, String urlDesc, String urlLink) {
+                   boolean isUrl, String urlSource, String urlLink) {
         this.uid = uid;
         this.userDisplayName = userDisplayName;
         this.commentText = commentText;
@@ -24,7 +24,7 @@ public class Comment {
         this.localImageUri = localImageUri;
         this.pubDate = pubDate;
         this.isUrl = isUrl;
-        this.urlDesc = urlDesc;
+        this.urlSource = urlSource;
         this.urlLink = urlLink;
     }
 
@@ -50,7 +50,7 @@ public class Comment {
 
     public boolean getIsUrl() { return isUrl; }
 
-    public String getUrlDesc() { return urlDesc; }
+    public String geturlSource() { return urlSource; }
 
     public String getUrlLink() { return urlLink; }
 
@@ -70,7 +70,7 @@ public class Comment {
 
     public void setIsUrl(boolean isUrl) { this.isUrl = isUrl; }
 
-    public void setUrlDesc(String urlDesc) { this.urlDesc = urlDesc; }
+    public void seturlSource(String urlSource) { this.urlSource = urlSource; }
 
     public void setUrlLink(String urlLink) { this.urlLink = urlLink; }
 }

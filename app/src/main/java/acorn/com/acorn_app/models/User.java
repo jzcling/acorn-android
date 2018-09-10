@@ -26,7 +26,7 @@ public class User {
     public final Map<String, Long> savedItems = new HashMap<>();
     public final Map<String, Long> sharedItems = new HashMap<>();
     private Integer subscriptionsCount = 0;
-    private Integer createdPostCount = 0;
+    private Integer createdPostsCount = 0;
     private Integer upvotedItemsCount = 0;
     private Integer downvotedItemsCount = 0;
     private Integer commentedItemsCount = 0;
@@ -71,7 +71,7 @@ public class User {
 
     public Integer getSubscriptionsCount() { return subscriptionsCount; }
 
-    public Integer getCreatedPostCount() { return createdPostCount; }
+    public Integer getCreatedPostsCount() { return createdPostsCount; }
 
     public Integer getUpvotedItemsCount() { return upvotedItemsCount; }
 
@@ -111,7 +111,7 @@ public class User {
 
     public void setSubscriptionsCount(Integer subscriptionsCount) { this.subscriptionsCount = subscriptionsCount; }
 
-    public void setCreatedPostCount(Integer createdPostCount) { this.createdPostCount = createdPostCount; }
+    public void setCreatedPostsCount(Integer createdPostsCount) { this.createdPostsCount = createdPostsCount; }
 
     public void setUpvotedItemsCount(Integer upvotedItemsCount) { this.upvotedItemsCount = upvotedItemsCount; }
 

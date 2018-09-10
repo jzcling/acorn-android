@@ -59,7 +59,6 @@
             android:textSize="@dimen/comment_font_size"
             android:textColor="@color/comment_text_color"
             android:gravity="right"
-            android:textAlignment="gravity"
             android:text="comment"
             android:textIsSelectable="true"
             android:linksClickable="true"
@@ -106,11 +105,11 @@
                 android:gravity="right"
                 android:textAlignment="gravity"
                 app:layout_constraintTop_toTopOf="parent"
-                app:layout_constraintBottom_toTopOf="@id/urlDescription"
+                app:layout_constraintBottom_toTopOf="@id/urlSource"
                 app:layout_constraintEnd_toEndOf="parent"/>
 
             <TextView
-                android:id="@+id/urlDescription"
+                android:id="@+id/urlSource"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:paddingStart="3dp"

@@ -9,18 +9,32 @@ import com.google.firebase.database.ChildEventListener;
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
+import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.Query;
+import com.google.firebase.database.ValueEventListener;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 import acorn.com.acorn_app.models.Article;
 
 public class ArticleListLiveData extends LiveData<List<Article>> {
     private static final String TAG = "ArticleListLiveData";
 
+    private final DatabaseReference mDatabaseReference = FirebaseDatabase.getInstance().getReference();
+
     private final Query query;
+    private List<Query> savedArticlesQueryList = new ArrayList<>();
+
+    // States: 0 = Recent, 1 = Trending, 2 = Saved articles, 3 = Search,
+    // -1 = mainTheme, -2 = source
+    private int state = 0;
+    private int startAt = 0;
+    private int limit = 10;
+
     private final MyChildEventListener childListener = new MyChildEventListener();
+    private final MyValueEventListener valueListener = new MyValueEventListener();
 
     private final List<String> mArticleIds = new ArrayList<>();
     private final List<Article> mArticleList = new ArrayList<>();
@@ -30,8 +44,15 @@ public class ArticleListLiveData extends LiveData<List<Article>> {
     private final Runnable removeListener = new Runnable() {
         @Override
         public void run() {
-            query.removeEventListener(childListener);
-            Log.d(TAG, "childEventListener removed " + query.toString());
+            if (state != 2) {
+                query.removeEventListener(childListener);
+                Log.d(TAG, "childEventListener removed " + query.toString());
+            } else {
+                for (Query query : savedArticlesQueryList) {
+                    query.removeEventListener(valueListener);
+                }
+                Log.d(TAG, "valueEventListener removed " + savedArticlesQueryList.toString());
+            }
             listenerRemovePending = false;
         }
     };
@@ -40,8 +61,11 @@ public class ArticleListLiveData extends LiveData<List<Article>> {
         this.query = query;
     }
 
-    public ArticleListLiveData(DatabaseReference ref) {
-        this.query = ref;
+    public ArticleListLiveData(Query query, int state, int limit, int startAt) {
+        this.query = query;
+        this.state = state;
+        this.limit = limit;
+        this.startAt = startAt;
     }
 
     @Override
@@ -51,8 +75,40 @@ public class ArticleListLiveData extends LiveData<List<Article>> {
             Log.d(TAG, "removeListener callback removed");
         }
         else {
-            Log.d(TAG, "childEventListener added " + query.toString());
-            query.addChildEventListener(childListener);
+            if (state != 2) {
+                Log.d(TAG, "childEventListener added " + query.toString());
+                query.addChildEventListener(childListener);
+            } else {
+                query.addListenerForSingleValueEvent(new ValueEventListener() {
+                    @Override
+                    public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+                        Map<String, Long> savedItems = dataSnapshot.getValue(Map.class);
+                        if (savedItems == null || savedItems.size() == 0) {
+                            return;
+                        }
+
+                        List<String> savedIdList = new ArrayList<>();
+                        int endIndex = Math.min(startAt + limit, savedItems.size());
+                        for (int i = startAt; i < endIndex; i++) {
+                            savedIdList.addAll(savedItems.keySet());
+                        }
+
+                        List<Article> savedArticleList = new ArrayList<>();
+                        for (int j = 0; j < savedIdList.size(); j++) {
+                            Query articleQuery = mDatabaseReference.child("article/" + savedArticleList.get(j));
+                            savedArticlesQueryList.add(articleQuery);
+                            articleQuery.addValueEventListener(valueListener);
+                            Log.d(TAG, "valueEventListener added " + articleQuery.toString());
+                        }
+                        setValue(mArticleList);
+                    }
+
+                    @Override
+                    public void onCancelled(@NonNull DatabaseError databaseError) {
+                        Log.d(TAG, "Failed to get saved articles id list");
+                    }
+                });
+            }
         }
         listenerRemovePending = false;
     }
@@ -141,4 +197,17 @@ public class ArticleListLiveData extends LiveData<List<Article>> {
 
     }
 
+    private class MyValueEventListener implements ValueEventListener {
+
+        @Override
+        public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+            Article article = dataSnapshot.getValue(Article.class);
+            mArticleList.add(article);
+        }
+
+        @Override
+        public void onCancelled(@NonNull DatabaseError databaseError) {
+            Log.w(TAG, "onCancelled", databaseError.toException());
+        }
+    }
 }

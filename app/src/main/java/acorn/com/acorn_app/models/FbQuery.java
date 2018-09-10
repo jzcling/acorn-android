@@ -28,16 +28,16 @@ public class FbQuery implements Parcelable {
         numEqualTo = in.readLong();
     }
 
+    // States: 0 = Recent, 1 = Trending, 2 = Saved articles, 3 = Search,
+    // -1 = mainTheme, -2 = source
     public FbQuery(int state, Object index, int indexType) {
-        // States: 0 = Recent, 1 = Trending, 2 = Saved articles, 3 = Search,
-        // -1 = mainTheme, -2 = source
         this.state = state;
         if (state == 0) { // Recent
             orderByChild = "pubDate";
         } else if (state == 1) { // Trending
             orderByChild = "trendingIndex";
         } else if (state == 2) { // Saved articles
-            orderByChild = "savers/" + mUid;
+//            orderByChild = "savers/" + mUid;
         } else if (state == -1) { // mainTheme
             orderByChild = "mainTheme";
         } else if (state == -2) { // source
