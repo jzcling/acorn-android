@@ -470,86 +470,88 @@ public class ArticleOnClickListener implements View.OnClickListener {
     }
 
     private void onShareClicked() {
-        Long clickTime = new Date().getTime();
-        String articleId = mArticle.getObjectID();
+        if (mArticle.getLink() != null && !mArticle.getLink().equals("")) {
+            Long clickTime = new Date().getTime();
+            String articleId = mArticle.getObjectID();
 
-        // Update article with save data
-        DatabaseReference articleRef = FirebaseDatabase.getInstance()
-                .getReference("article/"+articleId);
+            // Update article with share data
+            DatabaseReference articleRef = FirebaseDatabase.getInstance()
+                    .getReference("article/" + articleId);
 
-        articleRef.runTransaction(new Transaction.Handler() {
-            @NonNull
-            @Override
-            public Transaction.Result doTransaction(@NonNull MutableData mutableData) {
-                Article article = mutableData.getValue(Article.class);
-                if (article == null) {
-                    Log.d(TAG, "onShareClicked: article: could not find article");
-                    return Transaction.success(mutableData);
-                }
+            articleRef.runTransaction(new Transaction.Handler() {
+                @NonNull
+                @Override
+                public Transaction.Result doTransaction(@NonNull MutableData mutableData) {
+                    Article article = mutableData.getValue(Article.class);
+                    if (article == null) {
+                        Log.d(TAG, "onShareClicked: article: could not find article");
+                        return Transaction.success(mutableData);
+                    }
 
-                int currentShareCount = article.getShareCount();
+                    int currentShareCount = article.getShareCount();
 
-                if (article.sharers.containsKey(mUid)) {
+                    if (article.sharers.containsKey(mUid)) {
 //                    article.sharers.remove(mUid);
 //                    article.setShareCount(currentShareCount - 1);
-                } else {
-                    article.sharers.put(mUid, clickTime);
-                    article.setShareCount(currentShareCount + 1);
-                }
+                    } else {
+                        article.sharers.put(mUid, clickTime);
+                        article.setShareCount(currentShareCount + 1);
+                    }
 
-                article.changedSinceLastJob = true;
-                mutableData.setValue(article);
-                return Transaction.success(mutableData);
-            }
-
-            @Override
-            public void onComplete(@Nullable DatabaseError databaseError, boolean b, @Nullable DataSnapshot dataSnapshot) {
-                mainThread.execute(()->{
-                    Intent shareIntent = new Intent();
-                    shareIntent.setType("text/plain");
-                    shareIntent.putExtra(Intent.EXTRA_SUBJECT, mArticle.getTitle());
-                    shareIntent.putExtra(Intent.EXTRA_TEXT, mArticle.getLink());
-                    shareIntent.setAction(Intent.ACTION_SEND);
-                    bounceAnim.setAnimationListener(
-                            new MyAnimationListener(Intent.createChooser(shareIntent, "Share link with")));
-                    mShareView.startAnimation(bounceAnim);
-                });
-                Log.d(TAG, "onShareClicked: article: " + databaseError);
-            }
-        });
-
-        // Update user with save data
-        DatabaseReference userRef = FirebaseDatabase.getInstance()
-                .getReference("user/"+mUid);
-
-        userRef.runTransaction(new Transaction.Handler() {
-            @NonNull
-            @Override
-            public Transaction.Result doTransaction(@NonNull MutableData mutableData) {
-                User user = mutableData.getValue(User.class);
-                if (user == null) {
-                    Log.d(TAG, "onShareClicked: user: could not find user");
+                    article.changedSinceLastJob = true;
+                    mutableData.setValue(article);
                     return Transaction.success(mutableData);
                 }
 
-                int currentShareCount = user.getSharedItemsCount();
+                @Override
+                public void onComplete(@Nullable DatabaseError databaseError, boolean b, @Nullable DataSnapshot dataSnapshot) {
+                    mainThread.execute(() -> {
+                        Intent shareIntent = new Intent();
+                        shareIntent.setType("text/plain");
+                        shareIntent.putExtra(Intent.EXTRA_SUBJECT, mArticle.getTitle());
+                        shareIntent.putExtra(Intent.EXTRA_TEXT, mArticle.getLink());
+                        shareIntent.setAction(Intent.ACTION_SEND);
+                        bounceAnim.setAnimationListener(
+                                new MyAnimationListener(Intent.createChooser(shareIntent, "Share link with")));
+                        mShareView.startAnimation(bounceAnim);
+                    });
+                    Log.d(TAG, "onShareClicked: article: " + databaseError);
+                }
+            });
 
-                if (user.sharedItems.containsKey(articleId)) {
+            // Update user with share data
+            DatabaseReference userRef = FirebaseDatabase.getInstance()
+                    .getReference("user/" + mUid);
+
+            userRef.runTransaction(new Transaction.Handler() {
+                @NonNull
+                @Override
+                public Transaction.Result doTransaction(@NonNull MutableData mutableData) {
+                    User user = mutableData.getValue(User.class);
+                    if (user == null) {
+                        Log.d(TAG, "onShareClicked: user: could not find user");
+                        return Transaction.success(mutableData);
+                    }
+
+                    int currentShareCount = user.getSharedItemsCount();
+
+                    if (user.sharedItems.containsKey(articleId)) {
 //                    user.sharedItems.remove(articleId);
 //                    user.setSharedItemsCount(currentShareCount - 1);
-                } else {
-                    user.sharedItems.put(articleId, clickTime);
-                    user.setSharedItemsCount(currentShareCount + 1);
+                    } else {
+                        user.sharedItems.put(articleId, clickTime);
+                        user.setSharedItemsCount(currentShareCount + 1);
+                    }
+                    mutableData.setValue(user);
+                    return Transaction.success(mutableData);
                 }
-                mutableData.setValue(user);
-                return Transaction.success(mutableData);
-            }
 
-            @Override
-            public void onComplete(@Nullable DatabaseError databaseError, boolean b, @Nullable DataSnapshot dataSnapshot) {
-                Log.d(TAG, "onShareClicked: user: " + databaseError);
-            }
-        });
+                @Override
+                public void onComplete(@Nullable DatabaseError databaseError, boolean b, @Nullable DataSnapshot dataSnapshot) {
+                    Log.d(TAG, "onShareClicked: user: " + databaseError);
+                }
+            });
+        }
     }
 
     private void disableVoteViews(boolean b) {
