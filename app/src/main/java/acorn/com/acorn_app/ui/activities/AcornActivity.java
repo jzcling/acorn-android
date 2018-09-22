@@ -48,6 +48,7 @@ import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ValueEventListener;
 import com.google.firebase.iid.FirebaseInstanceId;
+import com.jaredrummler.android.device.DeviceName;
 import com.nex3z.notificationbadge.NotificationBadge;
 
 import java.security.MessageDigest;
@@ -701,10 +702,11 @@ public class AcornActivity extends AppCompatActivity
                                     String uid = user.getUid();
                                     String displayName = user.getDisplayName();
                                     String email = user.getEmail();
+                                    String device = DeviceName.getDeviceName();
                                     Long creationTimeStamp = user.getMetadata().getCreationTimestamp();
                                     Long lastSignInTimeStamp = user.getMetadata().getLastSignInTimestamp();
 
-                                    User newUser = new User(uid, displayName, userToken, email,
+                                    User newUser = new User(uid, displayName, userToken, email, device
                                             creationTimeStamp, lastSignInTimeStamp);
                                     userRef.setValue(newUser);
 
@@ -756,6 +758,7 @@ public class AcornActivity extends AppCompatActivity
 
                                     retrievedUser.setDisplayName(user.getDisplayName());
                                     retrievedUser.setEmail(user.getEmail());
+                                    retrievedUser.setDevice(DeviceName.getDeviceName());
                                     retrievedUser.setLastSignInTimeStamp(user.getMetadata().getLastSignInTimestamp());
                                     retrievedUser.setToken(userToken);
 

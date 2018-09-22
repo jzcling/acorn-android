@@ -11,6 +11,7 @@ public class User {
     private String displayName;
     private String token;
     private String email;
+    private String device;
     private int status = 0;
     private int points = 0;
     private int targetPoints = 10;
@@ -35,12 +36,13 @@ public class User {
 
     public User() {}
 
-    public User(String uid, String displayName, String token, String email,
+    public User(String uid, String displayName, String token, String email, String device,
                 Long creationTimeStamp, Long lastSignInTimeStamp) {
         this.uid = uid;
         this.displayName = displayName;
         this.token = token;
         this.email = email;
+        this.device = device;
         this.creationTimeStamp = creationTimeStamp;
         this.lastSignInTimeStamp = lastSignInTimeStamp;
     }
@@ -54,6 +56,8 @@ public class User {
     public String getToken() { return token; }
 
     public String getEmail() { return email; }
+
+    public String getDevice() { return device; }
 
     public int getStatus() { return status; }
 
@@ -95,6 +99,8 @@ public class User {
 
     public void setEmail(String email) { this.email = email; }
 
+    public void setDevice(String device) { this.device = device; }
+
     public void setStatus(int status) { this.status = status; }
 
     public void setPoints(int points) { this.points = points; }
@@ -132,6 +138,7 @@ public class User {
         result.put("displayName", displayName);
         result.put("token", token);
         result.put("email", email);
+        result.put("device", device);
         result.put("creationTimeStamp", creationTimeStamp);
         result.put("lastSignInTimeStamp", lastSignInTimeStamp);
 
