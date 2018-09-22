@@ -706,7 +706,7 @@ public class AcornActivity extends AppCompatActivity
                                     Long creationTimeStamp = user.getMetadata().getCreationTimestamp();
                                     Long lastSignInTimeStamp = user.getMetadata().getLastSignInTimestamp();
 
-                                    User newUser = new User(uid, displayName, userToken, email, device
+                                    User newUser = new User(uid, displayName, userToken, email, device,
                                             creationTimeStamp, lastSignInTimeStamp);
                                     userRef.setValue(newUser);
 
