@@ -183,14 +183,13 @@
                     app:layout_constraintEnd_toStartOf="@id/comment_sendButton"/>
 
                 <ImageButton
+                    android:id="@+id/comment_sendButton"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginEnd="16dp"
                     android:background="@drawable/ic_menu_send"
                     android:backgroundTint="@color/colorSecondaryDark"
                     android:enabled="false"
-                    android:id="@+id/comment_sendButton"
-                    android:layout_gravity="center_vertical"
                     app:layout_constraintBottom_toBottomOf="parent"
                     app:layout_constraintTop_toTopOf="@id/comment_editText"
                     app:layout_constraintStart_toEndOf="@id/comment_editText"

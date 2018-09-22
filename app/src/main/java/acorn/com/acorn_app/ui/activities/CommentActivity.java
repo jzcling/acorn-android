@@ -58,6 +58,7 @@ import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.MutableData;
 import com.google.firebase.database.Transaction;
 import com.google.firebase.database.ValueEventListener;
+import com.google.firebase.messaging.FirebaseMessaging;
 import com.google.firebase.storage.FirebaseStorage;
 import com.google.firebase.storage.StorageReference;
 
@@ -749,6 +750,8 @@ public class CommentActivity extends AppCompatActivity implements View.OnTouchLi
             @Override
             public void onComplete(@Nullable DatabaseError databaseError, boolean b, @Nullable DataSnapshot dataSnapshot) {
                 Log.d(TAG, "updateArticleData: " + databaseError);
+                if (databaseError != null) { return; }
+//                FirebaseMessaging.getInstance().subscribeToTopic(mArticleId);
             }
         });
     }

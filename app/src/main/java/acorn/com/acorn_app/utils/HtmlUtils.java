@@ -25,10 +25,11 @@ public class HtmlUtils {
             .addAttributes("track", "src", "kind", "srclang", "label");
 
     private static final Pattern IMG_PATTERN = Pattern.compile("<img\\s+[^>]*src=\\s*['\"]([^'\"]+)['\"][^>]*>", Pattern.CASE_INSENSITIVE);
+    private static final Pattern NOSCRIPT_PATTERN = Pattern.compile("<noscript>.*?</noscript>", Pattern.CASE_INSENSITIVE);
     private static final Pattern ADS_PATTERN = Pattern.compile("<div class=['\"]mf-viral['\"]><table border=['\"]0['\"]>.*", Pattern.CASE_INSENSITIVE);
     private static final Pattern LAZY_LOADING_PATTERN = Pattern.compile("\\s+src=[^>]+\\s+(original|data)[-]*(src=.*)", Pattern.CASE_INSENSITIVE);
     private static final Pattern LAZY_LOADING_PATTERN_2 = Pattern.compile("\\s+(original|data)[^>]*?(src=.*)", Pattern.CASE_INSENSITIVE);
-    private static final Pattern LAZY_LOADING_PATTERN_3 = Pattern.compile("\\s+(src=['\"].*?['\"][^>]+?)src=['\"].*?['\"]", Pattern.CASE_INSENSITIVE);
+    private static final Pattern LAZY_LOADING_PATTERN_3 = Pattern.compile("\\s+(src=['\"].*?['\"])([^>]+?)data-lazy-src=(['\"].*?['\"])", Pattern.CASE_INSENSITIVE);
     private static final Pattern LAZY_LOADING_PATTERN_4 = Pattern.compile("\\s+data-original=", Pattern.CASE_INSENSITIVE);
     private static final Pattern EMPTY_IMAGE_PATTERN = Pattern.compile("<img\\s+(height=['\"]1['\"]\\s+width=['\"]1['\"]|width=['\"]1['\"]\\s+height=['\"]1['\"])\\s+[^>]*src=\\s*['\"]([^'\"]+)['\"][^>]*>", Pattern.CASE_INSENSITIVE);
     private static final Pattern RELATIVE_IMAGE_PATTERN = Pattern.compile("\\s+(href|src)=([\"'])//", Pattern.CASE_INSENSITIVE);
@@ -61,10 +62,12 @@ public class HtmlUtils {
         if (content != null) {
             // remove some ads
             content = ADS_PATTERN.matcher(content).replaceAll("");
+            // remove noscript blocks
+            content = NOSCRIPT_PATTERN.matcher(content).replaceAll("");
             // remove lazy loading images stuff
             content = LAZY_LOADING_PATTERN.matcher(content).replaceAll(" $2");
             content = LAZY_LOADING_PATTERN_2.matcher(content).replaceAll(" $2");
-            content = LAZY_LOADING_PATTERN_3.matcher(content).replaceAll(" $1");
+            content = LAZY_LOADING_PATTERN_3.matcher(content).replaceAll(" $2src=$3");
             content = LAZY_LOADING_PATTERN_4.matcher(content).replaceAll("src=");
             // fix relative image paths
             content = RELATIVE_IMAGE_PATTERN.matcher(content).replaceAll(" $1=$2http://");

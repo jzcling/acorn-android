@@ -82,25 +82,20 @@ public class ArticleListLiveData extends LiveData<List<Article>> {
                 query.addListenerForSingleValueEvent(new ValueEventListener() {
                     @Override
                     public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
-                        Map<String, Long> savedItems = dataSnapshot.getValue(Map.class);
+                        Map<String, Long> savedItems = (Map<String, Long>) dataSnapshot.getValue();
                         if (savedItems == null || savedItems.size() == 0) {
                             return;
                         }
 
-                        List<String> savedIdList = new ArrayList<>();
-                        int endIndex = Math.min(startAt + limit, savedItems.size());
-                        for (int i = startAt; i < endIndex; i++) {
-                            savedIdList.addAll(savedItems.keySet());
-                        }
+                        List<String> savedIdList = new ArrayList<>(savedItems.keySet());
 
-                        List<Article> savedArticleList = new ArrayList<>();
-                        for (int j = 0; j < savedIdList.size(); j++) {
-                            Query articleQuery = mDatabaseReference.child("article/" + savedArticleList.get(j));
+                        int endIndex = Math.min(startAt + limit, savedIdList.size());
+                        for (int i = startAt; i < endIndex; i++) {
+                            Query articleQuery = mDatabaseReference.child("article/" + savedIdList.get(i));
                             savedArticlesQueryList.add(articleQuery);
                             articleQuery.addValueEventListener(valueListener);
                             Log.d(TAG, "valueEventListener added " + articleQuery.toString());
                         }
-                        setValue(mArticleList);
                     }
 
                     @Override
@@ -203,6 +198,7 @@ public class ArticleListLiveData extends LiveData<List<Article>> {
         public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
             Article article = dataSnapshot.getValue(Article.class);
             mArticleList.add(article);
+            setValue(mArticleList);
         }
 
         @Override

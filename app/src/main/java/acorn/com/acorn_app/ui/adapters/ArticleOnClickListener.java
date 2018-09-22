@@ -509,7 +509,7 @@ public class ArticleOnClickListener implements View.OnClickListener {
                         Intent shareIntent = new Intent();
                         shareIntent.setType("text/plain");
                         shareIntent.putExtra(Intent.EXTRA_SUBJECT, mArticle.getTitle());
-                        shareIntent.putExtra(Intent.EXTRA_TEXT, mArticle.getLink());
+                        shareIntent.putExtra(Intent.EXTRA_TEXT, mArticle.getLink() + " - shared using Acorn: Your favourite blogs in a nutshell");
                         shareIntent.setAction(Intent.ACTION_SEND);
                         bounceAnim.setAnimationListener(
                                 new MyAnimationListener(Intent.createChooser(shareIntent, "Share link with")));

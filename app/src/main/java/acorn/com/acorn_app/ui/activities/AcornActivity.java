@@ -592,7 +592,7 @@ public class AcornActivity extends AppCompatActivity
                     index = lastArticle.getTrendingIndex();
                     break;
                 case 2:
-                    index = "";
+                    index = mAdapter.getItemCount();
 //                    index = lastArticle.savers.get(mUid);
                     break;
                 case -1:

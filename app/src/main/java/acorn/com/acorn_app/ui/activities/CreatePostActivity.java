@@ -34,6 +34,7 @@ import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.Query;
+import com.google.firebase.messaging.FirebaseMessaging;
 import com.google.firebase.storage.FirebaseStorage;
 import com.google.firebase.storage.StorageReference;
 
@@ -183,7 +184,10 @@ public class CreatePostActivity extends AppCompatActivity {
                         article.notificationTokens.put(mUid, mUserToken);
                         article.theme.add(mainTheme);
                         postRef.child(objectID).setValue(article).addOnSuccessListener(aVoid -> {
-                            mExecutors.networkIO().execute(() -> updateUserData(objectID, postDate));
+                            mExecutors.networkIO().execute(() -> {
+                                updateUserData(objectID, postDate);
+//                                FirebaseMessaging.getInstance().subscribeToTopic(objectID);
+                            });
                             mExecutors.mainThread().execute(() -> {
                                 createToast(this, "Post created!", Toast.LENGTH_SHORT);
                                 finish();
@@ -202,7 +206,10 @@ public class CreatePostActivity extends AppCompatActivity {
                             link, null, mainTheme, null);
                     article.notificationTokens.put(mUid, mUserToken);
                     postRef.child(objectID).setValue(article).addOnSuccessListener(aVoid -> {
-                        mExecutors.networkIO().execute(() -> updateUserData(objectID, postDate));
+                        mExecutors.networkIO().execute(() -> {
+                            updateUserData(objectID, postDate);
+//                            FirebaseMessaging.getInstance().subscribeToTopic(objectID);
+                        });
                         mExecutors.mainThread().execute(() -> {
                             createToast(this, "Post created!", Toast.LENGTH_SHORT);
                             finish();

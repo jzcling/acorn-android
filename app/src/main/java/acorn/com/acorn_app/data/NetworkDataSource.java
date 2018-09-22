@@ -136,7 +136,7 @@ public class NetworkDataSource {
 
             return new ArticleListLiveData(tempQuery);
         } else {
-            Query tempQuery = mDatabaseReference.child(USER_REF + mUid + "/savedItems");
+            Query tempQuery = mDatabaseReference.child(USER_REF + "/" + mUid + "/savedItems");
             return new ArticleListLiveData(tempQuery, query.state, query.limit, query.numStartAt.intValue());
         }
     }
@@ -157,7 +157,8 @@ public class NetworkDataSource {
             }
             return new ArticleListLiveData(tempQuery);
         } else {
-            Query tempQuery = mDatabaseReference.child(USER_REF + mUid + "/savedItems");
+            Query tempQuery = mDatabaseReference.child(USER_REF + "/" + mUid + "/savedItems");
+            query.numStartAt = ((Number) index).longValue();
             return new ArticleListLiveData(tempQuery, query.state, query.limit, query.numStartAt.intValue());
         }
     }
