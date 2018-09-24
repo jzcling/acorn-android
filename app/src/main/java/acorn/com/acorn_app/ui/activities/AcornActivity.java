@@ -76,6 +76,7 @@ import acorn.com.acorn_app.utils.InjectorUtils;
 
 import static acorn.com.acorn_app.data.NetworkDataSource.COMMENTS_NOTIFICATION;
 import static acorn.com.acorn_app.data.NetworkDataSource.PREFERENCES_REF;
+import static acorn.com.acorn_app.data.NetworkDataSource.REC_ARTICLES_NOTIFICATION;
 import static acorn.com.acorn_app.data.NetworkDataSource.SEARCH_REF;
 import static acorn.com.acorn_app.utils.UiUtils.createToast;
 
@@ -163,6 +164,8 @@ public class AcornActivity extends AppCompatActivity
     private static Boolean articleNotifValue;
     private DatabaseReference mCommentNotifRef;
     private ValueEventListener mCommentNotifListener;
+    private DatabaseReference mRecArticlesNotifRef;
+    private ValueEventListener mRecArticlesNotifListener;
 
     //Notifications
     private NotificationBadge notificationBadge;
@@ -471,14 +474,17 @@ public class AcornActivity extends AppCompatActivity
 
                 articleNotifValue = mSharedPreferences.getBoolean(getString(R.string.pref_key_notif_article), false);
                 Log.d(TAG, "article notifications pref: " + articleNotifValue);
+                mRecArticlesNotifRef = mDatabaseReference.child(PREFERENCES_REF).child(REC_ARTICLES_NOTIFICATION);
                 if (articleNotifValue) {
                     if (!mSharedPreferences.getBoolean("isRecArticlesScheduled", false)) {
                         mDataSource.scheduleRecArticlesPush();
                         mSharedPreferences.edit().putBoolean("isRecArticlesScheduled", true).apply();
                     }
+                    mRecArticlesNotifRef.child(mUid).removeValue();
                 } else {
                     mDataSource.cancelRecArticlesPush();
                     mSharedPreferences.edit().putBoolean("isRecArticlesScheduled", false).apply();
+                    mRecArticlesNotifRef.child(mUid).setValue(articleNotifValue);
                 }
             }
         } else if (requestCode == RC_THEME_PREF) {

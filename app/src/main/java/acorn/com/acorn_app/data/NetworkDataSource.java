@@ -67,6 +67,7 @@ public class NetworkDataSource {
     public static final String PREFERENCES_REF = "preference";
     public static final String NOTIFICATION_TOKENS = "notificationTokens";
     public static final String COMMENTS_NOTIFICATION = "commentsNotificationValue";
+    public static final String REC_ARTICLES_NOTIFICATION = "recArticlesNotificationValue";
 
     // Recommended articles
     public static List<Article> mRecArticleList;
