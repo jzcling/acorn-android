@@ -155,8 +155,8 @@ public class ArticleViewHolder extends RecyclerView.ViewHolder {
             netVote.setImageResource(R.drawable.ic_arrow_up);
             netVote.setColorFilter(mContext.getResources().getColor(R.color.card_up_arrow_tint));
         }
-        voteCount.setText(String.valueOf(article.getVoteCount()));
-        commentCount.setText(String.valueOf(article.getCommentCount()));
+        voteCount.setText(String.valueOf(article.getVoteCount() == null ? 0 : article.getVoteCount()));
+        commentCount.setText(String.valueOf(article.getCommentCount() == null ? 0 : article.getCommentCount()));
 
         if (!(article.getImageUrl() == null || article.getImageUrl().equals(""))) {
             Object imageUrl;

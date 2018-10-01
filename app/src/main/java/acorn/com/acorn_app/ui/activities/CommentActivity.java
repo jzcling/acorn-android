@@ -637,25 +637,6 @@ public class CommentActivity extends AppCompatActivity implements View.OnTouchLi
                 sendComment(mCommentRef, commentText, imageUri);
             }
         }
-        //else if (requestCode == REQUEST_INVITE) {
-//            if (resultCode == RESULT_OK) {
-//                // Use Firebase Measurement to log that invitation was sent.
-//                Bundle payload = new Bundle();
-//                payload.putString(FirebaseAnalytics.Param.VALUE, "inv_sent");
-//
-//                // Check how many invitations were sent and log.
-//                String[] ids = AppInviteInvitation.getInvitationIds(resultCode, data);
-//
-//            } else {
-//                // Use Firebase Measurement to log that invitation was not sent
-//                Bundle payload = new Bundle();
-//                payload.putString(FirebaseAnalytics.Param.VALUE, "inv_not_sent");
-//                mFirebaseAnalytics.logEvent(FirebaseAnalytics.Event.SHARE, payload);
-//
-//                // Sending failed or it was canceled, show failure comment to the user
-//
-//            }
-//        }
     }
 
     @Override
@@ -714,14 +695,9 @@ public class CommentActivity extends AppCompatActivity implements View.OnTouchLi
     }
 
     private void startWebViewActivity() {
-//        if (mArticle.getType().equals("article")) {
-            Intent intent = new Intent(this, WebViewActivity.class);
-            intent.putExtra("id", mArticle.getObjectID());
-            startActivity(intent);
-//        } else {
-//            Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(mArticle.getLink()));
-//            startActivity(intent);
-//        }
+        Intent intent = new Intent(this, WebViewActivity.class);
+        intent.putExtra("id", mArticle.getObjectID());
+        startActivity(intent);
     }
 
     private void updateArticleData() {
@@ -735,8 +711,8 @@ public class CommentActivity extends AppCompatActivity implements View.OnTouchLi
                     return Transaction.success(mutableData);
                 }
 
-                int userCommentCount = article.commenters.get(mUid);
-                int articleCommentCount = article.getCommentCount();
+                int userCommentCount = article.commenters.get(mUid) == null ? 0 : article.commenters.get(mUid);
+                int articleCommentCount = article.getCommentCount() == null ? 0 : article.getCommentCount();
 
                 article.commenters.put(mUid, userCommentCount + 1);
                 article.setCommentCount(articleCommentCount + 1);
@@ -840,7 +816,7 @@ public class CommentActivity extends AppCompatActivity implements View.OnTouchLi
                     return Transaction.success(mutableData);
                 }
 
-                int currentCommentCount = user.getCommentedItemsCount();
+                int currentCommentCount = user.getCommentedItemsCount() == null ? 0 : user.getCommentedItemsCount();
                 int currentArticleCommentCount = user.commentedItems.containsKey(mArticleId) ? user.commentedItems.get(mArticleId) : 0;
 
                 user.setCommentedItemsCount(currentCommentCount+1);

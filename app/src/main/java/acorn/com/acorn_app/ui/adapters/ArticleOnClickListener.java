@@ -170,7 +170,7 @@ public class ArticleOnClickListener implements View.OnClickListener {
                     return Transaction.success(mutableData);
                 }
 
-                int currentVoteCount = article.getVoteCount();
+                int currentVoteCount = article.getVoteCount() == null ? 0 : article.getVoteCount();
 
                 if (article.upvoters.containsKey(mUid)) {
                     article.upvoters.remove(mUid);
@@ -212,8 +212,8 @@ public class ArticleOnClickListener implements View.OnClickListener {
                     return Transaction.success(mutableData);
                 }
 
-                int currentUpvoteCount = user.getUpvotedItemsCount();
-                int currentDownvoteCount = user.getDownvotedItemsCount();
+                int currentUpvoteCount = user.getUpvotedItemsCount() == null ? 0 : user.getUpvotedItemsCount();
+                int currentDownvoteCount = user.getDownvotedItemsCount() == null ? 0 : user.getDownvotedItemsCount();
                 int currentPointsCount = user.getPoints();
                 int targetPoints = user.getTargetPoints();
 
@@ -294,7 +294,7 @@ public class ArticleOnClickListener implements View.OnClickListener {
                     return Transaction.success(mutableData);
                 }
 
-                int currentVoteCount = article.getVoteCount();
+                int currentVoteCount = article.getVoteCount() == null ? 0 : article.getVoteCount();
 
                 if (article.downvoters.containsKey(mUid)) {
                     article.downvoters.remove(mUid);
@@ -336,8 +336,8 @@ public class ArticleOnClickListener implements View.OnClickListener {
                     return Transaction.success(mutableData);
                 }
 
-                int currentUpvoteCount = user.getUpvotedItemsCount();
-                int currentDownvoteCount = user.getDownvotedItemsCount();
+                int currentUpvoteCount = user.getUpvotedItemsCount() == null ? 0 : user.getUpvotedItemsCount();
+                int currentDownvoteCount = user.getDownvotedItemsCount() == null ? 0 : user.getDownvotedItemsCount();
                 int currentPointsCount = user.getPoints();
                 int targetPoints = user.getTargetPoints();
 
@@ -410,7 +410,7 @@ public class ArticleOnClickListener implements View.OnClickListener {
                     return Transaction.success(mutableData);
                 }
 
-                int currentSaveCount = article.getSaveCount();
+                int currentSaveCount = article.getSaveCount() == null ? 0 : article.getSaveCount();
 
                 if (article.savers.containsKey(mUid)) {
                     article.savers.remove(mUid);
@@ -449,7 +449,7 @@ public class ArticleOnClickListener implements View.OnClickListener {
                     return Transaction.success(mutableData);
                 }
 
-                int currentSaveCount = user.getSavedItemsCount();
+                int currentSaveCount = user.getSavedItemsCount() == null ? 0 : user.getSavedItemsCount();
 
                 if (user.savedItems.containsKey(articleId)) {
                     user.savedItems.remove(articleId);
@@ -488,7 +488,7 @@ public class ArticleOnClickListener implements View.OnClickListener {
                         return Transaction.success(mutableData);
                     }
 
-                    int currentShareCount = article.getShareCount();
+                    int currentShareCount = article.getShareCount() == null ? 0 : article.getShareCount();
 
                     if (article.sharers.containsKey(mUid)) {
 //                    article.sharers.remove(mUid);
@@ -533,7 +533,7 @@ public class ArticleOnClickListener implements View.OnClickListener {
                         return Transaction.success(mutableData);
                     }
 
-                    int currentShareCount = user.getSharedItemsCount();
+                    int currentShareCount = user.getSharedItemsCount() == null ? 0 : user.getSharedItemsCount();
 
                     if (user.sharedItems.containsKey(articleId)) {
 //                    user.sharedItems.remove(articleId);
