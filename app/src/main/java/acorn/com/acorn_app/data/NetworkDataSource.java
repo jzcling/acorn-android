@@ -104,11 +104,9 @@ public class NetworkDataSource {
      * Get the singleton for this class
      */
     public static NetworkDataSource getInstance(Context context, AppExecutors executors) {
-        Log.d(TAG, "Getting the network data source");
         if (sInstance == null) {
             synchronized (LOCK) {
                 sInstance = new NetworkDataSource(context.getApplicationContext(), executors);
-                Log.d(TAG, "Made new network data source");
             }
         }
         return sInstance;
@@ -119,16 +117,12 @@ public class NetworkDataSource {
             DatabaseReference ref = mDatabaseReference.child(query.dbRef);
             Query tempQuery = ref.orderByChild(query.orderByChild);
             if (!query.strStartAt.equals("")) {
-                Log.d(TAG, "state: " + query.state + ", strStartAt: " + query.strStartAt);
                 tempQuery = tempQuery.startAt(query.strStartAt).limitToFirst(query.limit);
             } else if (query.numStartAt != Long.MAX_VALUE) {
-                Log.d(TAG, "state: " + query.state + ", numStartAt: " + query.numStartAt);
                 tempQuery = tempQuery.startAt(query.numStartAt).limitToFirst(query.limit);
             } else if (!query.strEqualTo.equals("")) {
-                Log.d(TAG, "state: " + query.state + ", strEqualTo: " + query.strEqualTo);
                 tempQuery = tempQuery.equalTo(query.strEqualTo).limitToFirst(50);
             } else if (query.numEqualTo != Long.MAX_VALUE) {
-                Log.d(TAG, "state: " + query.state + ", numEqualTo: " + query.numEqualTo);
                 tempQuery = tempQuery.equalTo(query.numEqualTo).limitToFirst(50);
             } else {
                 tempQuery = tempQuery.limitToFirst(query.limit);
@@ -168,13 +162,11 @@ public class NetworkDataSource {
         mExecutors.networkIO().execute(() -> {
             mThemeSearchKey = mSharedPrefs.getString("themeSearchKey", "");
             mThemeSearchFilter = mSharedPrefs.getString("themeSearchFilter", "");
-            Log.d(TAG, "mThemeSearchKey: " + mThemeSearchKey + ", mThemeSearchFilter: " + mThemeSearchFilter);
             DatabaseReference resultRef = mDatabaseReference.child(SEARCH_REF).child(mThemeSearchKey);
             resultRef.addListenerForSingleValueEvent(new ValueEventListener() {
                 @Override
                 public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
                     if (dataSnapshot.getValue() == null) {
-                        Log.d(TAG, "searchRef: " + mThemeSearchKey + " does not exist");
                         searchThemeArticles(mThemeSearchKey, mThemeSearchFilter, bindToUi);
                     } else {
                         Long timeNow = (new Date().getTime());
@@ -182,8 +174,6 @@ public class NetworkDataSource {
                         if (lastQueryTimestamp == null) {
                             searchThemeArticles(mThemeSearchKey, mThemeSearchFilter, bindToUi);
                         } else {
-                            Log.d(TAG, "timeNow: " + timeNow + ", lastQueryTimestamp: "
-                                    + lastQueryTimestamp + ", diff: " + (timeNow - lastQueryTimestamp));
                             if (timeNow - lastQueryTimestamp < 3L * 60L * 60L * 1000L) { // 3 hours
                                 mExecutors.mainThread().execute(bindToUi);
                             } else {
@@ -195,7 +185,6 @@ public class NetworkDataSource {
 
                 @Override
                 public void onCancelled(@NonNull DatabaseError databaseError) {
-                    Log.d(TAG, "getThemeData: failed to get search reference");
                 }
             });
         });
@@ -209,7 +198,6 @@ public class NetworkDataSource {
             query.setFilters(themeSearchFilter);
 
             ALGOLIA_ARTICLE_INDEX.searchAsync(query, (jsonObject, e) -> {
-                Log.d(TAG, jsonObject.toString());
                 String jsonString = jsonObject.toString();
     //                    .replaceAll("(\".*?)\\.(.*?\":.*?)", "$1$2");
                 Map<String, Object> jsonMap = new Gson().fromJson(
@@ -279,7 +267,6 @@ public class NetworkDataSource {
 
         // Schedule the Job with the dispatcher
         dispatcher.mustSchedule(recArticlesJob);
-        Log.d(TAG, REC_ARTICLES_TAG + ": Job scheduled");
         recordLastRecArticlesScheduleTime();
     }
 
@@ -287,7 +274,6 @@ public class NetworkDataSource {
         Driver driver = new GooglePlayDriver(mContext);
         FirebaseJobDispatcher dispatcher = new FirebaseJobDispatcher(driver);
         dispatcher.cancel(REC_ARTICLES_TAG);
-        Log.d(TAG, REC_ARTICLES_TAG + ": Job canceled");
     }
 
     public void recordLastRecArticlesPushTime() {

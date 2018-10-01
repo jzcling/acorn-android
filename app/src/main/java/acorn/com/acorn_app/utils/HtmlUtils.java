@@ -93,7 +93,7 @@ public class HtmlUtils {
             content = TABLE_END_PATTERN.matcher(content).replaceAll("$1</div>");
         }
 
-        Log.d(TAG, "content: " + content);
+
         return content;
     }
 

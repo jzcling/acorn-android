@@ -53,7 +53,7 @@ public class SearchActivity extends AppCompatActivity {
         mHits = findViewById(R.id.hits);
 
         mHits.setOnItemClickListener((recyclerView, position, v) -> {
-            Log.d(TAG, "Hit clicked: " + mHits.get(position));
+
             JSONObject article = mHits.get(position);
             String link = null;
             try {

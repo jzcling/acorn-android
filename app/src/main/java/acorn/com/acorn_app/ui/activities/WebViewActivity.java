@@ -83,7 +83,7 @@ public class WebViewActivity extends AppCompatActivity {
     @SuppressLint("SetJavaScriptEnabled")
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
-        Log.d(TAG, "onCreate");
+
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_webview);
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
@@ -92,7 +92,7 @@ public class WebViewActivity extends AppCompatActivity {
 
         intent = getIntent();
         articleId = intent.getStringExtra("id");
-//        Log.d(TAG, "articleId: " + articleId);
+//
 
         // Set up Firebase Database
         if (mDatabase == null) mDatabase = FirebaseDatabase.getInstance();
@@ -127,7 +127,7 @@ public class WebViewActivity extends AppCompatActivity {
             @Override
             public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
                 mArticle = dataSnapshot.getValue(Article.class);
-//                Log.d(TAG, mArticle.getTitle());
+//
 
                 // get data to set up card
                 if (mArticle != null) {
@@ -182,12 +182,12 @@ public class WebViewActivity extends AppCompatActivity {
                 createToast(WebViewActivity.this, databaseError.toString(), Toast.LENGTH_SHORT);
             }
         });
-//        Log.d(TAG, "valueEventListener added to " + mArticleRef);
+//
     }
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
-        Log.d(TAG, "onCreateOptionsMenu");
+
         getMenuInflater().inflate(R.menu.app_bar_webview, menu);
 
         // Set up search
@@ -230,7 +230,7 @@ public class WebViewActivity extends AppCompatActivity {
                         if (dataSnapshot.getKey().equals(mUid)) {
                             followOption.setVisible(false);
                             unfollowOption.setVisible(true);
-//                            Log.d(TAG, dataSnapshot.getKey() + ": " + dataSnapshot.getValue(String.class));
+//
                         }
                     }
                 }
@@ -244,7 +244,7 @@ public class WebViewActivity extends AppCompatActivity {
                         if (dataSnapshot.getKey().equals(mUid)) {
                             followOption.setVisible(true);
                             unfollowOption.setVisible(false);
-//                            Log.d(TAG, dataSnapshot.getKey() + ": " + dataSnapshot.getValue(String.class));
+//
                         }
                     }
                 }
@@ -256,7 +256,7 @@ public class WebViewActivity extends AppCompatActivity {
                 public void onCancelled(@NonNull DatabaseError databaseError) { }
             };
             mArticleRef.child(NOTIFICATION_TOKENS).addChildEventListener(mFollowListener);
-//            Log.d(TAG, "listener added to " + mArticleRef.child(NOTIFICATION_TOKENS));
+//
         }
 
         return true;
@@ -271,6 +271,10 @@ public class WebViewActivity extends AppCompatActivity {
         } else if (id == R.id.action_search) {
             return true;
         } else if (id == R.id.action_follow) {
+            if (mUid == null || mUserToken == null) {
+                createToast(this, "An error occurred", Toast.LENGTH_SHORT);
+                return false;
+            }
             mArticleRef.child(NOTIFICATION_TOKENS).child(mUid).setValue(mUserToken);
         } else if (id == R.id.action_unfollow) {
             mArticleRef.child(NOTIFICATION_TOKENS).child(mUid).removeValue();
@@ -287,32 +291,32 @@ public class WebViewActivity extends AppCompatActivity {
 
     @Override
     protected void onResume() {
-        Log.d(TAG, "onResume");
+
         super.onResume();
     }
 
     @Override
     protected void onPause() {
-        Log.d(TAG, "onPause");
+
         super.onPause();
     }
 
     @Override
     protected void onStart() {
-        Log.d(TAG, "onStart");
+
         super.onStart();
     }
 
     @Override
     protected void onStop() {
         super.onStop();
-        Log.d(TAG, "onStop");
+
         if (mArticleRef != null) {
             mArticleRef.removeEventListener(mArticleListener);
-//            Log.d(TAG, "valueEventListener removed from " + mArticleRef);
+//
             if (mFollowListener != null) {
                 mArticleRef.child(NOTIFICATION_TOKENS).removeEventListener(mFollowListener);
-//                Log.d(TAG, "childEventListener removed from " + mArticleRef.child(NOTIFICATION_TOKENS));
+//
             }
         }
     }
@@ -320,7 +324,7 @@ public class WebViewActivity extends AppCompatActivity {
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        Log.d(TAG, "onDestroy");
+
         lastScrollPercent = 0f;
     }
 
@@ -328,7 +332,7 @@ public class WebViewActivity extends AppCompatActivity {
         webView.setVisibility(View.INVISIBLE);
         progressBar.setVisibility(View.VISIBLE);
 
-//        Log.d(TAG, link + title + author + source + date);
+//
         mExecutors.networkIO().execute(() -> {
             String generatedHtml = HtmlUtils.regenArticleHtml(webView.getContext(),
                         link, title, author, source, date);
@@ -347,7 +351,7 @@ public class WebViewActivity extends AppCompatActivity {
                     public Transaction.Result doTransaction(@NonNull MutableData mutableData) {
                         Article article = mutableData.getValue(Article.class);
                         if (article == null) {
-//                            Log.d(TAG, "postReadTime: could not find article");
+//
                             return Transaction.success(mutableData);
                         }
 
@@ -358,7 +362,7 @@ public class WebViewActivity extends AppCompatActivity {
 
                     @Override
                     public void onComplete(@Nullable DatabaseError databaseError, boolean b, @Nullable DataSnapshot dataSnapshot) {
-//                        Log.d(TAG, "postReadTime: " + databaseError);
+//
                     }
                 });
             } else {
@@ -370,14 +374,14 @@ public class WebViewActivity extends AppCompatActivity {
 
     @Override
     public void onSaveInstanceState(Bundle outState) {
-        Log.d(TAG, "onSaveInstanceState");
+
         super.onSaveInstanceState(outState);
 //        outState.putFloat("scrollPercent", lastScrollPercent);
     }
 
 //    @Override
 //    protected void onRestoreInstanceState(Bundle savedInstanceState) {
-//        Log.d(TAG, "onRestoreInstanceState");
+//
 //        super.onRestoreInstanceState(savedInstanceState);
 //        lastScrollPercent = savedInstanceState.getFloat("scrollPercent");
 //    }
@@ -391,7 +395,7 @@ public class WebViewActivity extends AppCompatActivity {
         float contentHeight = content.computeVerticalScrollRange() - content.getHeight();
         float currentScrollPosition = content.getScrollY();
         float scrollPercent = contentHeight == 0f ? 0 : currentScrollPosition / contentHeight;
-        Log.d(TAG, "height: " + contentHeight + ", position: " + currentScrollPosition + ", percent: " + scrollPercent);
+
         return scrollPercent;
     }
 
@@ -399,7 +403,7 @@ public class WebViewActivity extends AppCompatActivity {
         float contentHeight = content.computeVerticalScrollRange() - content.getHeight();
         float scrollPosition = contentHeight * scrollPercent;
         int positionY = (int) Math.round(scrollPosition);
-        Log.d(TAG, "height: " + contentHeight + ", position: " + scrollPosition);
+
         content.scrollTo(0, positionY);
     }
 

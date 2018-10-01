@@ -342,7 +342,7 @@ public class CommentActivity extends AppCompatActivity implements View.OnTouchLi
             public void beforeTextChanged(CharSequence s, int i, int i1, int i2) {
                 if (addPreviewPending) {
                     handler.removeCallbacks(addPreview);
-                    Log.d(TAG, "callback removed");
+
                 }
             }
 
@@ -362,7 +362,7 @@ public class CommentActivity extends AppCompatActivity implements View.OnTouchLi
                 if (m.find()) {
                     clearPreview();
                     mPreviewLink = m.group(1);
-                    Log.d(TAG, "callback added");
+
                     handler.postDelayed(addPreview, 500);
                     addPreviewPending = true;
                 }
@@ -378,7 +378,7 @@ public class CommentActivity extends AppCompatActivity implements View.OnTouchLi
             popupWindow.setBackgroundDrawable(new ColorDrawable());
             popupWindow.setOutsideTouchable(true);
 
-            Log.d(TAG, "height: " + v.getHeight());
+
             Rect addImageLoc = locateView(v);
             popupWindow.showAsDropDown(v, -addImageLoc.left, -(3*v.getHeight()+20));
 
@@ -436,7 +436,7 @@ public class CommentActivity extends AppCompatActivity implements View.OnTouchLi
                         if (dataSnapshot.getKey().equals(mUid)) {
                             followOption.setVisible(false);
                             unfollowOption.setVisible(true);
-//                            Log.d(TAG, dataSnapshot.getKey() + ": " + dataSnapshot.getValue(String.class));
+//
                         }
                     }
                 }
@@ -450,7 +450,7 @@ public class CommentActivity extends AppCompatActivity implements View.OnTouchLi
                         if (dataSnapshot.getKey().equals(mUid)) {
                             followOption.setVisible(true);
                             unfollowOption.setVisible(false);
-//                            Log.d(TAG, dataSnapshot.getKey() + ": " + dataSnapshot.getValue(String.class));
+//
                         }
                     }
                 }
@@ -494,7 +494,7 @@ public class CommentActivity extends AppCompatActivity implements View.OnTouchLi
                         }
                     }
 
-                    Log.d(TAG, "positions: " + mSearchPos);
+
                     View view = getCurrentFocus();
                     if (view != null) {
                         InputMethodManager imm = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
@@ -612,7 +612,7 @@ public class CommentActivity extends AppCompatActivity implements View.OnTouchLi
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
-        Log.d(TAG, "onActivityResult: requestCode=" + requestCode + ", resultCode=" + resultCode);
+
 
         if (requestCode == RC_GALLERY) {
             if (resultCode == RESULT_OK) {
@@ -645,7 +645,7 @@ public class CommentActivity extends AppCompatActivity implements View.OnTouchLi
 //
 //                // Check how many invitations were sent and log.
 //                String[] ids = AppInviteInvitation.getInvitationIds(resultCode, data);
-//                Log.d(TAG, "Invitations sent: " + ids.length);
+//
 //            } else {
 //                // Use Firebase Measurement to log that invitation was not sent
 //                Bundle payload = new Bundle();
@@ -653,7 +653,7 @@ public class CommentActivity extends AppCompatActivity implements View.OnTouchLi
 //                mFirebaseAnalytics.logEvent(FirebaseAnalytics.Event.SHARE, payload);
 //
 //                // Sending failed or it was canceled, show failure comment to the user
-//                Log.d(TAG, "Failed to send invitation.");
+//
 //            }
 //        }
     }
@@ -695,7 +695,7 @@ public class CommentActivity extends AppCompatActivity implements View.OnTouchLi
     public void onSaveInstanceState(Bundle outState) {
         super.onSaveInstanceState(outState);
         outState.putInt(LLM_STATE, mLinearLayoutManager.findLastCompletelyVisibleItemPosition());
-        Log.d(TAG, "onSaveInstanceState: llm state saved");
+
     }
 
     private FirebaseRecyclerOptions<Comment> getOptions(DatabaseReference ref) {
@@ -731,7 +731,7 @@ public class CommentActivity extends AppCompatActivity implements View.OnTouchLi
             public Transaction.Result doTransaction(@NonNull MutableData mutableData) {
                 Article article = mutableData.getValue(Article.class);
                 if (article == null) {
-                    Log.d(TAG, "updateArticleData: Could not find article");
+
                     return Transaction.success(mutableData);
                 }
 
@@ -749,7 +749,7 @@ public class CommentActivity extends AppCompatActivity implements View.OnTouchLi
 
             @Override
             public void onComplete(@Nullable DatabaseError databaseError, boolean b, @Nullable DataSnapshot dataSnapshot) {
-                Log.d(TAG, "updateArticleData: " + databaseError);
+
                 if (databaseError != null) { return; }
 //                FirebaseMessaging.getInstance().subscribeToTopic(mArticleId);
             }
@@ -763,7 +763,7 @@ public class CommentActivity extends AppCompatActivity implements View.OnTouchLi
             public Transaction.Result doTransaction(@NonNull MutableData mutableData) {
                 Integer commentCount = mutableData.getValue(Integer.class);
                 if (commentCount == null) {
-                    Log.d(TAG, "updateCommentCount: Could not find comment count");
+
                     return Transaction.success(mutableData);
                 }
                 mArticleRef.child("commentCount").setValue(commentCount + 1);
@@ -772,7 +772,7 @@ public class CommentActivity extends AppCompatActivity implements View.OnTouchLi
 
             @Override
             public void onComplete(@Nullable DatabaseError databaseError, boolean b, @Nullable DataSnapshot dataSnapshot) {
-                Log.d(TAG, "updateCommentCount: " + databaseError);
+
                 if (databaseError != null) {
                     updateCommentCount();
                 }
@@ -786,9 +786,9 @@ public class CommentActivity extends AppCompatActivity implements View.OnTouchLi
             @Override
             public Transaction.Result doTransaction(@NonNull MutableData mutableData) {
                 Integer userCommentCount = mutableData.getValue(Integer.class);
-                Log.d(TAG, "userCommentCount: " + userCommentCount);
+
                 if (userCommentCount == null) {
-                    Log.d(TAG, "updateUserCommentCount: Could not find user comment data");
+
                     mArticleRef.child("commenters/" + mUid).setValue(1);
                     return Transaction.success(mutableData);
                 }
@@ -798,7 +798,7 @@ public class CommentActivity extends AppCompatActivity implements View.OnTouchLi
 
             @Override
             public void onComplete(@Nullable DatabaseError databaseError, boolean b, @Nullable DataSnapshot dataSnapshot) {
-                Log.d(TAG, "updateUserCommentCount: " + databaseError);
+
             }
         });
     }
@@ -809,11 +809,11 @@ public class CommentActivity extends AppCompatActivity implements View.OnTouchLi
             @Override
             public Transaction.Result doTransaction(@NonNull MutableData mutableData) {
                 String notificationToken = mutableData.getValue(String.class);
-                Log.d(TAG, "notificationToken: " + notificationToken);
+
                 if (notificationToken == null) {
-                    Log.d(TAG, "updateNotificationTokens: Could not find notification tokens");
-                    Log.d(TAG, "token: " + mUserToken);
-                    Log.d(TAG, mArticleRef.child("notificationTokens/" + mUid).toString());
+
+
+
                     mArticleRef.child("notificationTokens/" + mUid).setValue(mUserToken);
                     return Transaction.success(mutableData);
                 }
@@ -823,7 +823,7 @@ public class CommentActivity extends AppCompatActivity implements View.OnTouchLi
 
             @Override
             public void onComplete(@Nullable DatabaseError databaseError, boolean b, @Nullable DataSnapshot dataSnapshot) {
-                Log.d(TAG, "updateNotificationTokens: " + databaseError);
+
             }
         });
     }
@@ -836,7 +836,7 @@ public class CommentActivity extends AppCompatActivity implements View.OnTouchLi
             public Transaction.Result doTransaction(@NonNull MutableData mutableData) {
                 User user = mutableData.getValue(User.class);
                 if (user == null) {
-                    Log.d(TAG, "updateUser: Could not find user");
+
                     return Transaction.success(mutableData);
                 }
 
@@ -874,7 +874,7 @@ public class CommentActivity extends AppCompatActivity implements View.OnTouchLi
 
             @Override
             public void onComplete(@Nullable DatabaseError databaseError, boolean b, @Nullable DataSnapshot dataSnapshot) {
-                Log.d(TAG, "updateUserData: " + databaseError);
+
                 onComplete.run();
             }
         });
@@ -1020,7 +1020,7 @@ public class CommentActivity extends AppCompatActivity implements View.OnTouchLi
         if (lastVisiblePosition == -1 ||
                 (positionStart >= (commentCount - 1) && lastVisiblePosition == (positionStart - 1))) {
             mCommentRecyclerView.scrollToPosition(positionStart);
-            Log.d(TAG, "scrolling to: " + positionStart);
+
         }
     }
 
@@ -1042,7 +1042,7 @@ public class CommentActivity extends AppCompatActivity implements View.OnTouchLi
                 Elements image = parsedHtml.select("meta[property~=og:image]");
                 IMAGE_URL = image.size() > 0 ? image.first().attr("content") : null;
                 mPreviewImageUrl = IMAGE_URL;
-                Log.d(TAG, "urlTitle: " + TITLE + ", urlSource: " + SOURCE + ", mImageUrl: " + IMAGE_URL);
+
 
                 mExecutors.mainThread().execute(() -> {
                     mPreviewTitleView.setText(TITLE);
@@ -1093,7 +1093,7 @@ public class CommentActivity extends AppCompatActivity implements View.OnTouchLi
 
         // Save a file: path for use with ACTION_VIEW intents
         mCurrentImagePath = image.getAbsolutePath();
-        Log.d(TAG, "path: " + mCurrentImagePath);
+
         mImageUri = FileProvider.getUriForFile(this,
                 "com.example.android.fileprovider",
                 image);

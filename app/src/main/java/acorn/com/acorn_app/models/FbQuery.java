@@ -46,11 +46,11 @@ public class FbQuery implements Parcelable {
         if (indexType == 0) {
             strStartAt = index instanceof String ? (String) index : "";
             numStartAt = index instanceof Number ? ((Number) index).longValue() : Long.MAX_VALUE;
-            Log.d("fbquery", "state: " + state + ", strStartAt: " + strStartAt + ", numStartAt: " + numStartAt);
+
         } else if (indexType == 1) {
             strEqualTo = index instanceof String ? (String) index : "";
             numEqualTo = index instanceof Number ? ((Number) index).longValue() : Long.MAX_VALUE;
-            Log.d("fbquery", "state: " + state + ", strEqualTo: " + strEqualTo + ", numEqualTo: " + numEqualTo);
+
         }
     }
 
@@ -68,11 +68,11 @@ public class FbQuery implements Parcelable {
         if (indexType == 0) {
             strStartAt = index instanceof String ? (String) index : "";
             numStartAt = index instanceof Number ? ((Number) index).longValue() : Long.MAX_VALUE;
-            Log.d("fbquery", "state: " + state + ", strStartAt: " + strStartAt + ", numStartAt: " + numStartAt);
+
         } else if (indexType == 1) {
             strEqualTo = index instanceof String ? (String) index : "";
             numEqualTo = index instanceof Number ? ((Number) index).longValue() : Long.MAX_VALUE;
-            Log.d("fbquery", "state: " + state + ", strEqualTo: " + strEqualTo + ", numEqualTo: " + numEqualTo);
+
         }
     }
 

@@ -35,7 +35,7 @@ public class SettingsFragment extends PreferenceFragment {
         // Set up night mode
         ListPreference dayNightPref = (ListPreference) findPreference(getString(R.string.pref_key_night_mode));
         dayNightPref.setOnPreferenceChangeListener(((preference, newValue) -> {
-            Log.d(TAG, "dayNightPref changed");
+
             getActivity().recreate();
             return true;
         }));
@@ -52,14 +52,14 @@ public class SettingsFragment extends PreferenceFragment {
         // Set up comments notification pref
         Preference commentNotif = (Preference) findPreference(getString(R.string.pref_key_notif_comment));
         commentNotif.setOnPreferenceChangeListener(((preference, newValue) -> {
-            Log.d(TAG, "comment notifications " + newValue);
+
             return true;
         }));
 
         // Set up articles notification pref
         Preference articleNotif = (Preference) findPreference(getString(R.string.pref_key_notif_article));
         articleNotif.setOnPreferenceChangeListener(((preference, newValue) -> {
-            Log.d(TAG, "article notifications " + newValue);
+
             return true;
         }));
     }

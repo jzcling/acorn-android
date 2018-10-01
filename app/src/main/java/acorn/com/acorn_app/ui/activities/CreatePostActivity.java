@@ -233,7 +233,7 @@ public class CreatePostActivity extends AppCompatActivity {
             public void beforeTextChanged(CharSequence s, int start, int count, int after) {
                 if (addPreviewPending) {
                     handler.removeCallbacks(addPreview);
-                    Log.d(TAG, "callback removed");
+
                 }
             }
 
@@ -254,7 +254,7 @@ public class CreatePostActivity extends AppCompatActivity {
                     clearArticle();
                     clearPostImage();
                     mLink = m.group(1);
-                    Log.d(TAG, "callback added");
+
                     handler.postDelayed(addPreview, 500);
                     addPreviewPending = true;
                 }
@@ -353,7 +353,7 @@ public class CreatePostActivity extends AppCompatActivity {
 
         // Save a file: path for use with ACTION_VIEW intents
         mCurrentImagePath = image.getAbsolutePath();
-        Log.d(TAG, "path: " + mCurrentImagePath);
+
         mImageUri = FileProvider.getUriForFile(this,
                 "com.example.android.fileprovider",
                 image);
@@ -413,7 +413,7 @@ public class CreatePostActivity extends AppCompatActivity {
                 String urlSource = source.size() > 0 ? source.first().attr("content") : null;
                 Elements image = parsedHtml.select("meta[property~=og:image]");
                 mImageUrl = image.size() > 0 ? image.first().attr("content") : null;
-                Log.d(TAG, "urlTitle: " + urlTitle + ", urlSource: " + urlSource + ", mImageUrl: " + mImageUrl);
+
 
                 mExecutors.mainThread().execute(() -> {
                     mArticleTitleView.setText(urlTitle);
@@ -469,7 +469,7 @@ public class CreatePostActivity extends AppCompatActivity {
 
     private void updateUserData(String objectID, Long postDate) {
         DatabaseReference ref = FirebaseDatabase.getInstance().getReference();
-        Log.d(TAG, "mUid: " + mUid);
+
         Query userQuery = ref.child("user").orderByKey().equalTo(mUid);
         DatabaseReference userRef = ref.child("user/" + mUid);
         userQuery.addChildEventListener(new ChildEventListener() {
@@ -480,7 +480,7 @@ public class CreatePostActivity extends AppCompatActivity {
                 int postCount = user.getCreatedPostsCount();
                 user.createdPosts.put(objectID, postDate);
                 user.setCreatedPostsCount(postCount + 1);
-                Log.d(TAG, "uid: " + user.getUid() + ", posts: " + user.createdPosts);
+
                 userRef.setValue(user);
             }
 
@@ -510,7 +510,7 @@ public class CreatePostActivity extends AppCompatActivity {
     private void handleSendImage(Intent intent) {
         Uri imageUri = (Uri) intent.getParcelableExtra(Intent.EXTRA_STREAM);
         if (imageUri != null) {
-            Log.d(TAG, imageUri.toString());
+
             Glide.with(CreatePostActivity.this)
                     .load(imageUri.toString())
                     .into(mPostImageView);

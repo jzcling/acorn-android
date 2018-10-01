@@ -33,7 +33,7 @@ public class SettingsActivity extends AppCompatPreferenceActivity {
     protected void onCreate(Bundle savedInstanceState) {
         prefs = PreferenceManager.getDefaultSharedPreferences(this);
         dayNightValue = Integer.parseInt(prefs.getString(getString(R.string.pref_key_night_mode), "1"));
-        Log.d(TAG, "onCreate: started, nightMode: " + dayNightValue);
+
         AppCompatDelegate.setDefaultNightMode(dayNightValue);
         super.onCreate(savedInstanceState);
         getSupportActionBar().setDisplayHomeAsUpEnabled(true);

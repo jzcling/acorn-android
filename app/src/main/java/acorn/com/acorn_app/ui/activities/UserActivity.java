@@ -116,7 +116,7 @@ public class UserActivity extends AppCompatActivity {
                 double z = mUser.getStatus() == 0 ? 0 : mUser.getTargetPoints()/TARGET_POINTS_MULTIPLIER;
                 mProgressRequirementView.setText(String.valueOf((int) (y - x)));
                 int progressLevel = (int) Math.max(Math.floor((x - z) / (y - z) * 100D), 0);
-                Log.d(TAG, "x: " + x + ", y: " + y + ", z: " + z + ", progressLevel: " + progressLevel);
+
                 mProgressBar.setProgress(progressLevel);
             }
 

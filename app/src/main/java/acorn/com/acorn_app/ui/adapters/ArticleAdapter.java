@@ -101,7 +101,7 @@ public class ArticleAdapter extends RecyclerView.Adapter<ArticleViewHolder> {
                 public void onCancelled(@NonNull DatabaseError databaseError) { }
             });
             mRefObservedList.put(articleRef, searchArticleListener);
-            Log.d(TAG, "view attached: valuelistener added to " + articleRef.toString());
+
         }
     }
 
@@ -117,7 +117,7 @@ public class ArticleAdapter extends RecyclerView.Adapter<ArticleViewHolder> {
                 ValueEventListener searchArticleListener = mRefObservedList.get(articleRef);
                 articleRef.removeEventListener(searchArticleListener);
                 mRefObservedList.remove(articleRef);
-                Log.d(TAG, "view detached: valuelistener removed from " + articleRef.toString());
+
             }
         }
     }
@@ -140,7 +140,7 @@ public class ArticleAdapter extends RecyclerView.Adapter<ArticleViewHolder> {
         if (mRefObservedList.size() > 0) {
             for (DatabaseReference ref : mRefObservedList.keySet()) {
                 ref.removeEventListener(mRefObservedList.get(ref));
-                Log.d(TAG, "adapter cleared: valuelistener removed from " + ref.toString());
+
             }
             mRefObservedList.clear();
         }

@@ -166,7 +166,7 @@ public class ArticleOnClickListener implements View.OnClickListener {
             public Transaction.Result doTransaction(@NonNull MutableData mutableData) {
                 Article article = mutableData.getValue(Article.class);
                 if (article == null) {
-                    Log.d(TAG, "onUpvoteClicked: article: could not find article");
+
                     return Transaction.success(mutableData);
                 }
 
@@ -194,7 +194,7 @@ public class ArticleOnClickListener implements View.OnClickListener {
 
             @Override
             public void onComplete(@Nullable DatabaseError databaseError, boolean b, @Nullable DataSnapshot dataSnapshot) {
-                Log.d(TAG, "onUpvoteClicked: article: " + databaseError);
+
             }
         });
 
@@ -208,7 +208,7 @@ public class ArticleOnClickListener implements View.OnClickListener {
             public Transaction.Result doTransaction(@NonNull MutableData mutableData) {
                 User user = mutableData.getValue(User.class);
                 if (user == null) {
-                    Log.d(TAG, "onUpvoteClicked: user: could not find user");
+
                     return Transaction.success(mutableData);
                 }
 
@@ -261,7 +261,7 @@ public class ArticleOnClickListener implements View.OnClickListener {
                 handler.postDelayed(() -> {
                     isTransationRunning = false;
                     disableVoteViews(isTransationRunning);
-                    Log.d(TAG, "onUpvoteClicked: user: " + databaseError);
+
                 }, 300);
             }
         });
@@ -290,7 +290,7 @@ public class ArticleOnClickListener implements View.OnClickListener {
             public Transaction.Result doTransaction(@NonNull MutableData mutableData) {
                 Article article = mutableData.getValue(Article.class);
                 if (article == null) {
-                    Log.d(TAG, "onDownvoteClicked: article: could not find article");
+
                     return Transaction.success(mutableData);
                 }
 
@@ -318,7 +318,7 @@ public class ArticleOnClickListener implements View.OnClickListener {
 
             @Override
             public void onComplete(@Nullable DatabaseError databaseError, boolean b, @Nullable DataSnapshot dataSnapshot) {
-                Log.d(TAG, "onDownvoteClicked: article: " + databaseError);
+
             }
         });
 
@@ -332,7 +332,7 @@ public class ArticleOnClickListener implements View.OnClickListener {
             public Transaction.Result doTransaction(@NonNull MutableData mutableData) {
                 User user = mutableData.getValue(User.class);
                 if (user == null) {
-                    Log.d(TAG, "onDownvoteClicked: user: could not find user");
+
                     return Transaction.success(mutableData);
                 }
 
@@ -386,7 +386,7 @@ public class ArticleOnClickListener implements View.OnClickListener {
                 handler.postDelayed(() -> {
                     isTransationRunning = false;
                     disableVoteViews(isTransationRunning);
-                    Log.d(TAG, "onDownvoteClicked: user: " + databaseError);
+
                 }, 300);
             }
         });
@@ -406,7 +406,7 @@ public class ArticleOnClickListener implements View.OnClickListener {
             public Transaction.Result doTransaction(@NonNull MutableData mutableData) {
                 Article article = mutableData.getValue(Article.class);
                 if (article == null) {
-                    Log.d(TAG, "onSaveClicked: article: could not find article");
+
                     return Transaction.success(mutableData);
                 }
 
@@ -431,7 +431,7 @@ public class ArticleOnClickListener implements View.OnClickListener {
 
             @Override
             public void onComplete(@Nullable DatabaseError databaseError, boolean b, @Nullable DataSnapshot dataSnapshot) {
-                Log.d(TAG, "onSaveClicked: article: " + databaseError);
+
             }
         });
 
@@ -445,7 +445,7 @@ public class ArticleOnClickListener implements View.OnClickListener {
             public Transaction.Result doTransaction(@NonNull MutableData mutableData) {
                 User user = mutableData.getValue(User.class);
                 if (user == null) {
-                    Log.d(TAG, "onSaveClicked: user: could not find user");
+
                     return Transaction.success(mutableData);
                 }
 
@@ -464,7 +464,7 @@ public class ArticleOnClickListener implements View.OnClickListener {
 
             @Override
             public void onComplete(@Nullable DatabaseError databaseError, boolean b, @Nullable DataSnapshot dataSnapshot) {
-                Log.d(TAG, "onSaveClicked: user: " + databaseError);
+
             }
         });
     }
@@ -484,7 +484,7 @@ public class ArticleOnClickListener implements View.OnClickListener {
                 public Transaction.Result doTransaction(@NonNull MutableData mutableData) {
                     Article article = mutableData.getValue(Article.class);
                     if (article == null) {
-                        Log.d(TAG, "onShareClicked: article: could not find article");
+
                         return Transaction.success(mutableData);
                     }
 
@@ -515,7 +515,7 @@ public class ArticleOnClickListener implements View.OnClickListener {
                                 new MyAnimationListener(Intent.createChooser(shareIntent, "Share link with")));
                         mShareView.startAnimation(bounceAnim);
                     });
-                    Log.d(TAG, "onShareClicked: article: " + databaseError);
+
                 }
             });
 
@@ -529,7 +529,7 @@ public class ArticleOnClickListener implements View.OnClickListener {
                 public Transaction.Result doTransaction(@NonNull MutableData mutableData) {
                     User user = mutableData.getValue(User.class);
                     if (user == null) {
-                        Log.d(TAG, "onShareClicked: user: could not find user");
+
                         return Transaction.success(mutableData);
                     }
 
@@ -548,7 +548,7 @@ public class ArticleOnClickListener implements View.OnClickListener {
 
                 @Override
                 public void onComplete(@Nullable DatabaseError databaseError, boolean b, @Nullable DataSnapshot dataSnapshot) {
-                    Log.d(TAG, "onShareClicked: user: " + databaseError);
+
                 }
             });
         }

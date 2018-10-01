@@ -62,7 +62,7 @@ public class ArticleTextExtractor {
 
         // now remove the clutter
         prepareDocument(doc);
-//        Log.d(TAG, doc.select("body").toString());
+//
 
         // init elements
         Collection<Element> nodes = getNodes(doc);
@@ -72,7 +72,7 @@ public class ArticleTextExtractor {
         for (Element entry : nodes) {
             int currentWeight = getWeight(entry);
             if (currentWeight > 0)
-                Log.d(TAG, "entry: " + entry.toString().substring(0, Math.min(entry.toString().length(), 50)) + ", weight: " + currentWeight);
+
             if (currentWeight > maxWeight) {
                 maxWeight = currentWeight;
                 bestMatchElement = entry;
@@ -82,7 +82,7 @@ public class ArticleTextExtractor {
                 }
             }
         }
-//        Log.d(TAG, bestMatchElement.toString());
+//
 
         Collection<Element> metas = getMetas(doc);
         String ogImage = null;
@@ -425,7 +425,7 @@ public class ArticleTextExtractor {
                 nodes.add(el);
             }
         }
-        Log.d(TAG, "body: " + nodes);
+
         return nodes;
     }
 }

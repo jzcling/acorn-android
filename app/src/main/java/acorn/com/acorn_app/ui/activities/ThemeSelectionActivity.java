@@ -98,7 +98,7 @@ public class ThemeSelectionActivity extends AppCompatActivity {
         mUserThemeViewModel = ViewModelProviders
                 .of(ThemeSelectionActivity.this).get(UserThemeViewModel.class);
         mUserThemeViewModel.getThemes().observe(ThemeSelectionActivity.this, list -> {
-            Log.d(TAG, "listChanged: userThemeList: " + mUserThemeList);
+
             mAdapter.notifyDataSetChanged();
         });
 
@@ -109,7 +109,7 @@ public class ThemeSelectionActivity extends AppCompatActivity {
         if (mLastSavedState.size() > 0) {
             mUserThemeList.addAll(mLastSavedState);
         } else {
-            Log.d(TAG, "user theme data does not exist");
+
 //            mUserThemeList.addAll(mThemeList);
         }
 
@@ -119,7 +119,7 @@ public class ThemeSelectionActivity extends AppCompatActivity {
             mAllThemesCb.setChecked(false);
         }
 
-        Log.d(TAG, "initial userThemeList: " + mUserThemeList);
+
         mUserThemeViewModel.setValue(mUserThemeList);
 
         // Set up all themes checkbox
@@ -197,7 +197,7 @@ public class ThemeSelectionActivity extends AppCompatActivity {
             public Transaction.Result doTransaction(@NonNull MutableData mutableData) {
                 User user = mutableData.getValue(User.class);
                 if (user == null) {
-                    Log.d(TAG, "onSaveClicked: user could not be found");
+
                     return Transaction.success(mutableData);
                 }
                 user.setSubscriptions(mUserThemeList);
@@ -208,7 +208,7 @@ public class ThemeSelectionActivity extends AppCompatActivity {
 
             @Override
             public void onComplete(@Nullable DatabaseError databaseError, boolean b, @Nullable DataSnapshot dataSnapshot) {
-                Log.d(TAG, "user update completed: " + databaseError);
+
                 if (databaseError == null) {
                     createToast(ThemeSelectionActivity.this,
                             "Theme subscriptions saved", Toast.LENGTH_SHORT);
@@ -270,17 +270,17 @@ public class ThemeSelectionActivity extends AppCompatActivity {
             holder.checkBox.setOnCheckedChangeListener(((buttonView, isChecked) -> {
                 String tempTheme = buttonView.getText().toString();
                 if (isChecked) {
-                    Log.d(TAG, "checkChangedToTrue: " + buttonView.getText().toString());
+
                     if (!mUserThemeList.contains(tempTheme)) mUserThemeList.add(tempTheme);
                     if (mUserThemeList.containsAll(themeList)) mAllThemesCb.setChecked(true);
                 } else {
-                    Log.d(TAG, "checkChangedToFalse: " + buttonView.getText().toString());
+
                     if (mUserThemeList.contains(tempTheme)) {
                         mUserThemeList.remove(tempTheme);
                         mAllThemesCb.setChecked(false);
                     }
                 }
-                Log.d(TAG, "oncheckedchange: userThemeList: " + mUserThemeList);
+
             }));
         }
 

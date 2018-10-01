@@ -190,7 +190,7 @@ public class AcornActivity extends AppCompatActivity
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
 
-        Log.d(TAG, "onCreate: started");
+
         mFirebaseAnalytics = FirebaseAnalytics.getInstance(this);
 
         try {
@@ -199,16 +199,16 @@ public class AcornActivity extends AppCompatActivity
                 MessageDigest md = MessageDigest.getInstance("SHA");
                 md.update(signature.toByteArray());
                 String hashKey = new String(Base64.encode(md.digest(), 0));
-                Log.d(TAG, "printHashKey() Hash Key: " + hashKey);
+
             }
         } catch (NoSuchAlgorithmException e) {
-            Log.e(TAG, "printHashKey()", e);
+
         } catch (Exception e) {
-            Log.e(TAG, "printHashKey()", e);
+
         }
 
         mFirebaseUser = FirebaseAuth.getInstance().getCurrentUser();
-        //Log.d(TAG, "uid: " + mFirebaseUser.getUid());
+        //
 
         // Set up Firebase Database
         if (mDatabase == null) mDatabase = FirebaseDatabase.getInstance();
@@ -321,11 +321,6 @@ public class AcornActivity extends AppCompatActivity
             mUsernameTextView.setText("Anonymous");
             mUserStatusTextView.setText("");
         }
-
-//        SearchManager searchManager = (SearchManager) getSystemService(Context.SEARCH_SERVICE);
-//        SearchView searchView = (SearchView) menu.findItem(R.id.action_search).getActionView();
-//
-//        searchView.setSearchableInfo(searchManager.getSearchableInfo(getComponentName()));
 
         return true;
     }
@@ -441,7 +436,7 @@ public class AcornActivity extends AppCompatActivity
                     signOutMenuItem.setVisible(true);
                 }
 
-                Log.d(TAG, "setQuery: onSignInResult");
+
                 if (mArticleViewModel != null) mArticleViewModel.newQuery.postValue(mQuery);
             } else {
                 // Sign in failed
@@ -457,16 +452,16 @@ public class AcornActivity extends AppCompatActivity
                 }
 
                 createToast(this, getString(R.string.sign_in_error), Toast.LENGTH_SHORT);
-                Log.e(TAG, "Sign-in error: ", response.getError());
+
             }
         } else if (requestCode == RC_PREF) {
             if (resultCode == RESULT_OK) {
                 int newDayNightValue = data.getIntExtra("dayNightValue", 1);
-                Log.d(TAG, "newDayNightValue: " + newDayNightValue + ", dayNightValue: " + dayNightValue);
+
                 if (newDayNightValue != dayNightValue) recreate();
 
                 commentNotifValue = mSharedPreferences.getBoolean(getString(R.string.pref_key_notif_comment), false);
-                Log.d(TAG, "comment notifications pref: " + commentNotifValue);
+
                 mCommentNotifRef = mDatabaseReference.child(PREFERENCES_REF).child(COMMENTS_NOTIFICATION);
                 if (!commentNotifValue) {
                     mCommentNotifRef.child(mUid).setValue(commentNotifValue);
@@ -475,7 +470,7 @@ public class AcornActivity extends AppCompatActivity
                 }
 
                 articleNotifValue = mSharedPreferences.getBoolean(getString(R.string.pref_key_notif_article), false);
-                Log.d(TAG, "article notifications pref: " + articleNotifValue);
+
                 mRecArticlesNotifRef = mDatabaseReference.child(PREFERENCES_REF).child(REC_ARTICLES_NOTIFICATION);
                 if (articleNotifValue) {
                     if (!mSharedPreferences.getBoolean("isRecArticlesScheduled", false)) {
@@ -505,9 +500,9 @@ public class AcornActivity extends AppCompatActivity
         }
 //        } else if (requestCode == RC_SHARE) {
 //            if (resultCode == RESULT_OK) {
-//                Log.d(TAG, "share ok");
+//
 //            } else {
-//                Log.d(TAG, "share cancelled");
+//
 //            }
 //        }
     }
@@ -515,7 +510,7 @@ public class AcornActivity extends AppCompatActivity
     @Override
     public void onPause() {
         super.onPause();
-        Log.d(TAG, "onPause: started");
+
     }
 
 
@@ -523,21 +518,21 @@ public class AcornActivity extends AppCompatActivity
     public void onResume() {
         super.onResume();
 //        mNotificationsPref.edit().clear().commit();
-        Log.d(TAG, "onResume: started");
+
     }
 
     @Override
     protected void onStop() {
         super.onStop();
         if (mUserStatusRef != null) mUserStatusRef.removeEventListener(mUserStatusListener);
-        Log.d(TAG, "onStop: started");
+
     }
 
     @Override
     protected void onStart() {
         super.onStart();
         if (mUserStatusRef != null) mUserStatusRef.addValueEventListener(mUserStatusListener);
-        Log.d(TAG, "onStart: started");
+
     }
 
     @Override
@@ -546,7 +541,7 @@ public class AcornActivity extends AppCompatActivity
         if (mObservedList.size() > 0) {
             for (LiveData<List<Article>> liveData : mObservedList.keySet()) {
                 liveData.removeObserver(mObservedList.get(liveData));
-                Log.d(TAG, "observer removed from " + liveData);
+
             }
             mObservedList.clear();
         }
@@ -557,20 +552,20 @@ public class AcornActivity extends AppCompatActivity
         super.onSaveInstanceState(outState);
         outState.putParcelable("Query", mQuery);
         mLlmState = mLinearLayoutManager.onSaveInstanceState();
-        Log.d(TAG, "onSaveInstanceState: started");
+
     }
 
     @Override
     protected void onRestoreInstanceState(Bundle savedInstanceState) {
         super.onRestoreInstanceState(savedInstanceState);
-        Log.d(TAG, "onRestoreInstanceState: started");
+
         mLinearLayoutManager.onRestoreInstanceState(mLlmState);
     }
 
     private void handleIntent(Intent intent) {
         mSwipeRefreshLayout.setRefreshing(false);
         if (mArticleViewModel != null) {
-            Log.d(TAG, "setQuery: onHandleIntent");
+
             mArticleViewModel.newQuery.postValue(mQuery);
         }
     }
@@ -586,7 +581,7 @@ public class AcornActivity extends AppCompatActivity
 
         if (mAdapter.getItemCount() < 10) return;
 
-        Log.d(TAG, "currentPos: " + currentPosition + ", AdapterItemCount: " + mAdapter.getItemCount() + ", Trigger: " + String.valueOf(mAdapter.getItemCount()-trigger));
+
         if (currentPosition > mAdapter.getItemCount() - trigger) {
             isLoadingMore = true;
 
@@ -612,13 +607,13 @@ public class AcornActivity extends AppCompatActivity
 //                    index = lastArticle.getSource();
                     return;
             }
-            Log.d(TAG, "lastArticleTitle: " + lastArticle.getTitle() + ", lastArticleIndex: " + index);
+
 
             int indexType = mQuery.state < 0 ? 1 : 0;
             LiveData<List<Article>> addListLD = mArticleViewModel.getAdditionalArticles(index, indexType);
             Observer<List<Article>> addListObserver = articles -> {
                 if (articles != null) {
-                    Log.d(TAG, "addList changed");
+
                     List<Article> combinedList = new ArrayList<>(initialList);
                     combinedList.remove(combinedList.size()-1);
                     combinedList.addAll(articles);
@@ -627,7 +622,7 @@ public class AcornActivity extends AppCompatActivity
             };
             addListLD.observeForever(addListObserver);
             mObservedList.put(addListLD, addListObserver);
-            Log.d(TAG, "observer added to " + addListLD);
+
             new Handler().postDelayed(()->isLoadingMore = false,100);
         }
     }
@@ -642,7 +637,7 @@ public class AcornActivity extends AppCompatActivity
         if (mObservedList.size() > 0) {
             for (LiveData<List<Article>> liveData : mObservedList.keySet()) {
                 liveData.removeObserver(mObservedList.get(liveData));
-                Log.d(TAG, "observer removed from " + liveData);
+
             }
             mObservedList.clear();
         }
@@ -654,7 +649,7 @@ public class AcornActivity extends AppCompatActivity
             mAdapter = new ArticleAdapter(this, ARTICLE_CARD_TYPE, this);
             mRecyclerView.setAdapter(mAdapter);
         }
-        Log.d(TAG, "setQuery: resetView");
+
 
         setUpInitialViewModelObserver();
 
@@ -719,7 +714,7 @@ public class AcornActivity extends AppCompatActivity
                                             creationTimeStamp, lastSignInTimeStamp);
                                     userRef.setValue(newUser);
 
-                                    Log.d("setupUser", "New user created: " + displayName);
+
 
                                     mUid = newUser.getUid();
                                     mUsername = newUser.getDisplayName();
@@ -743,16 +738,20 @@ public class AcornActivity extends AppCompatActivity
                                     startActivityForResult(editThemeIntent, RC_THEME_PREF);
                                     buildThemeKeyAndFilter(mUserThemePrefs);
 
-                                    Log.d(TAG, "setQuery: onCreate");
+
                                     if (mSavedInstanceState != null) {
                                         mQuery = mSavedInstanceState.getParcelable("Query");
+                                        if (mQuery == null) {
+                                            String hitsRef = SEARCH_REF + "/" + mThemeSearchKey + "/hits";
+                                            mQuery = new FbQuery(3, hitsRef, "pubDate");
+                                        }
                                     } else {
                                         String hitsRef = SEARCH_REF + "/" + mThemeSearchKey + "/hits";
                                         mQuery = new FbQuery(3, hitsRef, "pubDate");
                                     }
                                     setUpInitialViewModelObserver();
                                 } else {
-                                    Log.d(TAG, "user email verified: " + user.isEmailVerified());
+
                                     if (!user.isEmailVerified()) {
                                         AlertDialog.Builder builder = new AlertDialog.Builder(AcornActivity.this);
                                         builder.setMessage("Please verify your email address")
@@ -772,8 +771,8 @@ public class AcornActivity extends AppCompatActivity
                                     retrievedUser.setToken(userToken);
 
                                     userRef.updateChildren(retrievedUser.toMap());
-                                    Log.d(TAG, "User retrieved: " + retrievedUser.getDisplayName());
-                                    Log.d(TAG, "User retrieved: " + retrievedUser.getUid());
+
+
 
                                     mUid = retrievedUser.getUid();
                                     mUsername = retrievedUser.getDisplayName();
@@ -789,9 +788,13 @@ public class AcornActivity extends AppCompatActivity
                                     lastRecArticlesScheduleTime = retrievedUser.getLastRecArticlesScheduleTime();
                                     buildThemeKeyAndFilter(mUserThemePrefs);
 
-                                    Log.d(TAG, "setQuery: onCreate");
+
                                     if (mSavedInstanceState != null) {
                                         mQuery = mSavedInstanceState.getParcelable("Query");
+                                        if (mQuery == null) {
+                                            String hitsRef = SEARCH_REF + "/" + mThemeSearchKey + "/hits";
+                                            mQuery = new FbQuery(3, hitsRef, "pubDate");
+                                        }
                                     } else {
                                         String hitsRef = SEARCH_REF + "/" + mThemeSearchKey + "/hits";
                                         mQuery = new FbQuery(3, hitsRef, "pubDate");
@@ -815,9 +818,9 @@ public class AcornActivity extends AppCompatActivity
                                 if (articleNotifValue) {
                                     long now = (new Date()).getTime();
                                     long timeElapsedSinceLastPush = now - lastRecArticlesPushTime;
-                                    Log.d(TAG, "sharedPref: " + !mSharedPreferences.getBoolean("isRecArticlesScheduled", false));
-                                    Log.d(TAG, "lastPushTime: " + (timeElapsedSinceLastPush > 24L * 60L * 60L * 1000L));
-                                    Log.d(TAG, "lastScheduleTime: " + (lastRecArticlesScheduleTime < lastRecArticlesPushTime));
+
+
+
                                     if (!mSharedPreferences.getBoolean("isRecArticlesScheduled", false) ||
                                             (timeElapsedSinceLastPush > 24L * 60L * 60L * 1000L && // if last push time is longer than a day
                                                     lastRecArticlesScheduleTime < lastRecArticlesPushTime)) { // and last scheduled time is before last push time
@@ -923,7 +926,7 @@ public class AcornActivity extends AppCompatActivity
     @Override
     public void onLongClick(Article article, int id, String text) {
         if (id == R.id.card_theme) {
-            Log.d(TAG, "theme: " + article.getMainTheme());
+
             mQuery = new FbQuery(-1, article.getMainTheme(), 1);
         } else if (id == R.id.card_contributor) {
             mQuery = new FbQuery(-2, article.getSource(), 1);
@@ -966,13 +969,13 @@ public class AcornActivity extends AppCompatActivity
         // Set up view model
         ArticleViewModelFactory factory = InjectorUtils.provideArticleViewModelFactory(this.getApplicationContext());
         mArticleViewModel = ViewModelProviders.of(this, factory).get(ArticleViewModel.class);
-        Log.d(TAG, "AdapterCount: " + mAdapter.getItemCount());
+
 
         mArticleViewModel.newQuery.setValue(mQuery);
         LiveData<List<Article>> articleListLD = mArticleViewModel.getArticles();
         Observer<List<Article>> articleListObserver = articles -> {
             if (articles != null) {
-                Log.d(TAG, "articleList changed");
+
                 List<Article> combinedList = mLoadedList == null ?
                         new ArrayList<>() : new ArrayList<>(mLoadedList);
                 for (int i = 0; i < articles.size(); i++) {
@@ -990,6 +993,6 @@ public class AcornActivity extends AppCompatActivity
         if (mLlmState != null) {
             mLinearLayoutManager.onRestoreInstanceState(mLlmState);
         }
-        Log.d(TAG, "observer added to " + articleListLD);
+
     }
 }

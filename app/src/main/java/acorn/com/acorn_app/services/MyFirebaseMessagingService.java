@@ -144,7 +144,7 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
         } else {
             commentCount = String.valueOf(comments.size()) + " comments";
         }
-        Log.d(TAG, "comments: " + comments);
+
 
         if (data.get("title").length() > 24) {
             contentTitle = data.get("title").substring(0,23) + "...";
@@ -203,7 +203,7 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
                     data.get("mainTheme") + "·" + // extra
                     data.get("timestamp"); // timestamp
             sharedPrefs.edit().putString(key, value).apply();
-            Log.d(TAG, "value_key: " + key + ", value: " + value);
+
         } else {
             if (keys.equals("")) {
                 keys = key;
@@ -222,8 +222,8 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
                     data.get("timestamp"); // timestamp
             sharedPrefs.edit().putString(getString(R.string.notif_pref_key), keys)
                     .putString(key, value).apply();
-            Log.d(TAG, "keys_key: " + getString(R.string.notif_pref_key) + ", keys: " + keys);
-            Log.d(TAG, "value_key: " + key + ", value: " + value);
+
+
         }
         NotificationViewModel.sharedPrefs.postValue(sharedPrefs);
     }

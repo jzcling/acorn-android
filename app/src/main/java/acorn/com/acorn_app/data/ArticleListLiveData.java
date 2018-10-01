@@ -46,12 +46,10 @@ public class ArticleListLiveData extends LiveData<List<Article>> {
         public void run() {
             if (state != 2) {
                 query.removeEventListener(childListener);
-                Log.d(TAG, "childEventListener removed " + query.toString());
             } else {
                 for (Query query : savedArticlesQueryList) {
                     query.removeEventListener(valueListener);
                 }
-                Log.d(TAG, "valueEventListener removed " + savedArticlesQueryList.toString());
             }
             listenerRemovePending = false;
         }
@@ -72,11 +70,9 @@ public class ArticleListLiveData extends LiveData<List<Article>> {
     protected void onActive() {
         if (listenerRemovePending) {
             handler.removeCallbacks(removeListener);
-            Log.d(TAG, "removeListener callback removed");
         }
         else {
             if (state != 2) {
-                Log.d(TAG, "childEventListener added " + query.toString());
                 query.addChildEventListener(childListener);
             } else {
                 query.addListenerForSingleValueEvent(new ValueEventListener() {
@@ -94,13 +90,11 @@ public class ArticleListLiveData extends LiveData<List<Article>> {
                             Query articleQuery = mDatabaseReference.child("article/" + savedIdList.get(i));
                             savedArticlesQueryList.add(articleQuery);
                             articleQuery.addValueEventListener(valueListener);
-                            Log.d(TAG, "valueEventListener added " + articleQuery.toString());
                         }
                     }
 
                     @Override
                     public void onCancelled(@NonNull DatabaseError databaseError) {
-                        Log.d(TAG, "Failed to get saved articles id list");
                     }
                 });
             }
@@ -118,7 +112,6 @@ public class ArticleListLiveData extends LiveData<List<Article>> {
 
         @Override
         public void onChildAdded(@NonNull DataSnapshot dataSnapshot, String previousChildKey) {
-            Log.d(TAG, "childAdded");
             Article article = dataSnapshot.getValue(Article.class);
 
             if (!mArticleIds.contains(dataSnapshot.getKey())) {
@@ -130,7 +123,7 @@ public class ArticleListLiveData extends LiveData<List<Article>> {
 
         @Override
         public void onChildChanged(@NonNull DataSnapshot dataSnapshot, String previousChildKey) {
-            Log.d(TAG, "childChanged");
+
             Article newArticle = dataSnapshot.getValue(Article.class);
             String articleKey = dataSnapshot.getKey();
 
@@ -139,7 +132,7 @@ public class ArticleListLiveData extends LiveData<List<Article>> {
                 // Replace with the new data
                 mArticleList.set(articleIndex, newArticle);
             } else {
-                Log.w(TAG, "onChildChanged:unknown_child:" + articleKey);
+
             }
 
             setValue(mArticleList);
@@ -147,18 +140,18 @@ public class ArticleListLiveData extends LiveData<List<Article>> {
 
         @Override
         public void onChildRemoved(@NonNull DataSnapshot dataSnapshot) {
-            Log.d(TAG, "childRemoved");
+
             String articleKey = dataSnapshot.getKey();
 
             int articleIndex = mArticleIds.indexOf(articleKey);
             if (articleIndex > -1) {
                 // Remove data from the list
                 mArticleIds.remove(articleIndex);
-                Log.d(TAG, "onChildRemoved: articleIndex: " + articleIndex);
-                Log.d(TAG, "onChildRemoved: mArticleListSize: " + mArticleList.size());
+
+
                 mArticleList.remove(articleIndex);
             } else {
-                Log.w(TAG, "onChildRemoved:unknown_child:" + articleKey);
+
             }
 
             setValue(mArticleList);
@@ -166,7 +159,7 @@ public class ArticleListLiveData extends LiveData<List<Article>> {
 
         @Override
         public void onChildMoved(@NonNull DataSnapshot dataSnapshot, String previousChildKey) {
-            Log.d(TAG, "childMoved");
+
             Article movedArticle = dataSnapshot.getValue(Article.class);
             String articleKey = dataSnapshot.getKey();
 
@@ -187,7 +180,7 @@ public class ArticleListLiveData extends LiveData<List<Article>> {
 
         @Override
         public void onCancelled(@NonNull DatabaseError databaseError) {
-            Log.w(TAG, "onCancelled", databaseError.toException());
+
         }
 
     }
@@ -203,7 +196,7 @@ public class ArticleListLiveData extends LiveData<List<Article>> {
 
         @Override
         public void onCancelled(@NonNull DatabaseError databaseError) {
-            Log.w(TAG, "onCancelled", databaseError.toException());
+
         }
     }
 }

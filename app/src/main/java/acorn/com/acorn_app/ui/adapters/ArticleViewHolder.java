@@ -351,14 +351,14 @@ public class ArticleViewHolder extends RecyclerView.ViewHolder {
         // replace links in title with hyperlinks
         if (postText != null) {
             String tempPostText = postText.getText().toString();
-            Log.d(TAG, tempPostText);
+
             Pattern urlPattern = Pattern.compile("((?:https?://|www\\.)[a-zA-Z0-9+&@#/%=~_|$?!:,.-]*\\b)");
             Matcher m = urlPattern.matcher(tempPostText);
             if (m.find()) {
                 String truncatedLink = m.group(1).length() > 40 ?
                         m.group(1).substring(0, 37) + "..." : m.group(1);
                 tempPostText = m.replaceAll("<a href=\"$1\">" + truncatedLink + "</a>");
-                Log.d(TAG, tempPostText);
+
                 postText.setText(Html.fromHtml(tempPostText));
             }
         }

@@ -57,11 +57,11 @@ public class NotificationAdapter extends RecyclerView.Adapter<NotificationViewHo
         SharedPreferences sharedPrefs = mContext.getSharedPreferences(
                 mContext.getString(R.string.notif_pref_id), MODE_PRIVATE);
         String key = notif.type.equals("comment") ? "c_" + notif.articleId : "a_" + notif.articleId;
-        Log.d(TAG, "type: " + notif.type + ", key: " + key);
+
         String keys = sharedPrefs.getString(mContext.getString(R.string.notif_pref_key), "");
-        Log.d(TAG, "keys: " + keys);
+
         List<String> keyList = new ArrayList<>(Arrays.asList(keys.split("·")));
-        Log.d(TAG, "keyList: " + keyList);
+
         keyList.remove(key);
         String newKeys = null;
         for (String k : keyList) {
@@ -71,7 +71,7 @@ public class NotificationAdapter extends RecyclerView.Adapter<NotificationViewHo
                 newKeys += "·" + k;
             }
         }
-        Log.d(TAG, "newKeys: " + newKeys);
+
         sharedPrefs.edit().putString(mContext.getString(R.string.notif_pref_key), newKeys)
                 .remove(key)
                 .apply();

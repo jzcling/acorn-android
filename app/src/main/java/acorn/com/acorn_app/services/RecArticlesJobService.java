@@ -50,13 +50,13 @@ public class RecArticlesJobService extends JobService {
         sharedPrefs = PreferenceManager.getDefaultSharedPreferences(this);
         Long lastRecArticlesPushTime = sharedPrefs.getLong("lastRecArticlesPushTime", 0L);
         Long timeNow = (new Date()).getTime();
-        Log.d(TAG, "themeSearchKey: " + sharedPrefs.getString("themeSearchKey",""));
-        //Log.d(TAG, "searchRef: " + SEARCH_REF);
+
+        //
         themeSearchKey = sharedPrefs.getString("themeSearchKey", "");
         final String hitsRef = "search/" + themeSearchKey + "/hits";
-        Log.d(TAG, "hitsRef: " + hitsRef);
 
-        Log.d(TAG, "job started: " + params.getTag());
+
+
         mExecutors.networkIO().execute(
                 () -> mDataSource.getThemeData(() -> mDataSource.getRecommendedArticles(hitsRef, () -> mExecutors.networkIO().execute(() -> {
                     if (timeNow - lastRecArticlesPushTime > 6L * 60L * 60L * 1000L) { // 6 hours
@@ -64,7 +64,7 @@ public class RecArticlesJobService extends JobService {
                         mDataSource.recordLastRecArticlesPushTime();
                     }
                     jobFinished(params,true);
-                    Log.d(TAG, "job finished: " + params.getTag());
+
                 }))));
 
         return true;
@@ -72,7 +72,7 @@ public class RecArticlesJobService extends JobService {
 
     @Override
     public boolean onStopJob(JobParameters params) {
-        Log.d(TAG, "job stopped" + params.getTag());
+
         return true;
     }
 
@@ -137,7 +137,7 @@ public class RecArticlesJobService extends JobService {
                     String.valueOf(article.getPubDate()) + "·" + // extra
                     String.valueOf((new Date()).getTime()); // timestamp
             sharedPrefs.edit().putString(key, value).apply();
-            Log.d(TAG, "value_key: " + key + ", value: " + value);
+
 
             //Create notification
             inboxStyle.addLine(title);
@@ -195,7 +195,7 @@ public class RecArticlesJobService extends JobService {
         }
 
         sharedPrefs.edit().putString(getString(R.string.notif_pref_key), keys).apply();
-        Log.d(TAG, "keys_key: " + getString(R.string.notif_pref_key) + ", keys: " + keys);
+
         NotificationViewModel.sharedPrefs.postValue(sharedPrefs);
 
         notificationManager.notify(ARTICLE_NOTIFICATION_ID, summaryNotificationBuilder.build());

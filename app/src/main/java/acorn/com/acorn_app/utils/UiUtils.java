@@ -73,7 +73,7 @@ public class UiUtils implements RecyclerItemTouchHelper.RecyclerItemTouchHelperL
         if (viewHolder instanceof NotificationViewHolder) {
             // remove the item from recycler view
             mAdapter.removeItem(viewHolder.getAdapterPosition());
-            Log.d(TAG, "item removed");
+
         }
     }
 

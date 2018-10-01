@@ -12,7 +12,7 @@ public class DateUtils {
             rawFormat.setTimeZone(TimeZone.getTimeZone("GMT"));
 //            Date pubDate = rawFormat.parse(date);
             Date pubDate = new Date(-1L * date);
-//            Log.d("date", rawFormat.format(pubDate));
+//
             Date now = new Date();
 
             double diff = now.getTime() - pubDate.getTime();
@@ -53,7 +53,7 @@ public class DateUtils {
             Date pubDate = new Date(-1L * date);
             Date now = new Date();
             Date cutoff = newFormat.parse(rawFormat.format(now));
-//            Log.d("date", newFormat.format(cutoff));
+//
 
             if (pubDate.getTime() < cutoff.getTime()) {
                 return dateFormat.format(pubDate);

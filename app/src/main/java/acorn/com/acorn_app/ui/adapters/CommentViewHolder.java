@@ -120,14 +120,14 @@ public class CommentViewHolder extends RecyclerView.ViewHolder {
                 commentTextView.setText(commentText);
                 commentTextView.setVisibility(View.VISIBLE);
                 String tempCommentText = commentTextView.getText().toString();
-                Log.d(TAG, tempCommentText);
+
                 Pattern urlPattern = Pattern.compile("((?:https?://|www\\.)[a-zA-Z0-9+&@#/%=~_|$?!:,.-]*\\b)");
                 Matcher m = urlPattern.matcher(tempCommentText);
                 if (m.find()) {
                     String truncatedLink = m.group(1).length() > 40 ?
                             m.group(1).substring(0, 37) + "..." : m.group(1);
                     tempCommentText = m.replaceAll("<a href=\"$1\">" + truncatedLink + "</a>");
-                    Log.d(TAG, tempCommentText);
+
                     commentTextView.setText(Html.fromHtml(tempCommentText));
                 }
                 commentTextView.setMaxWidth(maxWidth);
@@ -189,7 +189,7 @@ public class CommentViewHolder extends RecyclerView.ViewHolder {
                 File dir = mContext.getDir("images", Context.MODE_PRIVATE);
                 File storedImage = new File(dir, key + ".jpg");
                 storageReference.getFile(storedImage).addOnSuccessListener(taskSnapshot -> {
-                    Log.d("imageSaved", comment.getCommentId());
+
                     comment.setLocalImageUri(Uri.fromFile(storedImage).toString());
                     loadImage(comment, isWifi);
                 });
