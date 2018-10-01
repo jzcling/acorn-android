@@ -344,11 +344,13 @@ public class AcornActivity extends AppCompatActivity
             case R.id.action_settings:
                 startActivityForResult(new Intent(this, SettingsActivity.class), RC_PREF);
                 return true;
-//            case R.id.action_clear_search_history:
-//                SearchRecentSuggestions suggestions = new SearchRecentSuggestions(this,
-//                        SearchProvider.AUTHORITY, SearchProvider.MODE);
-//                suggestions.clearHistory();
-//                return true;
+            case R.id.action_share_app:
+                Intent shareIntent = new Intent();
+                shareIntent.setType("text/plain");
+                shareIntent.putExtra(Intent.EXTRA_TEXT, "Get your favourite blog articles all in one app! http://acorncommunity.sg");
+                shareIntent.setAction(Intent.ACTION_SEND);
+                startActivity(Intent.createChooser(shareIntent, "Share app with"));
+                return true;
         }
 
         return super.onOptionsItemSelected(item);
@@ -500,13 +502,14 @@ public class AcornActivity extends AppCompatActivity
                 navMenu.findItem(R.id.nav_subscriptions).setChecked(true);
                 getThemeData();
             }
-        } else if (requestCode == RC_SHARE) {
-            if (resultCode == RESULT_OK) {
-                Log.d(TAG, "share ok");
-            } else {
-                Log.d(TAG, "share cancelled");
-            }
         }
+//        } else if (requestCode == RC_SHARE) {
+//            if (resultCode == RESULT_OK) {
+//                Log.d(TAG, "share ok");
+//            } else {
+//                Log.d(TAG, "share cancelled");
+//            }
+//        }
     }
 
     @Override

@@ -28,8 +28,8 @@
     <color name="card_text_color_faint">#a9a9a9</color>
 
     <!-- Comment -->
-    <color name="comment_self_background">#ffffdf</color>
-    <color name="comment_background">#C5B358</color>
+    <color name="comment_self_background">#ffffff</color>
+    <color name="comment_background">#eee8aa</color>
     <color name="comment_text_color">#292425</color>
     <color name="comment_editText_tint">#d8d8d8</color>
 

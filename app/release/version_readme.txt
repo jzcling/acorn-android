@@ -1,7 +1,8 @@
-v1.3b1
+v1.3b1, v1.3b2
 Subscriptions now filter by main themes instead of all themes
 Saved articles feed now populates more quickly
-TODO: notification log in (comments)
+Added option to share app
+Minor changes to share text
 
 v1.2b1, v1.2b2, v1.2b3, v1.2b4
 Revamp of sources to be more inclusive - now includes top lifestyle/food/travel/beauty/parenting blogs

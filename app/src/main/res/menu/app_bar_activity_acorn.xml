@@ -17,9 +17,9 @@
         android:orderInCategory="3"
         android:title="@string/action_settings"
         app:showAsAction="never" />
-    <!--<item-->
-        <!--android:id="@+id/action_clear_search_history"-->
-        <!--android:orderInCategory="3"-->
-        <!--android:title="@string/action_clear_search_history"-->
-        <!--app:showAsAction="never" />-->
+    <item
+        android:id="@+id/action_share_app"
+        android:orderInCategory="3"
+        android:title="@string/action_share_app"
+        app:showAsAction="never" />
 </menu>
