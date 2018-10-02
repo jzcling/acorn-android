@@ -68,6 +68,7 @@ public class NetworkDataSource {
     public static final String NOTIFICATION_TOKENS = "notificationTokens";
     public static final String COMMENTS_NOTIFICATION = "commentsNotificationValue";
     public static final String REC_ARTICLES_NOTIFICATION = "recArticlesNotificationValue";
+    public static final String ALGOLIA_REF = "algoliaApiKey";
 
     // Recommended articles
     public static List<Article> mRecArticleList;
@@ -77,9 +78,9 @@ public class NetworkDataSource {
     private List<Query> mSavedArticlesQueryList = new ArrayList<>();
 
     // Algolia
-    private static final Client ALGOLIA_CLIENT =
-            new Client("O96PPLSF19", "3b42d937aceab4818e2377325c76abf1"); // TODO: fetch key from server
-    private static final Index ALGOLIA_ARTICLE_INDEX = ALGOLIA_CLIENT.getIndex("article");
+    public static String mAlgoliaApiKey;
+    private static Client mAlgoliaClient;
+    private static Index mAlgoliaIndex;
 
     // For Singleton instantiation
     private static final Object LOCK = new Object();
@@ -197,12 +198,13 @@ public class NetworkDataSource {
     //        query.setFacets("*");
             query.setFilters(themeSearchFilter);
 
-            ALGOLIA_ARTICLE_INDEX.searchAsync(query, (jsonObject, e) -> {
+            mAlgoliaIndex.searchAsync(query, (jsonObject, e) -> {
                 String jsonString = jsonObject.toString();
-    //                    .replaceAll("(\".*?)\\.(.*?\":.*?)", "$1$2");
+                //                    .replaceAll("(\".*?)\\.(.*?\":.*?)", "$1$2");
                 Map<String, Object> jsonMap = new Gson().fromJson(
                         jsonString,
-                        new TypeToken<HashMap<String, Object>>() {}.getType());
+                        new TypeToken<HashMap<String, Object>>() {
+                        }.getType());
 
                 resultRef.setValue(jsonMap).addOnSuccessListener(aVoid -> {
                     resultRef.child("lastQueryTimestamp").setValue(new Date().getTime());
@@ -288,5 +290,19 @@ public class NetworkDataSource {
         if (mUid == null) mUid = mSharedPrefs.getString("uid", "");
         mDatabaseReference.child(USER_REF).child(mUid)
                 .child("lastRecArticlesScheduleTime").setValue((new Date()).getTime());
+    }
+
+    public void setupAlgoliaClient() {
+        mDatabaseReference.child(ALGOLIA_REF).addListenerForSingleValueEvent(new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+                mAlgoliaApiKey = dataSnapshot.getValue(String.class);
+                mAlgoliaClient = new Client("O96PPLSF19", mAlgoliaApiKey);
+                mAlgoliaIndex = mAlgoliaClient.getIndex("article");
+            }
+
+            @Override
+            public void onCancelled(@NonNull DatabaseError databaseError) { }
+        });
     }
 }

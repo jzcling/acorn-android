@@ -56,7 +56,6 @@ import acorn.com.acorn_app.models.User;
 import acorn.com.acorn_app.utils.AppExecutors;
 
 import static acorn.com.acorn_app.ui.activities.AcornActivity.ID_OFFSET;
-import static acorn.com.acorn_app.ui.activities.AcornActivity.TRENDING_INDEX_OFFSET;
 import static acorn.com.acorn_app.ui.activities.AcornActivity.mUid;
 import static acorn.com.acorn_app.ui.activities.AcornActivity.mUserToken;
 import static acorn.com.acorn_app.ui.activities.AcornActivity.mUsername;
@@ -169,7 +168,7 @@ public class CreatePostActivity extends AppCompatActivity {
             String postText = mPostTextView.getText().toString();
             String title = mHasTitle ? mArticleTitleView.getText().toString() : null;
             String source = mHasSource ? mArticleSourceView.getText().toString() : null;
-            String trendingIndex = TRENDING_INDEX_OFFSET + "_" + objectID;
+            String trendingIndex = String.valueOf(Math.round((ID_OFFSET + postDate)/10000000));
             String link = mLink;
             String mainTheme = mDropListView.getSelectedItem().toString();
 
@@ -389,9 +388,6 @@ public class CreatePostActivity extends AppCompatActivity {
                             mStorageImagePath = storageReference.getRoot().toString()
                                     + storageReference.getPath();
                             onUploadSuccess.run();
-                        } else {
-                            Log.w(TAG, "post image upload was not successful.",
-                                    task.getException());
                         }
                     });
             outStream.flush();

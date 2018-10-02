@@ -23,13 +23,16 @@ import org.greenrobot.eventbus.Subscribe;
 import org.json.JSONObject;
 
 import acorn.com.acorn_app.R;
+import acorn.com.acorn_app.data.NetworkDataSource;
+import acorn.com.acorn_app.utils.AppExecutors;
+
+import static acorn.com.acorn_app.data.NetworkDataSource.mAlgoliaApiKey;
 
 
 public class SearchActivity extends AppCompatActivity {
     private static final String TAG = "SearchActivity";
     private static final String ALGOLIA_APP_ID = "O96PPLSF19";
     private static final String ALGOLIA_INDEX_NAME = "article";
-    private static final String ALGOLIA_API_KEY = "3b42d937aceab4818e2377325c76abf1"; // TODO: fetch from server
 
     private ActionMenuView mAmvView;
 
@@ -49,7 +52,7 @@ public class SearchActivity extends AppCompatActivity {
         mAmvView = toolbar.findViewById(R.id.amvMenu);
         mAmvView.setOnMenuItemClickListener(this::onOptionsItemSelected);
 
-        mSearcher = Searcher.create(ALGOLIA_APP_ID, ALGOLIA_API_KEY, ALGOLIA_INDEX_NAME);
+        mSearcher = Searcher.create(ALGOLIA_APP_ID, mAlgoliaApiKey, ALGOLIA_INDEX_NAME);
         mHits = findViewById(R.id.hits);
 
         mHits.setOnItemClickListener((recyclerView, position, v) -> {

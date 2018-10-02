@@ -87,7 +87,6 @@ public class AcornActivity extends AppCompatActivity
     private static final String TAG = "AcornActivity";
 
     public static final long ID_OFFSET = 5000000000000000L;
-    public static final int TRENDING_INDEX_OFFSET = 500000;
     public static final int TARGET_POINTS_MULTIPLIER = 3;
 
     private static final int RC_SIGN_IN = 1001;
@@ -436,7 +435,6 @@ public class AcornActivity extends AppCompatActivity
                     signOutMenuItem.setVisible(true);
                 }
 
-
                 if (mArticleViewModel != null) mArticleViewModel.newQuery.postValue(mQuery);
             } else {
                 // Sign in failed
@@ -750,6 +748,7 @@ public class AcornActivity extends AppCompatActivity
                                         mQuery = new FbQuery(3, hitsRef, "pubDate");
                                     }
                                     setUpInitialViewModelObserver();
+                                    mDataSource.setupAlgoliaClient();
                                 } else {
 
                                     if (!user.isEmailVerified()) {
@@ -800,6 +799,7 @@ public class AcornActivity extends AppCompatActivity
                                         mQuery = new FbQuery(3, hitsRef, "pubDate");
                                     }
                                     setUpInitialViewModelObserver();
+                                    mDataSource.setupAlgoliaClient();
 
                                     if (mUsernameTextView != null) {
                                         mUsernameTextView.setText(mUsername);

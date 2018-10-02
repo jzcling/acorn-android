@@ -112,7 +112,6 @@ public class CommentActivity extends AppCompatActivity implements View.OnTouchLi
     private static final int RC_CAMERA = 2;
     private static final int RC_PREVIEW = 3;
     public static final int DEFAULT_COMMENT_LENGTH_LIMIT = 1000;
-    private static final String COMMENT_SENT_EVENT = "comment_sent";
 
     private static final String LLM_STATE = "llmState";
 
@@ -920,8 +919,6 @@ public class CommentActivity extends AppCompatActivity implements View.OnTouchLi
                                 updateArticleData();
                                 updateUserData(()->pushUrlComment(ref, pubDate));
                             } else {
-                                Log.w(TAG, "Image comment upload was not successful.",
-                                        task.getException());
                             }
                         });
                 outStream.flush();
