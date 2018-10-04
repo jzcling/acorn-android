@@ -50,6 +50,7 @@ import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 import acorn.com.acorn_app.models.Article;
+import acorn.com.acorn_app.models.Comment;
 import acorn.com.acorn_app.models.FbQuery;
 import acorn.com.acorn_app.services.RecArticlesJobService;
 import acorn.com.acorn_app.utils.AppExecutors;
@@ -69,6 +70,7 @@ public class NetworkDataSource {
     public static final String COMMENTS_NOTIFICATION = "commentsNotificationValue";
     public static final String REC_ARTICLES_NOTIFICATION = "recArticlesNotificationValue";
     public static final String ALGOLIA_REF = "algoliaApiKey";
+    public static final String REPORT_REF = "report";
 
     // Recommended articles
     public static List<Article> mRecArticleList;
@@ -198,17 +200,19 @@ public class NetworkDataSource {
     //        query.setFacets("*");
             query.setFilters(themeSearchFilter);
 
-            mAlgoliaIndex.searchAsync(query, (jsonObject, e) -> {
-                String jsonString = jsonObject.toString();
-                //                    .replaceAll("(\".*?)\\.(.*?\":.*?)", "$1$2");
-                Map<String, Object> jsonMap = new Gson().fromJson(
-                        jsonString,
-                        new TypeToken<HashMap<String, Object>>() {
-                        }.getType());
+            setupAlgoliaClient(() -> {
+                mAlgoliaIndex.searchAsync(query, (jsonObject, e) -> {
+                    String jsonString = jsonObject.toString();
+                    //                    .replaceAll("(\".*?)\\.(.*?\":.*?)", "$1$2");
+                    Map<String, Object> jsonMap = new Gson().fromJson(
+                            jsonString,
+                            new TypeToken<HashMap<String, Object>>() {
+                            }.getType());
 
-                resultRef.setValue(jsonMap).addOnSuccessListener(aVoid -> {
-                    resultRef.child("lastQueryTimestamp").setValue(new Date().getTime());
-                    mExecutors.mainThread().execute(bindToUi);
+                    resultRef.setValue(jsonMap).addOnSuccessListener(aVoid -> {
+                        resultRef.child("lastQueryTimestamp").setValue(new Date().getTime());
+                        mExecutors.mainThread().execute(bindToUi);
+                    });
                 });
             });
         });
@@ -292,13 +296,66 @@ public class NetworkDataSource {
                 .child("lastRecArticlesScheduleTime").setValue((new Date()).getTime());
     }
 
-    public void setupAlgoliaClient() {
+    public void setupAlgoliaClient(@Nullable Runnable onComplete) {
         mDatabaseReference.child(ALGOLIA_REF).addListenerForSingleValueEvent(new ValueEventListener() {
             @Override
             public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
                 mAlgoliaApiKey = dataSnapshot.getValue(String.class);
                 mAlgoliaClient = new Client("O96PPLSF19", mAlgoliaApiKey);
                 mAlgoliaIndex = mAlgoliaClient.getIndex("article");
+
+                if (onComplete != null) onComplete.run();
+            }
+
+            @Override
+            public void onCancelled(@NonNull DatabaseError databaseError) { }
+        });
+    }
+
+    public void reportPost(Article post) {
+        mDatabaseReference.child(ARTICLE_REF).child(post.getObjectID()).child("isReported")
+                .setValue(true);
+
+        DatabaseReference reportRef = mDatabaseReference.child(REPORT_REF);
+        reportRef.child("article").child(post.getObjectID()).setValue(post.getPostAuthorUid());
+
+        reportRef.child("user").child(post.getPostAuthorUid()).addListenerForSingleValueEvent(
+                new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+                Integer count = dataSnapshot.getValue(Integer.class);
+
+                if (count != null) {
+                    reportRef.child("user").child(post.getPostAuthorUid()).setValue(count + 1);
+                } else {
+                    reportRef.child("user").child(post.getPostAuthorUid()).setValue(1);
+                }
+            }
+
+            @Override
+            public void onCancelled(@NonNull DatabaseError databaseError) { }
+        });
+    }
+
+    public void reportComment(String articleId, Comment comment) {
+        mDatabaseReference.child(COMMENT_REF).child(articleId).child(comment.getCommentId())
+                .child("isReported").setValue(true);
+
+        DatabaseReference reportRef = mDatabaseReference.child(REPORT_REF);
+        reportRef.child("comment").child(articleId).child(comment.getCommentId())
+                .setValue(comment.getUid());
+
+        reportRef.child("user").child(comment.getUid()).addListenerForSingleValueEvent(
+                new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+                Integer count = dataSnapshot.getValue(Integer.class);
+
+                if (count != null) {
+                    reportRef.child("user").child(comment.getUid()).setValue(count + 1);
+                } else {
+                    reportRef.child("user").child(comment.getUid()).setValue(1);
+                }
             }
 
             @Override

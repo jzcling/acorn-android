@@ -115,8 +115,10 @@ public class ArticleListLiveData extends LiveData<List<Article>> {
             Article article = dataSnapshot.getValue(Article.class);
 
             if (!mArticleIds.contains(dataSnapshot.getKey())) {
-                mArticleIds.add(dataSnapshot.getKey());
-                mArticleList.add(article);
+                if (article != null && !article.isReported) {
+                    mArticleIds.add(dataSnapshot.getKey());
+                    mArticleList.add(article);
+                }
             }
             setValue(mArticleList);
         }
@@ -129,10 +131,15 @@ public class ArticleListLiveData extends LiveData<List<Article>> {
 
             int articleIndex = mArticleIds.indexOf(articleKey);
             if (articleIndex > -1) {
-                // Replace with the new data
-                mArticleList.set(articleIndex, newArticle);
-            } else {
-
+                if (newArticle != null) {
+                    if (newArticle.isReported) {
+                        mArticleIds.remove(articleIndex);
+                        mArticleList.remove(articleIndex);
+                    } else {
+                        // Replace with the new data
+                        mArticleList.set(articleIndex, newArticle);
+                    }
+                }
             }
 
             setValue(mArticleList);

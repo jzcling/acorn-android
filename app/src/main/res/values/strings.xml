@@ -37,6 +37,7 @@
 
     <!-- Card -->
     <string name="card_theme_others">General</string>
+    <string name="action_report_post">"Report post"</string>
 
     <!-- Preferences -->
     <string name="pref_activity_title">Settings</string>

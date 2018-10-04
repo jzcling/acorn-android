@@ -305,7 +305,7 @@ public class CommentActivity extends AppCompatActivity implements View.OnTouchLi
         mLinearLayoutManager = new LinearLayoutManager(this);
         mLinearLayoutManager.setStackFromEnd(true);
         mCommentRecyclerView.setLayoutManager(mLinearLayoutManager);
-        mAdapter = (CommentAdapter) new CommentAdapter(this, getOptions(mCommentRef));
+        mAdapter = (CommentAdapter) new CommentAdapter(this, mArticleId, getOptions(mCommentRef));
         mAdapter.registerAdapterDataObserver(new RecyclerView.AdapterDataObserver() {
             @Override
             public void onItemRangeInserted(int positionStart, int itemCount) {

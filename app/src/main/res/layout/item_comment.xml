@@ -59,7 +59,6 @@
             android:textSize="@dimen/comment_font_size"
             android:textColor="@color/comment_text_color"
             android:text="comment"
-            android:textIsSelectable="true"
             android:linksClickable="true"
             android:textColorHighlight="@color/search_highlight"
             app:layout_constraintStart_toStartOf="parent"

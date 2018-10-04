@@ -36,6 +36,7 @@ import android.widget.ArrayAdapter;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.algolia.instantsearch.helpers.Searcher;
 import com.firebase.ui.auth.AuthUI;
 import com.firebase.ui.auth.ErrorCodes;
 import com.firebase.ui.auth.IdpResponse;
@@ -78,6 +79,7 @@ import static acorn.com.acorn_app.data.NetworkDataSource.COMMENTS_NOTIFICATION;
 import static acorn.com.acorn_app.data.NetworkDataSource.PREFERENCES_REF;
 import static acorn.com.acorn_app.data.NetworkDataSource.REC_ARTICLES_NOTIFICATION;
 import static acorn.com.acorn_app.data.NetworkDataSource.SEARCH_REF;
+import static acorn.com.acorn_app.data.NetworkDataSource.mAlgoliaApiKey;
 import static acorn.com.acorn_app.utils.UiUtils.createToast;
 
 public class AcornActivity extends AppCompatActivity
@@ -171,6 +173,11 @@ public class AcornActivity extends AppCompatActivity
     
     //Menu
     private Menu navMenu;
+
+    //InstantSearch
+    public static Searcher mSearcher;
+    private static final String ALGOLIA_APP_ID = "O96PPLSF19";
+    private static final String ALGOLIA_INDEX_NAME = "article";
 
     private Bundle mSavedInstanceState;
 
@@ -748,7 +755,9 @@ public class AcornActivity extends AppCompatActivity
                                         mQuery = new FbQuery(3, hitsRef, "pubDate");
                                     }
                                     setUpInitialViewModelObserver();
-                                    mDataSource.setupAlgoliaClient();
+                                    mDataSource.setupAlgoliaClient(() -> {
+                                        mSearcher = Searcher.create(ALGOLIA_APP_ID, mAlgoliaApiKey, ALGOLIA_INDEX_NAME);
+                                    });
                                 } else {
 
                                     if (!user.isEmailVerified()) {
@@ -799,7 +808,9 @@ public class AcornActivity extends AppCompatActivity
                                         mQuery = new FbQuery(3, hitsRef, "pubDate");
                                     }
                                     setUpInitialViewModelObserver();
-                                    mDataSource.setupAlgoliaClient();
+                                    mDataSource.setupAlgoliaClient(() -> {
+                                        mSearcher = Searcher.create(ALGOLIA_APP_ID, mAlgoliaApiKey, ALGOLIA_INDEX_NAME);
+                                    });
 
                                     if (mUsernameTextView != null) {
                                         mUsernameTextView.setText(mUsername);

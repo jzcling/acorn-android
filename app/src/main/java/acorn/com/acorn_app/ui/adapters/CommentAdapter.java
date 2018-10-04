@@ -16,6 +16,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import acorn.com.acorn_app.R;
+import acorn.com.acorn_app.models.Article;
 import acorn.com.acorn_app.models.Comment;
 
 import static acorn.com.acorn_app.ui.activities.AcornActivity.mUid;
@@ -26,10 +27,12 @@ import static android.text.Spanned.SPAN_INCLUSIVE_INCLUSIVE;
 public class CommentAdapter extends FirebaseRecyclerAdapter<Comment, CommentViewHolder> {
     private static final String TAG = "CommentAdapter";
     private final Context mContext;
+    private final String mArticleId;
 
-    public CommentAdapter(Context context, FirebaseRecyclerOptions<Comment> options) {
+    public CommentAdapter(Context context, String articleId, FirebaseRecyclerOptions<Comment> options) {
         super(options);
         mContext = context;
+        mArticleId = articleId;
     }
 
     @NonNull
@@ -47,7 +50,7 @@ public class CommentAdapter extends FirebaseRecyclerAdapter<Comment, CommentView
 
     @Override
     protected void onBindViewHolder(@NonNull CommentViewHolder holder, int position, @NonNull Comment comment) {
-        holder.bind(comment);
+        holder.bind(mArticleId, comment);
     }
 
     @Override

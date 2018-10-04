@@ -36,6 +36,7 @@ public class Article {
     public final Map<String, Long> sharers = new HashMap<>();
     public final Map<String, String> notificationTokens = new HashMap<>();
     public boolean changedSinceLastJob = true;
+    public boolean isReported = false;
 
     public Article() {}
 

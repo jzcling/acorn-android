@@ -11,6 +11,7 @@ public class Comment {
     private boolean isUrl;
     private String urlSource;
     private String urlLink;
+    public boolean isReported = false;
 
     public Comment() {}
 

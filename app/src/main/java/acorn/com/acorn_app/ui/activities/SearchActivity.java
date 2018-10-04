@@ -31,8 +31,6 @@ import static acorn.com.acorn_app.data.NetworkDataSource.mAlgoliaApiKey;
 
 public class SearchActivity extends AppCompatActivity {
     private static final String TAG = "SearchActivity";
-    private static final String ALGOLIA_APP_ID = "O96PPLSF19";
-    private static final String ALGOLIA_INDEX_NAME = "article";
 
     private ActionMenuView mAmvView;
 
@@ -52,7 +50,8 @@ public class SearchActivity extends AppCompatActivity {
         mAmvView = toolbar.findViewById(R.id.amvMenu);
         mAmvView.setOnMenuItemClickListener(this::onOptionsItemSelected);
 
-        mSearcher = Searcher.create(ALGOLIA_APP_ID, mAlgoliaApiKey, ALGOLIA_INDEX_NAME);
+        this.mSearcher = AcornActivity.mSearcher;
+
         mHits = findViewById(R.id.hits);
 
         mHits.setOnItemClickListener((recyclerView, position, v) -> {

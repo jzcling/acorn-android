@@ -1,5 +1,6 @@
 package acorn.com.acorn_app.ui.adapters;
 
+import android.app.AlertDialog;
 import android.app.Dialog;
 import android.content.Context;
 import android.content.Intent;
@@ -7,6 +8,7 @@ import android.graphics.Bitmap;
 import android.net.ConnectivityManager;
 import android.net.Uri;
 import android.support.constraint.ConstraintLayout;
+import android.support.v4.view.GravityCompat;
 import android.support.v7.widget.RecyclerView;
 import android.text.Html;
 import android.text.method.LinkMovementMethod;
@@ -29,6 +31,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import acorn.com.acorn_app.R;
+import acorn.com.acorn_app.data.NetworkDataSource;
 import acorn.com.acorn_app.models.Comment;
 import acorn.com.acorn_app.utils.AppExecutors;
 import acorn.com.acorn_app.utils.DateUtils;
@@ -40,9 +43,11 @@ import static android.net.ConnectivityManager.TYPE_WIFI;
 public class CommentViewHolder extends RecyclerView.ViewHolder {
     private static final String TAG = "CommentViewHolder";
     private final Context mContext;
-    private final Executor networkIO = AppExecutors.getInstance().networkIO();
-    private final Executor mainThread = AppExecutors.getInstance().mainThread();
 
+    private NetworkDataSource mDataSource;
+    private final AppExecutors mExecutors = AppExecutors.getInstance();
+
+    private final ViewGroup commentMainLayout;
     public final TextView commentTextView;
     private final ImageView commentImageView;
     private final TextView commenterTextView;
@@ -60,6 +65,10 @@ public class CommentViewHolder extends RecyclerView.ViewHolder {
     public CommentViewHolder(Context context, View view) {
         super(view);
         mContext = context;
+
+        mDataSource = NetworkDataSource.getInstance(mContext, mExecutors);
+
+        commentMainLayout = (ConstraintLayout) itemView.findViewById(R.id.commentMainLayout);
         commentTextView = (TextView) itemView.findViewById(R.id.commentTextView);
         commentTextView.setMovementMethod(LinkMovementMethod.getInstance());
         commentImageView = (ImageView) itemView.findViewById(R.id.commentImageView);
@@ -76,81 +85,134 @@ public class CommentViewHolder extends RecyclerView.ViewHolder {
         maxUrlWidth = (int) Math.floor(0.8f * maxWidth);
     }
 
-    public void bind(Comment comment) {
+    public void bind(String articleId, Comment comment) {
         ConnectivityManager cm = (ConnectivityManager)
                 mContext.getSystemService(Context.CONNECTIVITY_SERVICE);
         boolean isWifi = cm.getNetworkInfo(TYPE_WIFI).isConnected();
 
-        if (comment.getIsUrl()) {
-            commentTextView.setVisibility(View.GONE);
-            commentImageView.setVisibility(View.GONE);
-            commentDownloadImageView.setVisibility(View.GONE);
-            if (commenterTextView != null) commenterTextView.setVisibility(View.GONE);
-            commentDateTextView.setVisibility(View.GONE);
-
-            urlLayout.setVisibility(View.VISIBLE);
-            urlTitleView.setText(comment.getCommentText());
-            urlTitleView.setMaxWidth(maxUrlWidth);
-            if (comment.geturlSource() != null) {
-                urlSourceView.setText(comment.geturlSource());
-                urlSourceView.setMaxWidth(maxUrlWidth);
-            } else {
-                urlSourceView.setVisibility(View.GONE);
-            }
-            if (comment.getImageUrl() != null) {
-                Glide.with(mContext)
-                        .load(comment.getImageUrl())
-                        .apply(new RequestOptions()
-                                .placeholder(R.drawable.loading_spinner))
-                        .into(urlImageView);
-            } else {
-                urlImageView.setVisibility(View.GONE);
-            }
-            if (comment.getUrlLink() != null) {
-                urlLayout.setOnClickListener(v -> mContext.startActivity(
-                        new Intent(Intent.ACTION_VIEW, Uri.parse(comment.getUrlLink()))));
-            }
-        } else {
+        if (comment.isReported) {
             urlLayout.setVisibility(View.GONE);
             if (commenterTextView != null) commenterTextView.setVisibility(View.VISIBLE);
             commentDateTextView.setVisibility(View.VISIBLE);
+            commentImageView.setVisibility(View.GONE);
+            commentDownloadImageView.setVisibility(View.GONE);
 
-            if (comment.getCommentText() != null && !comment.getCommentText().equals("")) {
-                String commentText = comment.getCommentText();
-                commentTextView.setText(commentText);
-                commentTextView.setVisibility(View.VISIBLE);
-                String tempCommentText = commentTextView.getText().toString();
+            commentTextView.setText("Comment reported for inappropriate content");
+            commentTextView.setTextColor(mContext.getResources().getColor(R.color.card_button_default));
+            commentTextView.setMaxWidth(maxWidth);
 
-                Pattern urlPattern = Pattern.compile("((?:https?://|www\\.)[a-zA-Z0-9+&@#/%=~_|$?!:,.-]*\\b)");
-                Matcher m = urlPattern.matcher(tempCommentText);
-                if (m.find()) {
-                    String truncatedLink = m.group(1).length() > 40 ?
-                            m.group(1).substring(0, 37) + "..." : m.group(1);
-                    tempCommentText = m.replaceAll("<a href=\"$1\">" + truncatedLink + "</a>");
-
-                    commentTextView.setText(Html.fromHtml(tempCommentText));
-                }
-                commentTextView.setMaxWidth(maxWidth);
-            } else {
+            if (commenterTextView != null)
+                commenterTextView.setText(comment.getUserDisplayName());
+            commentDateTextView.setText(DateUtils.parseCommentDate(comment.getPubDate()));
+        } else {
+            if (comment.getIsUrl()) {
                 commentTextView.setVisibility(View.GONE);
-            }
-            if (comment.getImageUrl() != null) {
-                loadImage(comment, isWifi);
-            } else {
                 commentImageView.setVisibility(View.GONE);
                 commentDownloadImageView.setVisibility(View.GONE);
-            }
-            if (commenterTextView != null) commenterTextView.setText(comment.getUserDisplayName());
-            commentDateTextView.setText(DateUtils.parseCommentDate(comment.getPubDate()));
-        }
+                if (commenterTextView != null) commenterTextView.setVisibility(View.GONE);
+                commentDateTextView.setVisibility(View.GONE);
 
-//        if (comment.getText() != null) {
-//            // write this comment to the on-device index
-//            FirebaseAppIndex.getInstance().update(getMessageIndexable(comment));
-//        }
-//
-//        // log a view action on it
-//        FirebaseUserActions.getInstance().end(getMessageViewAction(comment));
+                urlLayout.setVisibility(View.VISIBLE);
+                urlTitleView.setText(comment.getCommentText());
+                urlTitleView.setMaxWidth(maxUrlWidth);
+                if (comment.geturlSource() != null) {
+                    urlSourceView.setText(comment.geturlSource());
+                    urlSourceView.setMaxWidth(maxUrlWidth);
+                } else {
+                    urlSourceView.setVisibility(View.GONE);
+                }
+                if (comment.getImageUrl() != null) {
+                    Glide.with(mContext)
+                            .load(comment.getImageUrl())
+                            .apply(new RequestOptions()
+                                    .placeholder(R.drawable.loading_spinner))
+                            .into(urlImageView);
+                } else {
+                    urlImageView.setVisibility(View.GONE);
+                }
+                if (comment.getUrlLink() != null) {
+                    urlLayout.setOnClickListener(v -> mContext.startActivity(
+                            new Intent(Intent.ACTION_VIEW, Uri.parse(comment.getUrlLink()))));
+                }
+
+                urlLayout.setOnLongClickListener(v -> {
+                    createReportDialog(articleId, comment);
+                    return true;
+                });
+                urlTitleView.setOnLongClickListener(v -> {
+                    createReportDialog(articleId, comment);
+                    return true;
+                });
+                urlImageView.setOnLongClickListener(v -> {
+                    createReportDialog(articleId, comment);
+                    return true;
+                });
+                urlSourceView.setOnLongClickListener(v -> {
+                    createReportDialog(articleId, comment);
+                    return true;
+                });
+            } else {
+                urlLayout.setVisibility(View.GONE);
+                if (commenterTextView != null) commenterTextView.setVisibility(View.VISIBLE);
+                commentDateTextView.setVisibility(View.VISIBLE);
+
+                if (comment.getCommentText() != null && !comment.getCommentText().equals("")) {
+                    String commentText = comment.getCommentText();
+                    commentTextView.setText(commentText);
+                    commentTextView.setVisibility(View.VISIBLE);
+                    String tempCommentText = commentTextView.getText().toString();
+
+                    Pattern urlPattern = Pattern.compile("((?:https?://|www\\.)[a-zA-Z0-9+&@#/%=~_|$?!:,.-]*\\b)");
+                    Matcher m = urlPattern.matcher(tempCommentText);
+                    if (m.find()) {
+                        String truncatedLink = m.group(1).length() > 40 ?
+                                m.group(1).substring(0, 37) + "..." : m.group(1);
+                        tempCommentText = m.replaceAll("<a href=\"$1\">" + truncatedLink + "</a>");
+
+                        commentTextView.setText(Html.fromHtml(tempCommentText));
+                    }
+                    commentTextView.setMaxWidth(maxWidth);
+                } else {
+                    commentTextView.setVisibility(View.GONE);
+                }
+                if (comment.getImageUrl() != null) {
+                    loadImage(comment, isWifi);
+                } else {
+                    commentImageView.setVisibility(View.GONE);
+                    commentDownloadImageView.setVisibility(View.GONE);
+                }
+                if (commenterTextView != null)
+                    commenterTextView.setText(comment.getUserDisplayName());
+                commentDateTextView.setText(DateUtils.parseCommentDate(comment.getPubDate()));
+
+                commentMainLayout.setOnLongClickListener(v -> {
+                    createReportDialog(articleId, comment);
+                    return true;
+                });
+                commentTextView.setOnLongClickListener(v -> {
+                    createReportDialog(articleId, comment);
+                    return true;
+                });
+                commentImageView.setOnLongClickListener(v -> {
+                    createReportDialog(articleId, comment);
+                    return true;
+                });
+            }
+        }
+    }
+
+    private void createReportDialog(String articleId, Comment comment) {
+        AlertDialog.Builder builder = new AlertDialog.Builder(mContext);
+        builder.setMessage("Report comment for inappropriate content?")
+                .setCancelable(true)
+                .setPositiveButton("Report", (dialog, which) -> {
+                    mExecutors.networkIO().execute(() -> {
+                        mDataSource.reportComment(articleId, comment);
+                    });
+                })
+                .setNegativeButton("Cancel", (dialog, which) -> dialog.cancel());
+        AlertDialog alertDialog = builder.create();
+        alertDialog.show();
     }
 
     private void loadImage(Comment comment, boolean isWifi) {
@@ -194,14 +256,14 @@ public class CommentViewHolder extends RecyclerView.ViewHolder {
                     loadImage(comment, isWifi);
                 });
             } else {
-                networkIO.execute(() -> {
+                mExecutors.networkIO().execute(() -> {
                     try {
                         Bitmap bitmap = IOUtils.getBitmapFromUrl(imageUrl);
                         File dir = mContext.getDir("images", Context.MODE_PRIVATE);
                         File storedImage = new File(dir, key + ".jpg");
                         FileOutputStream outStream = new FileOutputStream(storedImage);
                         bitmap.compress(Bitmap.CompressFormat.JPEG, 30, outStream);
-                        mainThread.execute(() -> {
+                        mExecutors.mainThread().execute(() -> {
                             comment.setLocalImageUri(Uri.fromFile(storedImage).toString());
                             loadImage(comment, isWifi);
                         });

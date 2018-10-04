@@ -9,9 +9,12 @@ import android.support.v7.widget.RecyclerView;
 import android.text.Html;
 import android.util.Log;
 import android.view.HapticFeedbackConstants;
+import android.view.MenuItem;
 import android.view.View;
 import android.widget.CheckBox;
+import android.widget.ImageButton;
 import android.widget.ImageView;
+import android.widget.PopupMenu;
 import android.widget.TextView;
 
 import com.bumptech.glide.Glide;
@@ -23,7 +26,9 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import acorn.com.acorn_app.R;
+import acorn.com.acorn_app.data.NetworkDataSource;
 import acorn.com.acorn_app.models.Article;
+import acorn.com.acorn_app.utils.AppExecutors;
 import acorn.com.acorn_app.utils.DateUtils;
 
 import static acorn.com.acorn_app.ui.activities.AcornActivity.mUid;
@@ -58,6 +63,7 @@ public class ArticleViewHolder extends RecyclerView.ViewHolder {
     private CheckBox commentView;
     private CheckBox favView;
     private CheckBox shareView;
+    private ImageButton optionsButton;
 
     private TextView postAuthor;
     private TextView postDate;
@@ -66,6 +72,9 @@ public class ArticleViewHolder extends RecyclerView.ViewHolder {
     private CardView cardArticle;
     private boolean isExpanded = false;
 
+    private NetworkDataSource mDataSource;
+    private final AppExecutors mExecutors = AppExecutors.getInstance();
+
     public ArticleViewHolder(Context context, View view, String cardType, String articleType,
                              ArticleAdapter.OnLongClickListener longClickListener) {
         super(view);
@@ -73,6 +82,8 @@ public class ArticleViewHolder extends RecyclerView.ViewHolder {
         mCardType = cardType;
         mArticleType = articleType;
         this.longClickListener = longClickListener;
+
+        mDataSource = NetworkDataSource.getInstance(mContext, mExecutors);
 
         title = (TextView) view.findViewById(R.id.card_title);
         contributor = (TextView) view.findViewById(R.id.card_contributor);
@@ -96,6 +107,8 @@ public class ArticleViewHolder extends RecyclerView.ViewHolder {
                 postExpand = (ImageView) view.findViewById(R.id.post_expand);
                 postImage = (ImageView) view.findViewById(R.id.post_image);
                 cardArticle = (CardView) view.findViewById(R.id.card_article);
+
+                optionsButton = (ImageButton) view.findViewById(R.id.card_button_options);
             }
             theme = (TextView) view.findViewById(R.id.card_theme);
 
@@ -260,6 +273,24 @@ public class ArticleViewHolder extends RecyclerView.ViewHolder {
                     postImage.setOnClickListener(onClickListener(article, "postImage"));
                     cardArticle.setOnClickListener(onClickListener(article, "postImage"));
                 }
+
+                optionsButton.setVisibility(View.VISIBLE);
+                optionsButton.setOnClickListener(v -> {
+                    PopupMenu popup = new PopupMenu(mContext, optionsButton);
+                    popup.inflate(R.menu.card_options_menu);
+                    popup.setOnMenuItemClickListener(item -> {
+                        switch (item.getItemId()) {
+                            case R.id.action_report_post:
+                                mExecutors.networkIO().execute(() -> {
+                                    mDataSource.reportPost(article);
+                                });
+                                return true;
+                            default:
+                                return false;
+                        }
+                    });
+                    popup.show();
+                });
             }
             theme.setText(article.getMainTheme());
             theme.setOnClickListener(v -> {
