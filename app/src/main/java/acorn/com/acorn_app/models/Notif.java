@@ -11,9 +11,11 @@ public class Notif {
     public final String theme;
     public final String extra;
     public final Long timestamp;
+    public final String link;
 
     public Notif(String type, String articleId, String text, String title,
-                 String source, String imageUrl, String theme, String extra, Long timestamp) {
+                 String source, String imageUrl, String theme, String extra,
+                 Long timestamp, String link) {
         this.type = type;
 //        this.index = index;
         this.articleId = articleId;
@@ -24,5 +26,6 @@ public class Notif {
         this.theme = theme;
         this.extra = extra;
         this.timestamp = timestamp;
+        this.link = link;
     }
 }

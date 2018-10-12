@@ -37,7 +37,6 @@ public class FbQuery implements Parcelable {
         } else if (state == 1) { // Trending
             orderByChild = "trendingIndex";
         } else if (state == 2) { // Saved articles
-//            orderByChild = "savers/" + mUid;
         } else if (state == -1) { // mainTheme
             orderByChild = "mainTheme";
         } else if (state == -2) { // source

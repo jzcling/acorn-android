@@ -37,6 +37,7 @@
     <color name="webview_background">#181a1b</color>
     <color name="webview_text_color">#dbd6d8</color>
     <color name="webview_subtitle_color">#bbbbbb</color>
+    <color name="webview_quote_background_color">#cdcdcd</color>
 
     <!-- User -->
     <color name="user_background">#181a1b</color>

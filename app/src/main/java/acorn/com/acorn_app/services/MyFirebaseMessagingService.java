@@ -24,6 +24,7 @@ import java.util.Map;
 import acorn.com.acorn_app.R;
 import acorn.com.acorn_app.ui.activities.AcornActivity;
 import acorn.com.acorn_app.ui.activities.CommentActivity;
+import acorn.com.acorn_app.ui.activities.WebViewActivity;
 import acorn.com.acorn_app.ui.viewModels.NotificationViewModel;
 import acorn.com.acorn_app.utils.AppExecutors;
 
@@ -37,22 +38,25 @@ import static android.support.v4.app.NotificationCompat.PRIORITY_HIGH;
 import static android.support.v4.app.NotificationCompat.VISIBILITY_PUBLIC;
 
 public class MyFirebaseMessagingService extends FirebaseMessagingService {
-    private static final String TAG = "MyFirebaseMsgService";
+    private static final String TAG = "FirebaseMsgService";
+
+    private static NotificationManager mNotificationManager;
+    
     private final int COMMENT_NOTIFICATION_ID = 9001;
-    private final AppExecutors mExecutors = AppExecutors.getInstance();
-
-    private final String GROUP_NAME = "comments";
-    private final int SUMMARY_PENDINGINTENT_RC = 501;
-    private String CHANNEL_ID;
-    private String CHANNEL_NAME;
-
-    private static NotificationCompat.Builder notificationBuilder;
-    private static NotificationCompat.Builder summaryNotificationBuilder;
-    private static NotificationManager notificationManager;
+    private final String COMMENT_GROUP_NAME = "comments";
+    private final int COMMENT_SUMMARY_PENDINGINTENT_RC = 501;
+    private static NotificationCompat.Builder commentNotificationBuilder;
+    private static NotificationCompat.Builder commentSummaryNotificationBuilder;
+    
+    private final int MANUAL_ARTICLE_NOTIFICATION_ID = 9003;
+    private final String MANUAL_ARTICLE_GROUP_NAME = "manualArticle";
+    private final int MANUAL_ARTICLE_PENDINGINTENT_RC = 503;
+    private static NotificationCompat.Builder manualArticleNotificationBuilder;
+    
 
     private void sendRegistrationToServer(String token) {
         DatabaseReference user = FirebaseDatabase.getInstance()
-                .getReference("user/" + mUid + "/instanceId");
+                .getReference("user/" + mUid + "/token");
         user.setValue(token);
     }
 
@@ -65,16 +69,18 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
     @Override
     public void onCreate() {
         super.onCreate();
-        CHANNEL_ID = getString(R.string.comment_notification_channel_id);
-        CHANNEL_NAME = getString(R.string.comment_notification_channel_name);
-        notificationManager =
+
+        mNotificationManager =
                 (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
-        summaryNotificationBuilder =
-                new NotificationCompat.Builder(this, CHANNEL_ID)
+
+        String COMMENT_CHANNEL_ID = getString(R.string.comment_notification_channel_id);
+        String COMMENT_CHANNEL_NAME = getString(R.string.comment_notification_channel_name);
+        commentSummaryNotificationBuilder =
+                new NotificationCompat.Builder(this, COMMENT_CHANNEL_ID)
                         .setSmallIcon(R.drawable.ic_launcher)
                         .setAutoCancel(true)
                         .setOnlyAlertOnce(true)
-                        .setGroup(GROUP_NAME)
+                        .setGroup(COMMENT_GROUP_NAME)
                         .setGroupSummary(true)
                         .setDefaults(DEFAULT_SOUND|DEFAULT_VIBRATE)
                         .setLights(Color.YELLOW, 700, 300)
@@ -82,24 +88,49 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
                         .setCategory(CATEGORY_SOCIAL)
                         .setVisibility(VISIBILITY_PUBLIC);
 
-        notificationBuilder =
-                new NotificationCompat.Builder(this, CHANNEL_ID)
+        commentNotificationBuilder =
+                new NotificationCompat.Builder(this, COMMENT_CHANNEL_ID)
                         .setSmallIcon(R.drawable.ic_launcher)
                         .setAutoCancel(true)
-                        .setGroup(GROUP_NAME)
+                        .setGroup(COMMENT_GROUP_NAME)
                         .setGroupAlertBehavior(GROUP_ALERT_SUMMARY);
 
         // Since android Oreo notification channel is needed.
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            NotificationChannel channel = new NotificationChannel(CHANNEL_ID,
-                    CHANNEL_NAME,
+            NotificationChannel channel = new NotificationChannel(COMMENT_CHANNEL_ID,
+                    COMMENT_CHANNEL_NAME,
                     NotificationManager.IMPORTANCE_HIGH);
             channel.setShowBadge(true);
-            channel.canShowBadge();
             channel.enableLights(true);
             channel.setLightColor(Color.YELLOW);
             channel.enableVibration(true);
-            notificationManager.createNotificationChannel(channel);
+            mNotificationManager.createNotificationChannel(channel);
+        }
+
+        String MANUAL_ARTICLE_CHANNEL_ID = getString(R.string.manual_article_notification_channel_id);
+        String MANUAL_ARTICLE_CHANNEL_NAME = getString(R.string.manual_article_notification_channel_name);
+
+        manualArticleNotificationBuilder =
+                new NotificationCompat.Builder(this, MANUAL_ARTICLE_CHANNEL_ID)
+                        .setSmallIcon(R.drawable.ic_launcher)
+                        .setAutoCancel(true)
+                        .setGroup(MANUAL_ARTICLE_GROUP_NAME)
+                        .setGroupAlertBehavior(GROUP_ALERT_SUMMARY)
+                        .setDefaults(DEFAULT_SOUND|DEFAULT_VIBRATE)
+                        .setLights(Color.YELLOW, 700, 300)
+                        .setPriority(PRIORITY_HIGH)
+                        .setVisibility(VISIBILITY_PUBLIC);
+
+        // Since android Oreo notification channel is needed.
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            NotificationChannel channel = new NotificationChannel(MANUAL_ARTICLE_CHANNEL_ID,
+                    MANUAL_ARTICLE_CHANNEL_NAME,
+                    NotificationManager.IMPORTANCE_HIGH);
+            channel.setShowBadge(true);
+            channel.enableLights(true);
+            channel.setLightColor(Color.YELLOW);
+            channel.enableVibration(true);
+            mNotificationManager.createNotificationChannel(channel);
         }
     }
 
@@ -110,9 +141,12 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
      */
     @Override
     public void onMessageReceived(RemoteMessage remoteMessage) {
+        Log.d(TAG, "onMessageReceived");
         Map<String, String> data = remoteMessage.getData();
         if (data.get("type").equals("comment")) {
             sendCommentNotification(data);
+        } else if (data.get("type").equals("manualArticle")) {
+            pushManualArticleNotification(data);
         }
     }
 
@@ -122,7 +156,7 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
 
         Intent intent = new Intent(this, AcornActivity.class);
         intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
-        PendingIntent pendingIntent = PendingIntent.getActivity(this, SUMMARY_PENDINGINTENT_RC, intent,
+        PendingIntent pendingIntent = PendingIntent.getActivity(this, COMMENT_SUMMARY_PENDINGINTENT_RC, intent,
                 PendingIntent.FLAG_ONE_SHOT);
 
         SharedPreferences sharedPrefs = getSharedPreferences(getString(R.string.notif_pref_id), MODE_PRIVATE);
@@ -160,7 +194,7 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
         }
         inboxStyle.setSummaryText(commentCount);
 
-        summaryNotificationBuilder
+        commentSummaryNotificationBuilder
                 .setStyle(inboxStyle)
                 .setContentTitle(contentTitle)
                 .setContentText(contentText)
@@ -174,13 +208,13 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
                 .addNextIntentWithParentStack(individualIntent)
                 .getPendingIntent(pendingIntentRC, PendingIntent.FLAG_UPDATE_CURRENT);
 
-        notificationBuilder
+        commentNotificationBuilder
                 .setContentTitle(contentTitle)
                 .setContentText(contentText)
                 .setContentIntent(individualPendingIntent);
 
-        notificationManager.notify(comments.size(), notificationBuilder.build());
-        notificationManager.notify(COMMENT_NOTIFICATION_ID, summaryNotificationBuilder.build());
+        mNotificationManager.notify(comments.size(), commentNotificationBuilder.build());
+        mNotificationManager.notify(COMMENT_NOTIFICATION_ID, commentSummaryNotificationBuilder.build());
     }
 
     private void updateSharedPrefs(SharedPreferences sharedPrefs, Map<String, String> data) {
@@ -226,5 +260,31 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
 
         }
         NotificationViewModel.sharedPrefs.postValue(sharedPrefs);
+    }
+
+    private void pushManualArticleNotification(Map<String, String> data) {
+
+        Intent individualIntent = new Intent(this, WebViewActivity.class);
+        individualIntent.putExtra("id", data.get("articleId"));
+        individualIntent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
+        PendingIntent individualPendingIntent = TaskStackBuilder.create(this)
+                .addNextIntentWithParentStack(individualIntent)
+                .getPendingIntent(MANUAL_ARTICLE_PENDINGINTENT_RC, PendingIntent.FLAG_UPDATE_CURRENT);
+
+        String contentTitle = data.get("title");
+        String source = null;
+        if (data.get("source") != null && !data.get("source").equals("")) {
+            source = data.get("source");
+        }
+        String contentText = (source != null && !source.equals("")) ?
+                source + " · " + data.get("mainTheme") : data.get("mainTheme");
+        Log.d(TAG, contentTitle + ", " + contentText);
+
+        manualArticleNotificationBuilder
+                .setContentTitle(contentTitle)
+                .setContentText(contentText)
+                .setContentIntent(individualPendingIntent);
+
+        mNotificationManager.notify(MANUAL_ARTICLE_NOTIFICATION_ID, manualArticleNotificationBuilder.build());
     }
 }

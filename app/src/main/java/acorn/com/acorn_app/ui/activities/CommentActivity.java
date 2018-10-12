@@ -511,6 +511,7 @@ public class CommentActivity extends AppCompatActivity implements View.OnTouchLi
             return false;
         });
         MenuItem searchItem = (MenuItem) mOptionsMenu.findItem(R.id.action_search);
+        if (mAdapter.getItemCount() == 0) { searchItem.setEnabled(false); }
         MenuItem articleChevron = mOptionsMenu.findItem(R.id.action_expand);
         searchItem.setOnActionExpandListener(new MenuItem.OnActionExpandListener() {
             @Override

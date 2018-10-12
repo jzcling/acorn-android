@@ -1,3 +1,11 @@
+Android
+
+v1.4.2
+Configured to handle manual article push
+
+v1.4.1
+In article back button now brings you back to previous pages
+
 v1.3b1, v1.3b2
 Subscriptions now filter by main themes instead of all themes
 Saved articles feed now populates more quickly

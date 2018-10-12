@@ -135,7 +135,8 @@ public class RecArticlesJobService extends JobService {
                     imageUrl + "·" + // imageUrl
                     article.getMainTheme() + "·" + // theme
                     String.valueOf(article.getPubDate()) + "·" + // extra
-                    String.valueOf((new Date()).getTime()); // timestamp
+                    String.valueOf((new Date()).getTime()) + "·" + // timestamp
+                    article.getLink(); // link
             sharedPrefs.edit().putString(key, value).apply();
 
 
@@ -150,7 +151,8 @@ public class RecArticlesJobService extends JobService {
                     .getPendingIntent(i, PendingIntent.FLAG_UPDATE_CURRENT);
 
             Bitmap bitmap = IOUtils.getBitmapFromUrl(imageUrl);
-            contentText = (source != null && !source.equals("")) ? source + " · " + article.getMainTheme() : article.getMainTheme();
+            contentText = (source != null && !source.equals("")) ?
+                    source + " · " + article.getMainTheme() : article.getMainTheme();
 
             NotificationCompat.Builder notificationBuilder =
                     new NotificationCompat.Builder(this, CHANNEL_ID)
@@ -187,7 +189,6 @@ public class RecArticlesJobService extends JobService {
                     CHANNEL_NAME,
                     NotificationManager.IMPORTANCE_HIGH);
             channel.setShowBadge(true);
-            channel.canShowBadge();
             channel.enableLights(true);
             channel.setLightColor(Color.YELLOW);
             channel.enableVibration(true);

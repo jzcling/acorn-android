@@ -2,6 +2,7 @@ package acorn.com.acorn_app.ui.adapters;
 
 import android.content.Context;
 import android.support.annotation.NonNull;
+import android.support.annotation.Nullable;
 import android.support.v7.widget.RecyclerView;
 import android.util.Log;
 import android.view.LayoutInflater;
@@ -35,7 +36,7 @@ public class ArticleAdapter extends RecyclerView.Adapter<ArticleViewHolder> {
     private final Map<DatabaseReference, ValueEventListener> mRefObservedList = new HashMap<>();
 
     public ArticleAdapter(final Context context, String cardType,
-                          OnLongClickListener longClickListener) {
+                          @Nullable OnLongClickListener longClickListener) {
         mContext = context;
         mCardType = cardType;
         this.longClickListener = longClickListener;

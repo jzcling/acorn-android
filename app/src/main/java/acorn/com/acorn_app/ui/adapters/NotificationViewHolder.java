@@ -48,9 +48,15 @@ public class NotificationViewHolder extends RecyclerView.ViewHolder {
     public void bind(Notif notif) {
         parentView.setOnClickListener(v -> {
             if (NumberUtils.isNumeric(notif.extra)) {
-                Intent intent = new Intent(mContext, WebViewActivity.class);
-                intent.putExtra("id", notif.articleId);
-                mContext.startActivity(intent);
+                if (notif.link.equals("")) {
+                    Intent intent = new Intent(mContext, CommentActivity.class);
+                    intent.putExtra("id", notif.articleId);
+                    mContext.startActivity(intent);
+                } else {
+                    Intent intent = new Intent(mContext, WebViewActivity.class);
+                    intent.putExtra("id", notif.articleId);
+                    mContext.startActivity(intent);
+                }
             } else {
                 Intent intent = new Intent(mContext, CommentActivity.class);
                 intent.putExtra("id", notif.articleId);

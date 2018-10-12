@@ -49,6 +49,7 @@ import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ValueEventListener;
 import com.google.firebase.iid.FirebaseInstanceId;
+import com.google.firebase.messaging.FirebaseMessaging;
 import com.jaredrummler.android.device.DeviceName;
 import com.nex3z.notificationbadge.NotificationBadge;
 
@@ -173,6 +174,9 @@ public class AcornActivity extends AppCompatActivity
     
     //Menu
     private Menu navMenu;
+
+    //App bar
+    private MenuItem mSearchButton;
 
     //InstantSearch
     public static Searcher mSearcher;
@@ -302,6 +306,7 @@ public class AcornActivity extends AppCompatActivity
         MenuItem signOutMenuItem = (MenuItem) navMenu.findItem(R.id.nav_logout);
 
         final MenuItem notificationItem = menu.findItem(R.id.action_notifications);
+        mSearchButton = menu.findItem(R.id.action_search);
         ConstraintLayout notificationView = (ConstraintLayout) notificationItem.getActionView();
         notificationBadge = (NotificationBadge) notificationView.findViewById(R.id.notification_badge);
         mNotifViewModel = ViewModelProviders.of(this).get(NotificationViewModel.class);
@@ -595,7 +600,6 @@ public class AcornActivity extends AppCompatActivity
             switch (mQuery.state) {
                 default:
                 case 0:
-                case 3:
                     index = lastArticle.getPubDate();
                     break;
                 case 1:
@@ -603,7 +607,9 @@ public class AcornActivity extends AppCompatActivity
                     break;
                 case 2:
                     index = mAdapter.getItemCount();
-//                    index = lastArticle.savers.get(mUid);
+                    break;
+                case 3:
+                    index = lastArticle.getTrendingIndex();
                     break;
                 case -1:
 //                    index = lastArticle.getMainTheme();
@@ -618,7 +624,14 @@ public class AcornActivity extends AppCompatActivity
             LiveData<List<Article>> addListLD = mArticleViewModel.getAdditionalArticles(index, indexType);
             Observer<List<Article>> addListObserver = articles -> {
                 if (articles != null) {
-
+                    /*
+                    initialList is fixed for each call of loadMoreArticles,
+                    i.e. each addListLD has a fixed previously loaded article list in memory.
+                    initialList is mainly a holder for the number of articles already loaded.
+                    mLoadedList is then used to allow updates of articles loaded in
+                    setupInitialViewModel. Without mLoadedList, the first batch of articles
+                    will not show realtime updates as initialList is fixed.
+                    */
                     List<Article> combinedList = new ArrayList<>(initialList);
                     combinedList.remove(combinedList.size()-1);
                     combinedList.addAll(articles);
@@ -748,16 +761,22 @@ public class AcornActivity extends AppCompatActivity
                                         mQuery = mSavedInstanceState.getParcelable("Query");
                                         if (mQuery == null) {
                                             String hitsRef = SEARCH_REF + "/" + mThemeSearchKey + "/hits";
-                                            mQuery = new FbQuery(3, hitsRef, "pubDate");
+                                            mQuery = new FbQuery(3, hitsRef, "trendingIndex");
                                         }
                                     } else {
                                         String hitsRef = SEARCH_REF + "/" + mThemeSearchKey + "/hits";
-                                        mQuery = new FbQuery(3, hitsRef, "pubDate");
+                                        mQuery = new FbQuery(3, hitsRef, "trendingIndex");
                                     }
                                     setUpInitialViewModelObserver();
+
+                                    // set up search button
                                     mDataSource.setupAlgoliaClient(() -> {
                                         mSearcher = Searcher.create(ALGOLIA_APP_ID, mAlgoliaApiKey, ALGOLIA_INDEX_NAME);
+                                        mSearchButton.setEnabled(true);
                                     });
+
+                                    // subscribe to app topic for manual articles push
+                                    FirebaseMessaging.getInstance().subscribeToTopic("acorn");
                                 } else {
 
                                     if (!user.isEmailVerified()) {
@@ -801,16 +820,22 @@ public class AcornActivity extends AppCompatActivity
                                         mQuery = mSavedInstanceState.getParcelable("Query");
                                         if (mQuery == null) {
                                             String hitsRef = SEARCH_REF + "/" + mThemeSearchKey + "/hits";
-                                            mQuery = new FbQuery(3, hitsRef, "pubDate");
+                                            mQuery = new FbQuery(3, hitsRef, "trendingIndex");
                                         }
                                     } else {
                                         String hitsRef = SEARCH_REF + "/" + mThemeSearchKey + "/hits";
-                                        mQuery = new FbQuery(3, hitsRef, "pubDate");
+                                        mQuery = new FbQuery(3, hitsRef, "trendingIndex");
                                     }
                                     setUpInitialViewModelObserver();
+
+                                    // set up search button
                                     mDataSource.setupAlgoliaClient(() -> {
                                         mSearcher = Searcher.create(ALGOLIA_APP_ID, mAlgoliaApiKey, ALGOLIA_INDEX_NAME);
+                                        mSearchButton.setEnabled(true);
                                     });
+
+                                    // subscribe to app topic for manual articles push
+                                    FirebaseMessaging.getInstance().subscribeToTopic("acorn");
 
                                     if (mUsernameTextView != null) {
                                         mUsernameTextView.setText(mUsername);
@@ -951,7 +976,7 @@ public class AcornActivity extends AppCompatActivity
         String hitsRef = SEARCH_REF + "/" + mThemeSearchKey + "/hits";
         mDataSource.getThemeData(()->{
             mLlmState = null;
-            mQuery = new FbQuery(3, hitsRef, "pubDate");
+            mQuery = new FbQuery(3, hitsRef, "trendingIndex");
             resetView(mQuery);
         });
     }
@@ -986,13 +1011,24 @@ public class AcornActivity extends AppCompatActivity
         LiveData<List<Article>> articleListLD = mArticleViewModel.getArticles();
         Observer<List<Article>> articleListObserver = articles -> {
             if (articles != null) {
-
+                /*
+                1 - While child listener adds articles incrementally to live data list,
+                we add to adapter list if it had not already been added.
+                2 - On any changes to live data list after adapter list is set,
+                update changes in-situ.
+                This way, adapter list expands up to size of all observed live data lists
+                (includes all loadMoreArticles lists), with no repeat articles on changes.
+                mLoadedList ensures that if loadMoreArticles has been called before, those
+                articles loaded do not disappear.
+                */
                 List<Article> combinedList = mLoadedList == null ?
                         new ArrayList<>() : new ArrayList<>(mLoadedList);
                 for (int i = 0; i < articles.size(); i++) {
                     if (combinedList.size() < i+1) {
+                        //1
                         combinedList.add(i, articles.get(i));
                     } else {
+                        //2
                         combinedList.set(i, articles.get(i));
                     }
                 }

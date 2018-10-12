@@ -45,6 +45,7 @@ public class UserActivity extends AppCompatActivity {
     private TextView mUpvoteCountView;
     private TextView mDownvoteCountView;
     private TextView mCommentCountView;
+    private TextView mPostCountView;
 
     // Progress views
     private ViewGroup mProgressGroup;
@@ -75,6 +76,7 @@ public class UserActivity extends AppCompatActivity {
         mUpvoteCountView = findViewById(R.id.user_upvoteCountView);
         mDownvoteCountView = findViewById(R.id.user_downvoteCountView);
         mCommentCountView = findViewById(R.id.user_commentCountView);
+        mPostCountView = findViewById(R.id.user_postCountView);
         mProgressGroup = findViewById(R.id.user_progressBarLayout);
         mProgressRequirementView = findViewById(R.id.user_pointsToNextLevel);
         mProgressBar = findViewById(R.id.user_progressBar);
@@ -110,6 +112,7 @@ public class UserActivity extends AppCompatActivity {
                 mUpvoteCountView.setText(String.valueOf(mUser.getUpvotedItemsCount()));
                 mDownvoteCountView.setText(String.valueOf(mUser.getDownvotedItemsCount()));
                 mCommentCountView.setText(String.valueOf(mUser.getCommentedItemsCount()));
+                mPostCountView.setText(String.valueOf(mUser.getCreatedPostsCount()));
 
                 double x = mUser.getPoints();
                 double y = mUser.getTargetPoints();

@@ -43,7 +43,6 @@ public class HtmlUtils {
     private static final Pattern TABLE_START_PATTERN = Pattern.compile("(<table)", Pattern.CASE_INSENSITIVE);
     private static final Pattern TABLE_END_PATTERN = Pattern.compile("(</table>)", Pattern.CASE_INSENSITIVE);
 
-    private static final String QUOTE_BACKGROUND_COLOR = "#e6e6e6";
     private static final String QUOTE_LEFT_COLOR = "#a6a6a6";
     private static final String QUOTE_TEXT_COLOR = "#565656";
     private static final String TEXT_SIZE = "125%";
@@ -75,7 +74,7 @@ public class HtmlUtils {
             content = ALT_IMAGE_PATTERN.matcher(content).replaceAll("img ");
 
             // clean by JSoup
-            content = Jsoup.clean(content, baseUrl, JSOUP_WHITELIST);
+            //content = Jsoup.clean(content, baseUrl, JSOUP_WHITELIST);
 
             content = RELATIVE_IMAGE_PATTERN_2.matcher(content).replaceAll(" $1=$2" + baseUrl);
 
@@ -102,9 +101,10 @@ public class HtmlUtils {
         String BACKGROUND_COLOR = String.format("#%06X", (0xFFFFFF & context.getResources().getColor(R.color.webview_background)));
         String TEXT_COLOR = String.format("#%06X", (0xFFFFFF & context.getResources().getColor(R.color.webview_text_color)));
         String SUBTITLE_COLOR = String.format("#%06X", (0xFFFFFF & context.getResources().getColor(R.color.webview_subtitle_color)));
+        String QUOTE_BACKGROUND_COLOR = String.format("#%06X", (0xFFFFFF & context.getResources().getColor(R.color.webview_quote_background_color)));
 
         String CSS = "<head><style type='text/css'> "
-                + "body {max-width: 100%; margin: 0.3cm; font-family: sans-serif-light; font-size: " + TEXT_SIZE + "; color: " + TEXT_COLOR + "; background-color:" + BACKGROUND_COLOR + "; line-height: 150%} "
+                + "body {max-width: 100%; margin: 0.3cm; font-family: sans-serif-light; font-size: " + TEXT_SIZE + "; text-align: justify; color: " + TEXT_COLOR + "; background-color:" + BACKGROUND_COLOR + "; line-height: 150%} "
                 + "* {max-width: 100%} "
                 + "h1, h2 {font-weight: normal; line-height: 130%} "
                 + "h1 {font-size: 110%; margin-bottom: 0.1em} "

@@ -168,7 +168,7 @@ public class CreatePostActivity extends AppCompatActivity {
             String postText = mPostTextView.getText().toString();
             String title = mHasTitle ? mArticleTitleView.getText().toString() : null;
             String source = mHasSource ? mArticleSourceView.getText().toString() : null;
-            String trendingIndex = String.valueOf(Math.round((ID_OFFSET + postDate)/10000000));
+            String trendingIndex = String.valueOf(((ID_OFFSET + postDate)/10000000L));
             String link = mLink;
             String mainTheme = mDropListView.getSelectedItem().toString();
 

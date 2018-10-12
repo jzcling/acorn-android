@@ -154,7 +154,7 @@ public class UiUtils implements RecyclerItemTouchHelper.RecyclerItemTouchHelperL
                 List<String> valueList = Arrays.asList(value.split("·"));
                 Notif notification = new Notif(valueList.get(0), valueList.get(1), valueList.get(2),
                         valueList.get(3), valueList.get(4), valueList.get(5), valueList.get(6),
-                        valueList.get(7), Long.parseLong(valueList.get(8)));
+                        valueList.get(7), Long.parseLong(valueList.get(8)), valueList.get(9));
                 mNotifList.add(notification);
             }
         }

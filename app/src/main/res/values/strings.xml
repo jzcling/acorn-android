@@ -26,6 +26,7 @@
     <string name="action_unfollow">Unfollow article</string>
     <string name="action_search_up">Find up</string>
     <string name="action_search_down">Find down</string>
+    <string name="action_filter">Filter</string>
 
     <!-- Search -->
     <string name="search_hint">Search articles…</string>
@@ -120,8 +121,10 @@
     <!-- Notifications -->
     <string name="comment_notification_channel_id" translatable="false">fcm_comment_channel</string>
     <string name="comment_notification_channel_name" translatable="true">Comments</string>
+    <string name="manual_article_notification_channel_id" translatable="false">fcm_manual_article_channel</string>
+    <string name="manual_article_notification_channel_name" translatable="true">Manual Article</string>
     <string name="article_notification_channel_id" translatable="false">fcm_article_channel</string>
-    <string name="article_notification_channel_name" translatable="true">Articles</string>
+    <string name="article_notification_channel_name" translatable="true">Recommended Articles</string>
     <string name="notif_clear_button">Clear all</string>
     <string name="notif_empty_text">You have no new notifications!</string>
     <string name="notif_delete">DELETE</string>
