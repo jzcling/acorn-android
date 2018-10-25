@@ -26,7 +26,6 @@ import android.text.InputFilter;
 import android.text.SpannableString;
 import android.text.TextWatcher;
 import android.text.style.BackgroundColorSpan;
-import android.util.Log;
 import android.view.GestureDetector;
 import android.view.LayoutInflater;
 import android.view.Menu;
@@ -58,7 +57,6 @@ import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.MutableData;
 import com.google.firebase.database.Transaction;
 import com.google.firebase.database.ValueEventListener;
-import com.google.firebase.messaging.FirebaseMessaging;
 import com.google.firebase.storage.FirebaseStorage;
 import com.google.firebase.storage.StorageReference;
 
@@ -76,6 +74,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import acorn.com.acorn_app.R;
+import acorn.com.acorn_app.data.NetworkDataSource;
 import acorn.com.acorn_app.models.Article;
 import acorn.com.acorn_app.models.Comment;
 import acorn.com.acorn_app.models.User;
@@ -106,7 +105,7 @@ import static android.view.ViewGroup.LayoutParams.WRAP_CONTENT;
 public class CommentActivity extends AppCompatActivity implements View.OnTouchListener {
     private static final String TAG = "CommentActivity";
 
-    private static final AppExecutors mExecutors = AppExecutors.getInstance();
+    private final AppExecutors mExecutors = AppExecutors.getInstance();
 
     private static final int RC_GALLERY = 1;
     private static final int RC_CAMERA = 2;
@@ -129,6 +128,7 @@ public class CommentActivity extends AppCompatActivity implements View.OnTouchLi
 
     private FirebaseDatabase mDatabase;
     private DatabaseReference mDatabaseReference;
+    private NetworkDataSource mDataSource;
 
     private ViewGroup mArticleView;
     private TextView mArticleTitleView;
@@ -189,6 +189,9 @@ public class CommentActivity extends AppCompatActivity implements View.OnTouchLi
         mDatabaseReference = mDatabase.getReference();
         mArticleRef = mDatabaseReference.child(ARTICLE_REF).child(mArticleId);
         DatabaseReference mCommentRef = mDatabaseReference.child(COMMENT_REF).child(mArticleId);
+
+        // Data source
+        mDataSource = NetworkDataSource.getInstance(this, mExecutors);
 
         // Set up article views
         mArticleView = (ViewGroup) findViewById(R.id.comment_item_card);
@@ -253,12 +256,14 @@ public class CommentActivity extends AppCompatActivity implements View.OnTouchLi
 
                 // Set up on click interface for article
                 if (mArticle.getLink() != null && !mArticle.getLink().equals("")) {
-                    mArticleTitleView.setOnClickListener(v ->
-                            mExecutors.mainThread().execute(() -> startWebViewActivity())
-                    );
-                    mArticleImageView.setOnClickListener(v ->
-                            mExecutors.mainThread().execute(() -> startWebViewActivity())
-                    );
+                    mArticleTitleView.setOnClickListener(v -> {
+                        mExecutors.networkIO().execute(() -> mDataSource.recordArticleOpenDetails(mArticle));
+                        mExecutors.mainThread().execute(() -> startWebViewActivity());
+                    });
+                    mArticleImageView.setOnClickListener(v -> {
+                        mExecutors.networkIO().execute(() -> mDataSource.recordArticleOpenDetails(mArticle));
+                        mExecutors.mainThread().execute(() -> startWebViewActivity());
+                    });
                 } else if (mArticle.getImageUrl() != null && !mArticle.getImageUrl().equals("") ||
                         mArticle.getPostImageUrl() != null && !mArticle.getPostImageUrl().equals("")){
                     mArticleTitleView.setOnClickListener(v -> {

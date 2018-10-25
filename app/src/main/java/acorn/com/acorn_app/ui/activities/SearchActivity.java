@@ -7,7 +7,6 @@ import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.ActionMenuView;
 import android.support.v7.widget.SearchView;
 import android.support.v7.widget.Toolbar;
-import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.widget.Toast;
@@ -26,8 +25,6 @@ import acorn.com.acorn_app.R;
 import acorn.com.acorn_app.data.NetworkDataSource;
 import acorn.com.acorn_app.utils.AppExecutors;
 
-import static acorn.com.acorn_app.data.NetworkDataSource.mAlgoliaApiKey;
-
 
 public class SearchActivity extends AppCompatActivity {
     private static final String TAG = "SearchActivity";
@@ -37,6 +34,9 @@ public class SearchActivity extends AppCompatActivity {
     private Searcher mSearcher;
     private SearchView mSearchBox;
     private Hits mHits;
+
+    private NetworkDataSource mDataSource;
+    private AppExecutors mExecutors = AppExecutors.getInstance();
 
     @Override protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -52,18 +52,25 @@ public class SearchActivity extends AppCompatActivity {
 
         this.mSearcher = AcornActivity.mSearcher;
 
+        mDataSource = NetworkDataSource.getInstance(this, mExecutors);
+
         mHits = findViewById(R.id.hits);
 
         mHits.setOnItemClickListener((recyclerView, position, v) -> {
 
             JSONObject article = mHits.get(position);
             String link = null;
+            String articleId = null;
+            String mainTheme = null;
             try {
                 link = article.getString("link");
+                articleId = article.getString("objectID");
+                mainTheme = article.getString("mainTheme");
             } catch (Exception e) {
                 e.printStackTrace();
             } finally {
                 if (link != null && !link.equals("")) {
+                    mDataSource.recordArticleOpenDetails(articleId, mainTheme);
                     startWebViewActivity(article);
                 } else {
                     startCommentActivity(article);
@@ -96,6 +103,17 @@ public class SearchActivity extends AppCompatActivity {
     @Subscribe
     public void onErrorEvent(ErrorEvent event) {
         Toast.makeText(this, "Error searching" + event.query.getQuery() + ":" + event.error.getLocalizedMessage(), Toast.LENGTH_SHORT).show();
+    }
+
+    @Override
+    protected void onStop() {
+        super.onStop();
+    }
+
+    @Override
+    protected void onRestart() {
+        this.mSearcher = AcornActivity.mSearcher;
+        super.onRestart();
     }
 
     @Override

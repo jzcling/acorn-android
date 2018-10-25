@@ -1,7 +1,6 @@
 package acorn.com.acorn_app.ui.activities;
 
 import android.app.AlertDialog;
-import android.arch.lifecycle.LiveData;
 import android.arch.lifecycle.Observer;
 import android.arch.lifecycle.ViewModelProviders;
 import android.content.Intent;
@@ -37,6 +36,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import com.algolia.instantsearch.helpers.Searcher;
+import com.crashlytics.android.Crashlytics;
 import com.firebase.ui.auth.AuthUI;
 import com.firebase.ui.auth.ErrorCodes;
 import com.firebase.ui.auth.IdpResponse;
@@ -64,6 +64,7 @@ import java.util.List;
 import java.util.Map;
 
 import acorn.com.acorn_app.R;
+import acorn.com.acorn_app.data.ArticleListLiveData;
 import acorn.com.acorn_app.data.NetworkDataSource;
 import acorn.com.acorn_app.models.Article;
 import acorn.com.acorn_app.models.FbQuery;
@@ -79,6 +80,7 @@ import acorn.com.acorn_app.utils.InjectorUtils;
 import static acorn.com.acorn_app.data.NetworkDataSource.COMMENTS_NOTIFICATION;
 import static acorn.com.acorn_app.data.NetworkDataSource.PREFERENCES_REF;
 import static acorn.com.acorn_app.data.NetworkDataSource.REC_ARTICLES_NOTIFICATION;
+import static acorn.com.acorn_app.data.NetworkDataSource.REC_DEALS_NOTIFICATION;
 import static acorn.com.acorn_app.data.NetworkDataSource.SEARCH_REF;
 import static acorn.com.acorn_app.data.NetworkDataSource.mAlgoliaApiKey;
 import static acorn.com.acorn_app.utils.UiUtils.createToast;
@@ -139,11 +141,8 @@ public class AcornActivity extends AppCompatActivity
 
     //View Models
     private ArticleViewModel mArticleViewModel;
-    private final Map<LiveData<List<Article>>, Observer<List<Article>>> mObservedList = new HashMap<>();
+    private final Map<ArticleListLiveData, Observer<List<Article>>> mObservedList = new HashMap<>();
     private NotificationViewModel mNotifViewModel;
-
-    //Current loaded articles
-    private static List<Article> mLoadedList = null;
 
     //User
     private FirebaseUser mFirebaseUser;
@@ -155,6 +154,8 @@ public class AcornActivity extends AppCompatActivity
     public static ArrayList<String> mUserThemePrefs;
     private long lastRecArticlesPushTime;
     private long lastRecArticlesScheduleTime;
+    private long lastRecDealsPushTime;
+    private long lastRecDealsScheduleTime;
     private TextView mUsernameTextView;
     private TextView mUserStatusTextView;
 
@@ -164,18 +165,19 @@ public class AcornActivity extends AppCompatActivity
     private static int dayNightValue;
     private static Boolean commentNotifValue;
     private static Boolean articleNotifValue;
+    private static Boolean dealsNotifValue;
     private DatabaseReference mCommentNotifRef;
     private ValueEventListener mCommentNotifListener;
     private DatabaseReference mRecArticlesNotifRef;
     private ValueEventListener mRecArticlesNotifListener;
+    private DatabaseReference mRecDealsNotifRef;
+    private ValueEventListener mRecDealsNotifListener;
 
     //Notifications
     private NotificationBadge notificationBadge;
     
     //Menu
     private Menu navMenu;
-
-    //App bar
     private MenuItem mSearchButton;
 
     //InstantSearch
@@ -194,6 +196,7 @@ public class AcornActivity extends AppCompatActivity
                 getString(R.string.pref_key_night_mode),"1"));
         commentNotifValue = mSharedPreferences.getBoolean(getString(R.string.pref_key_notif_comment), true);
         articleNotifValue = mSharedPreferences.getBoolean(getString(R.string.pref_key_notif_article), true);
+        dealsNotifValue = mSharedPreferences.getBoolean(getString(R.string.pref_key_notif_deals), true);
         AppCompatDelegate.setDefaultNightMode(dayNightValue);
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_acorn);
@@ -239,7 +242,7 @@ public class AcornActivity extends AppCompatActivity
         mLinearLayoutManager.setOrientation(LinearLayoutManager.VERTICAL);
         mRecyclerView.setLayoutManager(mLinearLayoutManager);
         ((SimpleItemAnimator) mRecyclerView.getItemAnimator()).setSupportsChangeAnimations(false);
-        mAdapter = new ArticleAdapter(this, ARTICLE_CARD_TYPE, this);
+        mAdapter = new ArticleAdapter(this, this);
         mRecyclerView.setAdapter(mAdapter);
         mRecyclerView.addOnScrollListener(new RecyclerView.OnScrollListener() {
             @Override
@@ -370,31 +373,26 @@ public class AcornActivity extends AppCompatActivity
         int id = item.getItemId();
 
         switch (id) {
-            case R.id.nav_recent:
-                if (mQuery.state == 0) break;
-                mLlmState = null;
-                mQuery = new FbQuery(0, null, -1);
-                resetView(mQuery);
+            case R.id.nav_subscriptions:
+                if (mQuery != null && mQuery.state == 3) break;
+                getThemeData();
                 break;
             case R.id.nav_trending:
-                if (mQuery.state == 1) break;
-                mLlmState = null;
-                mQuery = new FbQuery(1, null, -1);
-                resetView(mQuery);
+                if (mQuery != null && mQuery.state == 1) break;
+                getTrendingData();
+                break;
+            case R.id.nav_deals:
+                if (mQuery != null && mQuery.state == 4) break;
+                getDealsData();
+                break;
+            case R.id.nav_saved:
+                Intent savedArticlesIntent = new Intent(this, SavedArticlesActivity.class);
+                startActivity(savedArticlesIntent);
                 break;
             case R.id.nav_themes:
                 Intent editThemeIntent = new Intent(this, ThemeSelectionActivity.class);
                 editThemeIntent.putStringArrayListExtra("themePrefs", mUserThemePrefs);
                 startActivityForResult(editThemeIntent, RC_THEME_PREF);
-                break;
-            case R.id.nav_saved:
-                if (mQuery.state == 2) break;
-                mLlmState = null;
-                mQuery = new FbQuery(2, 0, 0);
-                resetView(mQuery);
-                break;
-            case R.id.nav_subscriptions:
-                getThemeData();
                 break;
             case R.id.nav_settings:
                 startActivityForResult(new Intent(this, SettingsActivity.class), RC_PREF);
@@ -447,7 +445,7 @@ public class AcornActivity extends AppCompatActivity
                     signOutMenuItem.setVisible(true);
                 }
 
-                if (mArticleViewModel != null) mArticleViewModel.newQuery.postValue(mQuery);
+                if (mArticleViewModel != null) resetView();
             } else {
                 // Sign in failed
                 if (response == null) {
@@ -493,6 +491,20 @@ public class AcornActivity extends AppCompatActivity
                     mSharedPreferences.edit().putBoolean("isRecArticlesScheduled", false).apply();
                     mRecArticlesNotifRef.child(mUid).setValue(articleNotifValue);
                 }
+
+                dealsNotifValue = mSharedPreferences.getBoolean(getString(R.string.pref_key_notif_deals), false);
+                mRecDealsNotifRef = mDatabaseReference.child(PREFERENCES_REF).child(REC_DEALS_NOTIFICATION);
+                if (dealsNotifValue) {
+                    if (!mSharedPreferences.getBoolean("isRecDealsScheduled", false)) {
+                        mDataSource.scheduleRecDealsPush();
+                        mSharedPreferences.edit().putBoolean("isRecDealsScheduled", true).apply();
+                    }
+                    mRecDealsNotifRef.child(mUid).removeValue();
+                } else {
+                    mDataSource.cancelRecDealsPush();
+                    mSharedPreferences.edit().putBoolean("isRecDealsScheduled", false).apply();
+                    mRecDealsNotifRef.child(mUid).setValue(dealsNotifValue);
+                }
             }
         } else if (requestCode == RC_THEME_PREF) {
             if (resultCode == RESULT_OK) {
@@ -508,13 +520,6 @@ public class AcornActivity extends AppCompatActivity
                 getThemeData();
             }
         }
-//        } else if (requestCode == RC_SHARE) {
-//            if (resultCode == RESULT_OK) {
-//
-//            } else {
-//
-//            }
-//        }
     }
 
     @Override
@@ -527,7 +532,6 @@ public class AcornActivity extends AppCompatActivity
     @Override
     public void onResume() {
         super.onResume();
-//        mNotificationsPref.edit().clear().commit();
 
     }
 
@@ -548,8 +552,12 @@ public class AcornActivity extends AppCompatActivity
     @Override
     protected void onDestroy() {
         super.onDestroy();
+        removeAllObservers();
+    }
+
+    private void removeAllObservers() {
         if (mObservedList.size() > 0) {
-            for (LiveData<List<Article>> liveData : mObservedList.keySet()) {
+            for (ArticleListLiveData liveData : mObservedList.keySet()) {
                 liveData.removeObserver(mObservedList.get(liveData));
 
             }
@@ -562,7 +570,6 @@ public class AcornActivity extends AppCompatActivity
         super.onSaveInstanceState(outState);
         outState.putParcelable("Query", mQuery);
         mLlmState = mLinearLayoutManager.onSaveInstanceState();
-
     }
 
     @Override
@@ -575,18 +582,20 @@ public class AcornActivity extends AppCompatActivity
     private void handleIntent(Intent intent) {
         mSwipeRefreshLayout.setRefreshing(false);
         if (mArticleViewModel != null) {
-
-            mArticleViewModel.newQuery.postValue(mQuery);
+            resetView();
         }
     }
 
     private void loadMoreArticles() {
         if (isLoadingMore) return;
 
+        // Don't trigger load more for feed filtered by theme / source
+        if (mQuery.state < 0) return;
+
         int currentPosition = mLinearLayoutManager.findLastCompletelyVisibleItemPosition();
         final int trigger = 5;
-        final List<Article> initialList = mAdapter.getList();
-        mLoadedList = initialList;
+        final int initialListCount = mAdapter.getItemCount();
+        List<Article> currentList = mAdapter.getList();
         final Object index;
 
         if (mAdapter.getItemCount() < 10) return;
@@ -598,44 +607,42 @@ public class AcornActivity extends AppCompatActivity
             Article lastArticle = mAdapter.getLastItem();
 
             switch (mQuery.state) {
-                default:
                 case 0:
                     index = lastArticle.getPubDate();
                     break;
                 case 1:
                     index = lastArticle.getTrendingIndex();
                     break;
-                case 2:
-                    index = mAdapter.getItemCount();
-                    break;
+                default:
                 case 3:
                     index = lastArticle.getTrendingIndex();
                     break;
-                case -1:
-//                    index = lastArticle.getMainTheme();
-                    return;
-                case -2:
-//                    index = lastArticle.getSource();
-                    return;
+                case 4:
+                    index = lastArticle.getTrendingIndex();
+                    break;
             }
 
-
-            int indexType = mQuery.state < 0 ? 1 : 0;
-            LiveData<List<Article>> addListLD = mArticleViewModel.getAdditionalArticles(index, indexType);
+            int indexType = 0;
+            ArticleListLiveData addListLD = mArticleViewModel.getAdditionalArticles(index, indexType);
             Observer<List<Article>> addListObserver = articles -> {
                 if (articles != null) {
                     /*
-                    initialList is fixed for each call of loadMoreArticles,
-                    i.e. each addListLD has a fixed previously loaded article list in memory.
-                    initialList is mainly a holder for the number of articles already loaded.
-                    mLoadedList is then used to allow updates of articles loaded in
-                    setupInitialViewModel. Without mLoadedList, the first batch of articles
-                    will not show realtime updates as initialList is fixed.
+                    initialListCount marks where the end of the list was before additional
+                    articles are loaded. Live data list of additional articles will start
+                    from the last article in the current list, so startIndex is initialListCount - 1
                     */
-                    List<Article> combinedList = new ArrayList<>(initialList);
-                    combinedList.remove(combinedList.size()-1);
-                    combinedList.addAll(articles);
-                    mAdapter.setList(combinedList);
+                    int startIndex = initialListCount - 1;
+                    for (int i = 0; i < articles.size(); i++) {
+                        if (currentList.size() < startIndex + i + 1) {
+                            Log.d(TAG, "add: " + (startIndex + i));
+                            currentList.add(startIndex + i, articles.get(i));
+                        } else {
+                            Log.d(TAG, "set: " + (startIndex + i));
+                            currentList.set(startIndex + i, articles.get(i));
+                        }
+                    }
+                    mAdapter.setList(currentList);
+
                 }
             };
             addListLD.observeForever(addListObserver);
@@ -645,29 +652,16 @@ public class AcornActivity extends AppCompatActivity
         }
     }
 
-    private void resetView(FbQuery mQuery) {
+    private void resetView() {
         mRecyclerView.setVisibility(View.INVISIBLE);
         mSwipeRefreshLayout.setRefreshing(true);
         mRecyclerView.scrollToPosition(0);
 
         mAdapter.clear();
-        if (mLoadedList != null) mLoadedList.clear();
-        if (mObservedList.size() > 0) {
-            for (LiveData<List<Article>> liveData : mObservedList.keySet()) {
-                liveData.removeObserver(mObservedList.get(liveData));
+        removeAllObservers();
 
-            }
-            mObservedList.clear();
-        }
-
-        if (mQuery.state == 2) {
-            mAdapter = new ArticleAdapter(this, ARTICLE_LIST_TYPE, this);
-            mRecyclerView.setAdapter(mAdapter);
-        } else {
-            mAdapter = new ArticleAdapter(this, ARTICLE_CARD_TYPE, this);
-            mRecyclerView.setAdapter(mAdapter);
-        }
-
+        mAdapter = new ArticleAdapter(this, this);
+        mRecyclerView.setAdapter(mAdapter);
 
         setUpInitialViewModelObserver();
 
@@ -740,6 +734,8 @@ public class AcornActivity extends AppCompatActivity
                                     mUserStatus = LEVEL_0;
                                     lastRecArticlesPushTime = 0L;
                                     lastRecArticlesScheduleTime = 0L;
+                                    lastRecDealsPushTime = 0L;
+                                    lastRecDealsScheduleTime = 0L;
 
                                     if (mUsernameTextView != null) {
                                         mUsernameTextView.setText(mUsername);
@@ -777,6 +773,14 @@ public class AcornActivity extends AppCompatActivity
 
                                     // subscribe to app topic for manual articles push
                                     FirebaseMessaging.getInstance().subscribeToTopic("acorn");
+
+                                    // Set up Crashlytics identifier
+                                    Crashlytics.setUserIdentifier(mUid);
+                                    Crashlytics.setUserName(mUsername);
+                                    Crashlytics.setUserEmail(email);
+
+                                    // Set up Firebase Analytics identifier
+                                    mFirebaseAnalytics.setUserId(mUid);
                                 } else {
 
                                     if (!user.isEmailVerified()) {
@@ -813,6 +817,9 @@ public class AcornActivity extends AppCompatActivity
                                     mUserStatus = setUserStatus(retrievedUser.getStatus());
                                     lastRecArticlesPushTime = retrievedUser.getLastRecArticlesPushTime();
                                     lastRecArticlesScheduleTime = retrievedUser.getLastRecArticlesScheduleTime();
+                                    lastRecDealsPushTime = retrievedUser.getLastRecDealsPushTime();
+                                    lastRecDealsScheduleTime = retrievedUser.getLastRecDealsScheduleTime();
+
                                     buildThemeKeyAndFilter(mUserThemePrefs);
 
 
@@ -837,6 +844,14 @@ public class AcornActivity extends AppCompatActivity
                                     // subscribe to app topic for manual articles push
                                     FirebaseMessaging.getInstance().subscribeToTopic("acorn");
 
+                                    // Set up Crashlytics identifier
+                                    Crashlytics.setUserIdentifier(mUid);
+                                    Crashlytics.setUserName(mUsername);
+                                    Crashlytics.setUserEmail(retrievedUser.getEmail());
+
+                                    // Set up Firebase Analytics identifier
+                                    mFirebaseAnalytics.setUserId(mUid);
+
                                     if (mUsernameTextView != null) {
                                         mUsernameTextView.setText(mUsername);
                                         mUsernameTextView.setOnClickListener(v -> startActivity(new Intent(AcornActivity.this, UserActivity.class)));
@@ -850,18 +865,29 @@ public class AcornActivity extends AppCompatActivity
                                 // put uid in sharedPrefs
                                 mSharedPreferences.edit().putString("uid", mUid).apply();
 
-                                // Schedule recommended article push service unless explicitly disabled by user
+                                // Schedule recommended articles push service unless explicitly disabled by user
                                 if (articleNotifValue) {
                                     long now = (new Date()).getTime();
                                     long timeElapsedSinceLastPush = now - lastRecArticlesPushTime;
-
-
 
                                     if (!mSharedPreferences.getBoolean("isRecArticlesScheduled", false) ||
                                             (timeElapsedSinceLastPush > 24L * 60L * 60L * 1000L && // if last push time is longer than a day
                                                     lastRecArticlesScheduleTime < lastRecArticlesPushTime)) { // and last scheduled time is before last push time
                                         mDataSource.scheduleRecArticlesPush();
                                         mSharedPreferences.edit().putBoolean("isRecArticlesScheduled", true).apply();
+                                    }
+                                }
+
+                                // Schedule recommended deals push service unless explicitly disabled by user
+                                if (dealsNotifValue) {
+                                    long now = (new Date()).getTime();
+                                    long timeElapsedSinceLastPush = now - lastRecDealsPushTime;
+
+                                    if (!mSharedPreferences.getBoolean("isRecDealsScheduled", false) ||
+                                            (timeElapsedSinceLastPush > 24L * 60L * 60L * 1000L && // if last push time is longer than a day
+                                                    lastRecDealsScheduleTime < lastRecDealsPushTime)) { // and last scheduled time is before last push time
+                                        mDataSource.scheduleRecDealsPush();
+                                        mSharedPreferences.edit().putBoolean("isRecDealsScheduled", true).apply();
                                     }
                                 }
                             });
@@ -889,24 +915,27 @@ public class AcornActivity extends AppCompatActivity
     }
 
     private String setUserStatus(int userStatus) {
-        switch (userStatus) {
-            default:
-            case 0:
-                return LEVEL_0;
-            case 1:
-                return LEVEL_1;
-            case 2:
-                return LEVEL_2;
-            case 3:
-                return LEVEL_3;
+        if (userStatus == 0) {
+            return LEVEL_0;
+        } else if (userStatus == 1) {
+            return LEVEL_1;
+        } else if (userStatus == 2) {
+            return LEVEL_2;
+        } else if (userStatus >= 3) {
+            return LEVEL_3;
+        } else {
+            return LEVEL_0;
         }
     }
 
     private void createBackPressedDialog() {
-        MenuItem recentMenuItem = (MenuItem) navMenu.findItem(R.id.nav_recent);
-        MenuItem trendingMenuItem = (MenuItem) navMenu.findItem(R.id.nav_trending);
         MenuItem subscriptionsMenuItem = (MenuItem) navMenu.findItem(R.id.nav_subscriptions);
-        MenuItem savedMenuItem = (MenuItem) navMenu.findItem(R.id.nav_saved);
+        MenuItem trendingMenuItem = (MenuItem) navMenu.findItem(R.id.nav_trending);
+        MenuItem dealsMenuItem = (MenuItem) navMenu.findItem(R.id.nav_deals);
+
+        String subscriptions = getResources().getString(R.string.nav_subscriptions);
+        String trending = getResources().getString(R.string.nav_trending);
+        String deals = getResources().getString(R.string.nav_deals);
 
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         //builder.setIcon(R.drawable.ic_launcher);
@@ -914,41 +943,32 @@ public class AcornActivity extends AppCompatActivity
 
         final ArrayAdapter<String> arrayAdapter =
                 new ArrayAdapter<>(this, R.layout.item_simple_list);
-        arrayAdapter.add("Subscriptions");
-        arrayAdapter.add("Recent");
-        arrayAdapter.add("Trending");
-        arrayAdapter.add("Saved Articles");
+        arrayAdapter.add(subscriptions);
+        arrayAdapter.add(trending);
+        arrayAdapter.add(deals);
         arrayAdapter.add("Exit App");
 
-        builder.setNegativeButton("cancel", (dialog, which) -> dialog.dismiss());
+        builder.setNegativeButton("Cancel", (dialog, which) -> dialog.dismiss());
 
         builder.setAdapter(arrayAdapter, (dialog, which) -> {
             String screen = arrayAdapter.getItem(which);
             if (screen != null) {
                 switch  (screen) {
                     default:
-                    case "Recent":
-                        if (mQuery.state == 0) break;
-                        mQuery = new FbQuery(0, null, -1);
-                        resetView(mQuery);
-                        recentMenuItem.setChecked(true);
-                        break;
-                    case "Trending":
-                        if (mQuery.state == 1) break;
-                        mQuery = new FbQuery(1, null, -1);
-                        resetView(mQuery);
-                        trendingMenuItem.setChecked(true);
-                        break;
-                    case "Saved Articles":
-                        if (mQuery.state == 2) break;
-                        mQuery = new FbQuery(2, 0, 0);
-                        resetView(mQuery);
-                        savedMenuItem.setChecked(true);
-                        break;
                     case "Subscriptions":
-                        if (mQuery.state == 3) break;
+                        if (mQuery != null && mQuery.state == 3) break;
                         getThemeData();
                         subscriptionsMenuItem.setChecked(true);
+                        break;
+                    case "Trending":
+                        if (mQuery != null && mQuery.state == 1) break;
+                        getTrendingData();
+                        trendingMenuItem.setChecked(true);
+                        break;
+                    case "Deals":
+                        if (mQuery != null && mQuery.state == 4) break;
+                        getDealsData();
+                        dealsMenuItem.setChecked(true);
                         break;
                     case "Exit App":
                         finish();
@@ -956,18 +976,18 @@ public class AcornActivity extends AppCompatActivity
                 }
             }
         });
-        builder.show();
+        AlertDialog dialog = builder.create();
+        dialog.show();
     }
 
     @Override
     public void onLongClick(Article article, int id, String text) {
         if (id == R.id.card_theme) {
-
             mQuery = new FbQuery(-1, article.getMainTheme(), 1);
         } else if (id == R.id.card_contributor) {
             mQuery = new FbQuery(-2, article.getSource(), 1);
         }
-        resetView(mQuery);
+        resetView();
     }
 
     private void getThemeData() {
@@ -977,7 +997,26 @@ public class AcornActivity extends AppCompatActivity
         mDataSource.getThemeData(()->{
             mLlmState = null;
             mQuery = new FbQuery(3, hitsRef, "trendingIndex");
-            resetView(mQuery);
+            resetView();
+        });
+    }
+
+    private void getTrendingData() {
+        mRecyclerView.setVisibility(View.INVISIBLE);
+        mSwipeRefreshLayout.setRefreshing(true);
+        mLlmState = null;
+        mQuery = new FbQuery(1, null, -1);
+        resetView();
+    }
+
+    private void getDealsData() {
+        mRecyclerView.setVisibility(View.INVISIBLE);
+        mSwipeRefreshLayout.setRefreshing(true);
+        String hitsRef = SEARCH_REF + "/Deals/hits";
+        mDataSource.getDealsData(()->{
+            mLlmState = null;
+            mQuery = new FbQuery(4, hitsRef, "trendingIndex");
+            resetView();
         });
     }
 
@@ -1006,9 +1045,7 @@ public class AcornActivity extends AppCompatActivity
         ArticleViewModelFactory factory = InjectorUtils.provideArticleViewModelFactory(this.getApplicationContext());
         mArticleViewModel = ViewModelProviders.of(this, factory).get(ArticleViewModel.class);
 
-
-        mArticleViewModel.newQuery.setValue(mQuery);
-        LiveData<List<Article>> articleListLD = mArticleViewModel.getArticles();
+        ArticleListLiveData articleListLD = mArticleViewModel.getArticles(mQuery);
         Observer<List<Article>> articleListObserver = articles -> {
             if (articles != null) {
                 /*
@@ -1018,21 +1055,18 @@ public class AcornActivity extends AppCompatActivity
                 update changes in-situ.
                 This way, adapter list expands up to size of all observed live data lists
                 (includes all loadMoreArticles lists), with no repeat articles on changes.
-                mLoadedList ensures that if loadMoreArticles has been called before, those
-                articles loaded do not disappear.
                 */
-                List<Article> combinedList = mLoadedList == null ?
-                        new ArrayList<>() : new ArrayList<>(mLoadedList);
+                List<Article> currentList = mAdapter.getList();
                 for (int i = 0; i < articles.size(); i++) {
-                    if (combinedList.size() < i+1) {
+                    if (currentList.size() < i+1) {
                         //1
-                        combinedList.add(i, articles.get(i));
+                        currentList.add(i, articles.get(i));
                     } else {
                         //2
-                        combinedList.set(i, articles.get(i));
+                        currentList.set(i, articles.get(i));
                     }
                 }
-                mAdapter.setList(combinedList);
+                mAdapter.setList(currentList);
             }
         };
         articleListLD.observeForever(articleListObserver);

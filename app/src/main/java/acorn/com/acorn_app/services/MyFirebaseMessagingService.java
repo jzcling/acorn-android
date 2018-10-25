@@ -26,7 +26,6 @@ import acorn.com.acorn_app.ui.activities.AcornActivity;
 import acorn.com.acorn_app.ui.activities.CommentActivity;
 import acorn.com.acorn_app.ui.activities.WebViewActivity;
 import acorn.com.acorn_app.ui.viewModels.NotificationViewModel;
-import acorn.com.acorn_app.utils.AppExecutors;
 
 import static acorn.com.acorn_app.ui.activities.AcornActivity.mUid;
 import static acorn.com.acorn_app.ui.activities.CommentActivity.mCommentOpenObjectID;
@@ -235,7 +234,9 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
                     data.get("imageUrl") + "·" + // imageUrl
                     data.get("mainTheme") + "·" + // theme
                     data.get("mainTheme") + "·" + // extra
-                    data.get("timestamp"); // timestamp
+                    data.get("timestamp") + "·" + // timestamp
+                    ""; // link
+
             sharedPrefs.edit().putString(key, value).apply();
 
         } else {
@@ -244,7 +245,7 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
             } else {
                 keys += "·" + key;
             }
-            // type, articleId, text, title, source, imageUrl, theme, extra, timestamp
+            // type, articleId, text, title, source, imageUrl, theme, extra, timestamp, link
             String value = "comment" + "·" + // type
                     data.get("articleId") + "·" + // articleId
                     "1 new comment on an article you follow" + "·" + // text
@@ -253,7 +254,9 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
                     data.get("imageUrl") + "·" + // imageUrl
                     data.get("mainTheme") + "·" + // theme
                     data.get("mainTheme") + "·" + // extra
-                    data.get("timestamp"); // timestamp
+                    data.get("timestamp") + "·" + // timestamp
+                    ""; // link
+
             sharedPrefs.edit().putString(getString(R.string.notif_pref_key), keys)
                     .putString(key, value).apply();
 

@@ -4,7 +4,6 @@ import android.content.Context;
 import android.content.SharedPreferences;
 import android.support.annotation.NonNull;
 import android.support.v7.widget.RecyclerView;
-import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -56,7 +55,14 @@ public class NotificationAdapter extends RecyclerView.Adapter<NotificationViewHo
         Notif notif = mNotifList.get(position);
         SharedPreferences sharedPrefs = mContext.getSharedPreferences(
                 mContext.getString(R.string.notif_pref_id), MODE_PRIVATE);
-        String key = notif.type.equals("comment") ? "c_" + notif.articleId : "a_" + notif.articleId;
+        String key;
+        if (notif.type.equals("comment")) {
+            key = "c_" + notif.articleId;
+        } else if (notif.type.equals("article")) {
+            key = "a_" + notif.articleId;
+        } else {
+            key = "d_" + notif.articleId;
+        }
 
         String keys = sharedPrefs.getString(mContext.getString(R.string.notif_pref_key), "");
 

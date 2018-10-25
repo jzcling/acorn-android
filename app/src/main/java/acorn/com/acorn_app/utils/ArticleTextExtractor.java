@@ -1,7 +1,5 @@
 package acorn.com.acorn_app.utils;
 
-import android.util.Log;
-
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
@@ -310,6 +308,16 @@ public class ArticleTextExtractor {
         }
 
         ads = doc.select("div[class~=social-ring-button]");
+        for (Element item : ads) {
+            item.remove();
+        }
+
+        ads = doc.select("ins[class~=adsbygoogle]");
+        for (Element item : ads) {
+            item.remove();
+        }
+
+        ads = doc.select("div[id~=div-gpt-ad]");
         for (Element item : ads) {
             item.remove();
         }

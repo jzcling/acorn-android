@@ -19,6 +19,8 @@ public class User {
     private Long lastSignInTimeStamp;
     private Long lastRecArticlesPushTime = 0L;
     private Long lastRecArticlesScheduleTime = 0L;
+    private Long lastRecDealsPushTime = 0L;
+    private Long lastRecDealsScheduleTime = 0L;
     private ArrayList<String> subscriptions = new ArrayList<>();
     public final Map<String, Long> createdPosts = new HashMap<>();
     public final Map<String, Long> upvotedItems = new HashMap<>();
@@ -26,6 +28,8 @@ public class User {
     public final Map<String, Integer> commentedItems = new HashMap<>();
     public final Map<String, Long> savedItems = new HashMap<>();
     public final Map<String, Long> sharedItems = new HashMap<>();
+    public final Map<String, Long> openedArticles = new HashMap<>();
+    public final Map<String, Integer> openedThemes = new HashMap<>();
     private Integer subscriptionsCount = 0;
     private Integer createdPostsCount = 0;
     private Integer upvotedItemsCount = 0;
@@ -71,6 +75,10 @@ public class User {
 
     public Long getLastRecArticlesScheduleTime() { return lastRecArticlesScheduleTime; }
 
+    public Long getLastRecDealsPushTime() { return lastRecDealsPushTime; }
+
+    public Long getLastRecDealsScheduleTime() { return lastRecDealsScheduleTime; }
+
     public ArrayList<String> getSubscriptions() { return subscriptions; }
 
     public Integer getSubscriptionsCount() { return subscriptionsCount; }
@@ -112,6 +120,10 @@ public class User {
     public void setLastRecArticlesPushTime(Long lastRecArticlePushTime) { this.lastRecArticlesPushTime = lastRecArticlePushTime; }
 
     public void setLastRecArticlesScheduleTime(Long lastRecArticlesScheduleTime) { this.lastRecArticlesScheduleTime = lastRecArticlesScheduleTime; }
+
+    public void setLastRecDealsPushTime(Long lastRecDealsPushTime) { this.lastRecDealsPushTime = lastRecDealsPushTime; }
+
+    public void setLastRecDealsScheduleTime(Long lastRecDealsScheduleTime) { this.lastRecDealsScheduleTime = lastRecDealsScheduleTime; }
 
     public void setSubscriptions(ArrayList<String> subscriptions) { this.subscriptions = subscriptions; }
 

@@ -16,10 +16,10 @@ android {
     dataBinding.enabled true
     defaultConfig {
         applicationId 'acorn.com.acorn_app'
-        minSdkVersion 21
+        minSdkVersion 24
         targetSdkVersion 28
-        versionCode 30
-        versionName "1.4.2"
+        versionCode 37
+        versionName "1.4.9"
         testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
     }
     buildTypes {
@@ -72,6 +72,7 @@ dependencies {
     implementation 'com.google.firebase:firebase-perf:16.1.0'
     implementation 'com.jaredrummler:android-device-names:1.1.7'
     implementation 'com.crashlytics.sdk.android:crashlytics:2.9.5'
+    implementation files('libs/YouTubeAndroidPlayerApi.jar')
 }
 
 apply plugin: 'com.google.gms.google-services'

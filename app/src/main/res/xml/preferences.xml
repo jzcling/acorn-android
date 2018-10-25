@@ -29,6 +29,12 @@
             android:defaultValue="true"
             android:summaryOff="Disabled"
             android:summaryOn="Enabled" />
+        <SwitchPreference
+            android:key="@string/pref_key_notif_deals"
+            android:title="@string/pref_title_notif_deals"
+            android:defaultValue="true"
+            android:summaryOff="Disabled"
+            android:summaryOn="Enabled" />
 
     </PreferenceCategory>
     <!--<PreferenceCategory-->

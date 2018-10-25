@@ -1,9 +1,7 @@
 package acorn.com.acorn_app.utils;
 
 import android.content.Context;
-import android.util.Log;
 
-import org.jsoup.Jsoup;
 import org.jsoup.safety.Whitelist;
 
 import java.util.regex.Pattern;
@@ -31,6 +29,7 @@ public class HtmlUtils {
     private static final Pattern LAZY_LOADING_PATTERN_2 = Pattern.compile("\\s+(original|data)[^>]*?(src=.*)", Pattern.CASE_INSENSITIVE);
     private static final Pattern LAZY_LOADING_PATTERN_3 = Pattern.compile("\\s+(src=['\"].*?['\"])([^>]+?)data-lazy-src=(['\"].*?['\"])", Pattern.CASE_INSENSITIVE);
     private static final Pattern LAZY_LOADING_PATTERN_4 = Pattern.compile("\\s+data-original=", Pattern.CASE_INSENSITIVE);
+    private static final Pattern LAZY_LOADING_PATTERN_5 = Pattern.compile("\\s+src=[^\\s]+\\s(src=['\"].*?['\"])", Pattern.CASE_INSENSITIVE);
     private static final Pattern EMPTY_IMAGE_PATTERN = Pattern.compile("<img\\s+(height=['\"]1['\"]\\s+width=['\"]1['\"]|width=['\"]1['\"]\\s+height=['\"]1['\"])\\s+[^>]*src=\\s*['\"]([^'\"]+)['\"][^>]*>", Pattern.CASE_INSENSITIVE);
     private static final Pattern RELATIVE_IMAGE_PATTERN = Pattern.compile("\\s+(href|src)=([\"'])//", Pattern.CASE_INSENSITIVE);
     private static final Pattern RELATIVE_IMAGE_PATTERN_2 = Pattern.compile("\\s+(href|src)=([\"'])/", Pattern.CASE_INSENSITIVE);
@@ -68,6 +67,7 @@ public class HtmlUtils {
             content = LAZY_LOADING_PATTERN_2.matcher(content).replaceAll(" $2");
             content = LAZY_LOADING_PATTERN_3.matcher(content).replaceAll(" $2src=$3");
             content = LAZY_LOADING_PATTERN_4.matcher(content).replaceAll("src=");
+            content = LAZY_LOADING_PATTERN_5.matcher(content).replaceAll(" $1");
             // fix relative image paths
             content = RELATIVE_IMAGE_PATTERN.matcher(content).replaceAll(" $1=$2http://");
             // fix alternative image tags
@@ -91,7 +91,6 @@ public class HtmlUtils {
             content = TABLE_START_PATTERN.matcher(content).replaceAll("<div class=\"container\">$1");
             content = TABLE_END_PATTERN.matcher(content).replaceAll("$1</div>");
         }
-
 
         return content;
     }

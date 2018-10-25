@@ -14,6 +14,7 @@ import com.google.firebase.database.Query;
 import com.google.firebase.database.ValueEventListener;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -25,7 +26,7 @@ public class ArticleListLiveData extends LiveData<List<Article>> {
     private final DatabaseReference mDatabaseReference = FirebaseDatabase.getInstance().getReference();
 
     private final Query query;
-    private List<Query> savedArticlesQueryList = new ArrayList<>();
+    public Map<Query, ValueEventListener> savedArticlesQueryList = new HashMap<>();
 
     // States: 0 = Recent, 1 = Trending, 2 = Saved articles, 3 = Search,
     // -1 = mainTheme, -2 = source
@@ -47,8 +48,8 @@ public class ArticleListLiveData extends LiveData<List<Article>> {
             if (state != 2) {
                 query.removeEventListener(childListener);
             } else {
-                for (Query query : savedArticlesQueryList) {
-                    query.removeEventListener(valueListener);
+                for (Query query : savedArticlesQueryList.keySet()) {
+                    query.removeEventListener(savedArticlesQueryList.get(query));
                 }
             }
             listenerRemovePending = false;
@@ -88,7 +89,7 @@ public class ArticleListLiveData extends LiveData<List<Article>> {
                         int endIndex = Math.min(startAt + limit, savedIdList.size());
                         for (int i = startAt; i < endIndex; i++) {
                             Query articleQuery = mDatabaseReference.child("article/" + savedIdList.get(i));
-                            savedArticlesQueryList.add(articleQuery);
+                            savedArticlesQueryList.put(articleQuery, valueListener);
                             articleQuery.addValueEventListener(valueListener);
                         }
                     }
@@ -112,6 +113,7 @@ public class ArticleListLiveData extends LiveData<List<Article>> {
 
         @Override
         public void onChildAdded(@NonNull DataSnapshot dataSnapshot, String previousChildKey) {
+            Log.d(TAG, "onChildAdded");
             Article article = dataSnapshot.getValue(Article.class);
 
             if (!mArticleIds.contains(dataSnapshot.getKey())) {
@@ -125,11 +127,12 @@ public class ArticleListLiveData extends LiveData<List<Article>> {
 
         @Override
         public void onChildChanged(@NonNull DataSnapshot dataSnapshot, String previousChildKey) {
-
+            Log.d(TAG, "onChildChanged");
             Article newArticle = dataSnapshot.getValue(Article.class);
             String articleKey = dataSnapshot.getKey();
 
             int articleIndex = mArticleIds.indexOf(articleKey);
+            Log.d(TAG, "articleIndex: " + articleIndex);
             if (articleIndex > -1) {
                 if (newArticle != null) {
                     if (newArticle.isReported) {
@@ -147,18 +150,14 @@ public class ArticleListLiveData extends LiveData<List<Article>> {
 
         @Override
         public void onChildRemoved(@NonNull DataSnapshot dataSnapshot) {
-
+            Log.d(TAG, "onChildRemoved");
             String articleKey = dataSnapshot.getKey();
 
             int articleIndex = mArticleIds.indexOf(articleKey);
             if (articleIndex > -1) {
                 // Remove data from the list
                 mArticleIds.remove(articleIndex);
-
-
                 mArticleList.remove(articleIndex);
-            } else {
-
             }
 
             setValue(mArticleList);
@@ -166,7 +165,7 @@ public class ArticleListLiveData extends LiveData<List<Article>> {
 
         @Override
         public void onChildMoved(@NonNull DataSnapshot dataSnapshot, String previousChildKey) {
-
+            Log.d(TAG, "onChildMoved");
             Article movedArticle = dataSnapshot.getValue(Article.class);
             String articleKey = dataSnapshot.getKey();
 
@@ -196,9 +195,23 @@ public class ArticleListLiveData extends LiveData<List<Article>> {
 
         @Override
         public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
-            Article article = dataSnapshot.getValue(Article.class);
-            mArticleList.add(article);
-            setValue(mArticleList);
+            Log.d(TAG, "onDataChanged");
+            if (dataSnapshot.exists()) {
+                Log.d(TAG, "data exists");
+                Article article = dataSnapshot.getValue(Article.class);
+                String articleId = dataSnapshot.getKey();
+
+                int index = mArticleIds.indexOf(articleId);
+                if (index > -1) {
+                    mArticleIds.set(index, articleId);
+                    mArticleList.set(index, article);
+                } else {
+                    mArticleIds.add(articleId);
+                    mArticleList.add(article);
+                }
+
+                setValue(mArticleList);
+            }
         }
 
         @Override

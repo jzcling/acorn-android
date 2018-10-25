@@ -5,12 +5,12 @@ import android.support.v7.widget.RecyclerView;
 import android.support.v7.widget.helper.ItemTouchHelper;
 import android.view.View;
 
-import acorn.com.acorn_app.ui.adapters.NotificationViewHolder;
+import acorn.com.acorn_app.ui.adapters.SavedArticleViewHolder;
 
-public class RecyclerItemTouchHelper extends ItemTouchHelper.SimpleCallback {
+public class SavedArticleTouchHelper extends ItemTouchHelper.SimpleCallback {
     private final RecyclerItemTouchHelperListener listener;
 
-    public RecyclerItemTouchHelper(int dragDirs, int swipeDirs, RecyclerItemTouchHelperListener listener) {
+    public SavedArticleTouchHelper(int dragDirs, int swipeDirs, RecyclerItemTouchHelperListener listener) {
         super(dragDirs, swipeDirs);
         this.listener = listener;
     }
@@ -23,7 +23,7 @@ public class RecyclerItemTouchHelper extends ItemTouchHelper.SimpleCallback {
     @Override
     public void onSelectedChanged(RecyclerView.ViewHolder viewHolder, int actionState) {
         if (viewHolder != null) {
-            final View foregroundView = ((NotificationViewHolder) viewHolder).viewForeground;
+            final View foregroundView = ((SavedArticleViewHolder) viewHolder).viewForeground;
 
             getDefaultUIUtil().onSelected(foregroundView);
         }
@@ -33,14 +33,14 @@ public class RecyclerItemTouchHelper extends ItemTouchHelper.SimpleCallback {
     public void onChildDrawOver(Canvas c, RecyclerView recyclerView,
                                 RecyclerView.ViewHolder viewHolder, float dX, float dY,
                                 int actionState, boolean isCurrentlyActive) {
-        final View foregroundView = ((NotificationViewHolder) viewHolder).viewForeground;
+        final View foregroundView = ((SavedArticleViewHolder) viewHolder).viewForeground;
         getDefaultUIUtil().onDrawOver(c, recyclerView, foregroundView, dX, dY,
                 actionState, isCurrentlyActive);
     }
 
     @Override
     public void clearView(RecyclerView recyclerView, RecyclerView.ViewHolder viewHolder) {
-        final View foregroundView = ((NotificationViewHolder) viewHolder).viewForeground;
+        final View foregroundView = ((SavedArticleViewHolder) viewHolder).viewForeground;
         getDefaultUIUtil().clearView(foregroundView);
     }
 
@@ -48,7 +48,7 @@ public class RecyclerItemTouchHelper extends ItemTouchHelper.SimpleCallback {
     public void onChildDraw(Canvas c, RecyclerView recyclerView,
                             RecyclerView.ViewHolder viewHolder, float dX, float dY,
                             int actionState, boolean isCurrentlyActive) {
-        final View foregroundView = ((NotificationViewHolder) viewHolder).viewForeground;
+        final View foregroundView = ((SavedArticleViewHolder) viewHolder).viewForeground;
 
         getDefaultUIUtil().onDraw(c, recyclerView, foregroundView, dX, dY,
                 actionState, isCurrentlyActive);

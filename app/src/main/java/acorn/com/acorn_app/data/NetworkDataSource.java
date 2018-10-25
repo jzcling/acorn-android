@@ -37,7 +37,9 @@ import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.database.MutableData;
 import com.google.firebase.database.Query;
+import com.google.firebase.database.Transaction;
 import com.google.firebase.database.ValueEventListener;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
@@ -48,11 +50,14 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Consumer;
 
 import acorn.com.acorn_app.models.Article;
 import acorn.com.acorn_app.models.Comment;
 import acorn.com.acorn_app.models.FbQuery;
+import acorn.com.acorn_app.models.User;
 import acorn.com.acorn_app.services.RecArticlesJobService;
+import acorn.com.acorn_app.services.RecDealsJobService;
 import acorn.com.acorn_app.utils.AppExecutors;
 
 import static acorn.com.acorn_app.ui.activities.AcornActivity.mUid;
@@ -60,6 +65,7 @@ import static acorn.com.acorn_app.ui.activities.AcornActivity.mUid;
 public class NetworkDataSource {
     private static final String TAG = "NetworkDataSource";
     private static final String REC_ARTICLES_TAG = "recommendedArticles";
+    private static final String REC_DEALS_TAG = "recommendedDeals";
 
     public static final String ARTICLE_REF = "article";
     public static final String COMMENT_REF = "comment";
@@ -69,6 +75,7 @@ public class NetworkDataSource {
     public static final String NOTIFICATION_TOKENS = "notificationTokens";
     public static final String COMMENTS_NOTIFICATION = "commentsNotificationValue";
     public static final String REC_ARTICLES_NOTIFICATION = "recArticlesNotificationValue";
+    public static final String REC_DEALS_NOTIFICATION = "recDealsNotificationValue";
     public static final String ALGOLIA_REF = "algoliaApiKey";
     public static final String REPORT_REF = "report";
 
@@ -116,27 +123,27 @@ public class NetworkDataSource {
     }
 
     public ArticleListLiveData getArticles(FbQuery query) {
-        if (query.state != 2) {
-            DatabaseReference ref = mDatabaseReference.child(query.dbRef);
-            Query tempQuery = ref.orderByChild(query.orderByChild);
-            if (!query.strStartAt.equals("")) {
-                tempQuery = tempQuery.startAt(query.strStartAt).limitToFirst(query.limit);
-            } else if (query.numStartAt != Long.MAX_VALUE) {
-                tempQuery = tempQuery.startAt(query.numStartAt).limitToFirst(query.limit);
-            } else if (!query.strEqualTo.equals("")) {
-                tempQuery = tempQuery.equalTo(query.strEqualTo).limitToFirst(50);
-            } else if (query.numEqualTo != Long.MAX_VALUE) {
-                tempQuery = tempQuery.equalTo(query.numEqualTo).limitToFirst(50);
-            } else {
-                tempQuery = tempQuery.limitToFirst(query.limit);
-            }
-            tempQuery.keepSynced(true);
-
-            return new ArticleListLiveData(tempQuery);
+        DatabaseReference ref = mDatabaseReference.child(query.dbRef);
+        Query tempQuery = ref.orderByChild(query.orderByChild);
+        if (!query.strStartAt.equals("")) {
+            tempQuery = tempQuery.startAt(query.strStartAt).limitToFirst(query.limit);
+        } else if (query.numStartAt != Long.MAX_VALUE) {
+            tempQuery = tempQuery.startAt(query.numStartAt).limitToFirst(query.limit);
+        } else if (!query.strEqualTo.equals("")) {
+            tempQuery = tempQuery.equalTo(query.strEqualTo).limitToFirst(50);
+        } else if (query.numEqualTo != Long.MAX_VALUE) {
+            tempQuery = tempQuery.equalTo(query.numEqualTo).limitToFirst(50);
         } else {
-            Query tempQuery = mDatabaseReference.child(USER_REF + "/" + mUid + "/savedItems");
-            return new ArticleListLiveData(tempQuery, query.state, query.limit, query.numStartAt.intValue());
+            tempQuery = tempQuery.limitToFirst(query.limit);
         }
+        tempQuery.keepSynced(true);
+
+        return new ArticleListLiveData(tempQuery);
+    }
+
+    public ArticleListLiveData getSavedArticles(FbQuery query) {
+        Query tempQuery = mDatabaseReference.child(USER_REF + "/" + mUid + "/savedItems");
+        return new ArticleListLiveData(tempQuery, query.state, query.limit, query.numStartAt.intValue());
     }
 
     public ArticleListLiveData getAdditionalArticles(FbQuery query, Object index, int indexType) {
@@ -201,9 +208,11 @@ public class NetworkDataSource {
             query.setFilters(themeSearchFilter);
 
             setupAlgoliaClient(() -> {
+                if (mAlgoliaIndex == null) return;
                 mAlgoliaIndex.searchAsync(query, (jsonObject, e) -> {
+                    if (jsonObject == null) return;
+
                     String jsonString = jsonObject.toString();
-                    //                    .replaceAll("(\".*?)\\.(.*?\":.*?)", "$1$2");
                     Map<String, Object> jsonMap = new Gson().fromJson(
                             jsonString,
                             new TypeToken<HashMap<String, Object>>() {
@@ -218,19 +227,55 @@ public class NetworkDataSource {
         });
     }
 
-    public void getRecommendedArticles(String hitsRef, Runnable onSuccess) {
+    public void getDealsData(Runnable bindToUi) {
         mExecutors.networkIO().execute(() -> {
-            mRecArticleList = new ArrayList<>();
-            Query query = mDatabaseReference.child(hitsRef)
+            String dealsSearchKey = "Deals";
+            String dealsSearchFilter = "mainTheme: Deals";
+            DatabaseReference resultRef = mDatabaseReference.child(SEARCH_REF).child("Deals");
+            resultRef.addListenerForSingleValueEvent(new ValueEventListener() {
+                @Override
+                public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+                    if (dataSnapshot.getValue() == null) {
+                        searchThemeArticles(dealsSearchKey, dealsSearchFilter, bindToUi);
+                    } else {
+                        Long timeNow = (new Date().getTime());
+                        Long lastQueryTimestamp = (Long) dataSnapshot.child("lastQueryTimestamp").getValue();
+                        if (lastQueryTimestamp == null) {
+                            searchThemeArticles(dealsSearchKey, dealsSearchFilter, bindToUi);
+                        } else {
+                            if (timeNow - lastQueryTimestamp < 3L * 60L * 60L * 1000L) { // 3 hours
+                                mExecutors.mainThread().execute(bindToUi);
+                            } else {
+                                searchThemeArticles(dealsSearchKey, dealsSearchFilter, bindToUi);
+                            }
+                        }
+                    }
+                }
+
+                @Override
+                public void onCancelled(@NonNull DatabaseError databaseError) {
+                }
+            });
+        });
+    }
+
+    // Recommended Deals
+    public void getRecommendedDeals(Consumer<List<Article>> onSuccess) {
+        int limit = 3;
+        mExecutors.networkIO().execute(() -> {
+            List<Article> recDealList = new ArrayList<>();
+            Query query = mDatabaseReference.child(SEARCH_REF)
+                    .child("Deals")
+                    .child("hits")
                     .orderByChild("trendingIndex")
-                    .limitToFirst(5);
+                    .limitToFirst(limit);
             ChildEventListener listener = new ChildEventListener() {
                 @Override
                 public void onChildAdded(@NonNull DataSnapshot dataSnapshot, @Nullable String s) {
                     Article article = dataSnapshot.getValue(Article.class);
-                    mRecArticleList.add(article);
-                    if (mRecArticleList.size() == 5) {
-                        onSuccess.run();
+                    recDealList.add(article);
+                    if (recDealList.size() == limit) {
+                        onSuccess.accept(recDealList);
                         query.removeEventListener(this);
                     }
                 }
@@ -251,6 +296,88 @@ public class NetworkDataSource {
         });
     }
     
+    public void scheduleRecDealsPush() {
+        Driver driver = new GooglePlayDriver(mContext);
+        FirebaseJobDispatcher dispatcher = new FirebaseJobDispatcher(driver);
+
+        Job recDealsJob = dispatcher.newJobBuilder()
+                .setService(RecDealsJobService.class)
+                .setTag(REC_DEALS_TAG)
+                .setConstraints(Constraint.ON_ANY_NETWORK)
+                .setLifetime(Lifetime.FOREVER)
+                .setRecurring(true)
+                .setTrigger(Trigger.executionWindow(
+//                        (int) TimeUnit.MINUTES.toSeconds(1), //Testing
+//                        (int) TimeUnit.MINUTES.toSeconds(2))) //Testing
+                        (int) TimeUnit.HOURS.toSeconds(8), //Start every 8 hours
+                        (int) TimeUnit.HOURS.toSeconds(9))) //Execute within 9 hours
+                .setRetryStrategy(RetryStrategy.DEFAULT_EXPONENTIAL)
+                .setReplaceCurrent(false)
+                .build();
+
+        // Schedule the Job with the dispatcher
+        dispatcher.mustSchedule(recDealsJob);
+        recordLastRecDealsScheduleTime();
+    }
+
+    public void cancelRecDealsPush() {
+        Driver driver = new GooglePlayDriver(mContext);
+        FirebaseJobDispatcher dispatcher = new FirebaseJobDispatcher(driver);
+        dispatcher.cancel(REC_DEALS_TAG);
+        mDatabaseReference.child(USER_REF).child(mUid)
+                .child("lastRecDealsScheduleTime").setValue(0);
+    }
+
+    public void recordLastRecDealsPushTime() {
+        Long lastRecArticlesPushTime = (new Date()).getTime();
+        if (mUid == null) mUid = mSharedPrefs.getString("uid", "");
+        mDatabaseReference.child(USER_REF).child(mUid)
+                .child("lastRecDealsPushTime").setValue(lastRecArticlesPushTime);
+        mSharedPrefs.edit().putLong("lastRecDealsPushTime", lastRecArticlesPushTime).apply();
+    }
+
+    public void recordLastRecDealsScheduleTime() {
+        if (mUid == null) mUid = mSharedPrefs.getString("uid", "");
+        mDatabaseReference.child(USER_REF).child(mUid)
+                .child("lastRecDealsScheduleTime").setValue((new Date()).getTime());
+    }
+
+
+    // Recommended Articles
+    public void getRecommendedArticles(String hitsRef, Runnable onSuccess) {
+        int limit = 3;
+        mExecutors.networkIO().execute(() -> {
+            mRecArticleList = new ArrayList<>();
+            Query query = mDatabaseReference.child(hitsRef)
+                    .orderByChild("trendingIndex")
+                    .limitToFirst(limit);
+            ChildEventListener listener = new ChildEventListener() {
+                @Override
+                public void onChildAdded(@NonNull DataSnapshot dataSnapshot, @Nullable String s) {
+                    Article article = dataSnapshot.getValue(Article.class);
+                    mRecArticleList.add(article);
+                    if (mRecArticleList.size() == limit) {
+                        onSuccess.run();
+                        query.removeEventListener(this);
+                    }
+                }
+
+                @Override
+                public void onChildChanged(@NonNull DataSnapshot dataSnapshot, @Nullable String s) { }
+
+                @Override
+                public void onChildRemoved(@NonNull DataSnapshot dataSnapshot) { }
+
+                @Override
+                public void onChildMoved(@NonNull DataSnapshot dataSnapshot, @Nullable String s) { }
+
+                @Override
+                public void onCancelled(@NonNull DatabaseError databaseError) { }
+            };
+            query.addChildEventListener(listener);
+        });
+    }
+
     public void scheduleRecArticlesPush() {
         Driver driver = new GooglePlayDriver(mContext);
         FirebaseJobDispatcher dispatcher = new FirebaseJobDispatcher(driver);
@@ -258,17 +385,16 @@ public class NetworkDataSource {
         Job recArticlesJob = dispatcher.newJobBuilder()
                 .setService(RecArticlesJobService.class)
                 .setTag(REC_ARTICLES_TAG)
-                .setConstraints(Constraint.ON_UNMETERED_NETWORK)
+                .setConstraints(Constraint.ON_ANY_NETWORK)
                 .setLifetime(Lifetime.FOREVER)
                 .setRecurring(true)
                 .setTrigger(Trigger.executionWindow(
-//                        (int) TimeUnit.MINUTES.toSeconds(1), //For testing
-//                        (int) TimeUnit.MINUTES.toSeconds(2))) //For testing
-                        (int) TimeUnit.HOURS.toSeconds(24), //Start every 24 hours
-                        (int) TimeUnit.HOURS.toSeconds(25))) //Execute within 25 hours
+//                        (int) TimeUnit.MINUTES.toSeconds(1), //Testing
+//                        (int) TimeUnit.MINUTES.toSeconds(2))) //Testing
+                        (int) TimeUnit.HOURS.toSeconds(6), //Start every 6 hours
+                        (int) TimeUnit.HOURS.toSeconds(7))) //Execute within 7 hours
                 .setRetryStrategy(RetryStrategy.DEFAULT_EXPONENTIAL)
                 .setReplaceCurrent(false)
-                .setTag("RecArticlesPush")
                 .build();
 
         // Schedule the Job with the dispatcher
@@ -280,6 +406,8 @@ public class NetworkDataSource {
         Driver driver = new GooglePlayDriver(mContext);
         FirebaseJobDispatcher dispatcher = new FirebaseJobDispatcher(driver);
         dispatcher.cancel(REC_ARTICLES_TAG);
+        mDatabaseReference.child(USER_REF).child(mUid)
+                .child("lastRecArticlesScheduleTime").setValue(0);
     }
 
     public void recordLastRecArticlesPushTime() {
@@ -296,6 +424,8 @@ public class NetworkDataSource {
                 .child("lastRecArticlesScheduleTime").setValue((new Date()).getTime());
     }
 
+
+    // Algolia
     public void setupAlgoliaClient(@Nullable Runnable onComplete) {
         mDatabaseReference.child(ALGOLIA_REF).addListenerForSingleValueEvent(new ValueEventListener() {
             @Override
@@ -360,6 +490,180 @@ public class NetworkDataSource {
 
             @Override
             public void onCancelled(@NonNull DatabaseError databaseError) { }
+        });
+    }
+
+    public void removeSavedArticle(String articleId, ArticleListLiveData articleListLD) {
+        DatabaseReference articleRef = FirebaseDatabase.getInstance()
+                .getReference("article/"+articleId);
+        articleRef.removeEventListener(
+                articleListLD.savedArticlesQueryList.get(articleRef));
+        articleListLD.savedArticlesQueryList.remove(articleRef);
+
+        articleRef.runTransaction(new Transaction.Handler() {
+            @NonNull
+            @Override
+            public Transaction.Result doTransaction(@NonNull MutableData mutableData) {
+                Article article = mutableData.getValue(Article.class);
+                if (article == null) {
+
+                    return Transaction.success(mutableData);
+                }
+
+                int currentSaveCount = article.getSaveCount() == null ? 0 : article.getSaveCount();
+
+                article.savers.remove(mUid);
+                article.setSaveCount(currentSaveCount - 1);
+
+                article.changedSinceLastJob = true;
+                mutableData.setValue(article);
+                return Transaction.success(mutableData);
+            }
+
+            @Override
+            public void onComplete(@Nullable DatabaseError databaseError, boolean b, @Nullable DataSnapshot dataSnapshot) {
+            }
+        });
+
+        // Update user with save data
+        DatabaseReference userRef = FirebaseDatabase.getInstance()
+                .getReference("user/"+mUid);
+
+        userRef.runTransaction(new Transaction.Handler() {
+            @NonNull
+            @Override
+            public Transaction.Result doTransaction(@NonNull MutableData mutableData) {
+                User user = mutableData.getValue(User.class);
+                if (user == null) {
+                    return Transaction.success(mutableData);
+                }
+
+                int currentSaveCount = user.getSavedItemsCount() == null ? 0 : user.getSavedItemsCount();
+
+                user.savedItems.remove(articleId);
+                user.setSavedItemsCount(currentSaveCount - 1);
+                mutableData.setValue(user);
+                return Transaction.success(mutableData);
+            }
+
+            @Override
+            public void onComplete(@Nullable DatabaseError databaseError, boolean b, @Nullable DataSnapshot dataSnapshot) {
+            }
+        });
+    }
+
+    public void recordArticleOpenDetails(Article article) {
+        Long timeNow = new Date().getTime();
+        DatabaseReference articleRef = FirebaseDatabase.getInstance()
+                .getReference("article/"+article.getObjectID());
+
+        articleRef.runTransaction(new Transaction.Handler() {
+            @NonNull
+            @Override
+            public Transaction.Result doTransaction(@NonNull MutableData mutableData) {
+                Article article = mutableData.getValue(Article.class);
+                if (article == null) {
+                    return Transaction.success(mutableData);
+                }
+
+                int currentOpenCount = article.getOpenCount() == null ? 0 : article.getOpenCount();
+
+                article.openedBy.put(mUid, timeNow);
+                article.setOpenCount(currentOpenCount + 1);
+
+                article.changedSinceLastJob = true;
+                mutableData.setValue(article);
+                return Transaction.success(mutableData);
+            }
+
+            @Override
+            public void onComplete(@Nullable DatabaseError databaseError, boolean b, @Nullable DataSnapshot dataSnapshot) {
+            }
+        });
+
+        // Update user with save data
+        DatabaseReference userRef = FirebaseDatabase.getInstance()
+                .getReference("user/"+mUid);
+
+        userRef.runTransaction(new Transaction.Handler() {
+            @NonNull
+            @Override
+            public Transaction.Result doTransaction(@NonNull MutableData mutableData) {
+                User user = mutableData.getValue(User.class);
+                if (user == null) {
+                    return Transaction.success(mutableData);
+                }
+                Log.d(TAG, article.getObjectID() + ", " + article.getMainTheme());
+                int themeOpenedCount = user.openedThemes.get(article.getMainTheme()) == null ?
+                        0 : user.openedThemes.get(article.getMainTheme());
+
+                user.openedArticles.put(article.getObjectID(), timeNow);
+                user.openedThemes.put(article.getMainTheme(), themeOpenedCount + 1);
+
+                mutableData.setValue(user);
+                return Transaction.success(mutableData);
+            }
+
+            @Override
+            public void onComplete(@Nullable DatabaseError databaseError, boolean b, @Nullable DataSnapshot dataSnapshot) {
+            }
+        });
+    }
+
+    public void recordArticleOpenDetails(String articleId, String mainTheme) {
+        Long timeNow = new Date().getTime();
+        DatabaseReference articleRef = FirebaseDatabase.getInstance()
+                .getReference("article/"+articleId);
+
+        articleRef.runTransaction(new Transaction.Handler() {
+            @NonNull
+            @Override
+            public Transaction.Result doTransaction(@NonNull MutableData mutableData) {
+                Article article = mutableData.getValue(Article.class);
+                if (article == null) {
+                    return Transaction.success(mutableData);
+                }
+
+                int currentOpenCount = article.getOpenCount() == null ? 0 : article.getOpenCount();
+
+                article.openedBy.put(mUid, timeNow);
+                article.setOpenCount(currentOpenCount + 1);
+
+                article.changedSinceLastJob = true;
+                mutableData.setValue(article);
+                return Transaction.success(mutableData);
+            }
+
+            @Override
+            public void onComplete(@Nullable DatabaseError databaseError, boolean b, @Nullable DataSnapshot dataSnapshot) {
+            }
+        });
+
+        // Update user with save data
+        DatabaseReference userRef = FirebaseDatabase.getInstance()
+                .getReference("user/"+mUid);
+
+        userRef.runTransaction(new Transaction.Handler() {
+            @NonNull
+            @Override
+            public Transaction.Result doTransaction(@NonNull MutableData mutableData) {
+                User user = mutableData.getValue(User.class);
+                if (user == null) {
+                    return Transaction.success(mutableData);
+                }
+
+                int themeOpenedCount = user.openedThemes.get(mainTheme);
+
+                user.openedArticles.put(articleId, timeNow);
+                user.openedThemes.put(mainTheme, themeOpenedCount + 1);
+
+                mutableData.setValue(user);
+                return Transaction.success(mutableData);
+            }
+
+            @Override
+            public void onComplete(@Nullable DatabaseError databaseError, boolean b, @Nullable DataSnapshot dataSnapshot) {
+            }
         });
     }
 }

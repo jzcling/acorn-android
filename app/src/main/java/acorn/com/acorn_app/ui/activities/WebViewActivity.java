@@ -11,7 +11,6 @@ import android.support.design.widget.FloatingActionButton;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.SearchView;
 import android.support.v7.widget.Toolbar;
-import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
@@ -127,7 +126,6 @@ public class WebViewActivity extends AppCompatActivity {
             @Override
             public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
                 mArticle = dataSnapshot.getValue(Article.class);
-//
 
                 // get data to set up card
                 if (mArticle != null) {
@@ -172,8 +170,6 @@ public class WebViewActivity extends AppCompatActivity {
                     commentView.setOnClickListener(onClickListener(mArticle, "comment"));
                     favView.setOnClickListener(onClickListener(mArticle, "favourite"));
                     shareView.setOnClickListener(onClickListener(mArticle, "share"));
-                } else {
-                    createToast(WebViewActivity.this, "Failed to fetch article", Toast.LENGTH_SHORT);
                 }
             }
 
@@ -205,7 +201,7 @@ public class WebViewActivity extends AppCompatActivity {
                     imm.hideSoftInputFromWindow(view.getWindowToken(), 0);
                 }
 
-                searchFab.setVisibility(View.VISIBLE);
+                searchFab.show();
                 searchFab.setOnClickListener(v -> webView.findNext(true));
                 return true;
             }
@@ -213,7 +209,7 @@ public class WebViewActivity extends AppCompatActivity {
             @Override
             public boolean onQueryTextChange(String newText) {
                 webView.findAllAsync(newText);
-                searchFab.setVisibility(View.INVISIBLE);
+                searchFab.hide();
                 searchFab.setOnClickListener(null);
                 return true;
             }
@@ -375,6 +371,11 @@ public class WebViewActivity extends AppCompatActivity {
                     }
                 });
             } else {
+                if (link != null && link != "") {
+                    mExecutors.mainThread().execute(() -> { webView.loadUrl(link); });
+                    return;
+                }
+
                 finish();
                 mExecutors.mainThread().execute(() -> createToast(WebViewActivity.this, "Failed to load article", Toast.LENGTH_SHORT));
             }

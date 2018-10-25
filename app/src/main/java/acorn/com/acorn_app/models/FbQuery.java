@@ -2,9 +2,7 @@ package acorn.com.acorn_app.models;
 
 import android.os.Parcel;
 import android.os.Parcelable;
-import android.util.Log;
 
-import static acorn.com.acorn_app.ui.activities.AcornActivity.mUid;
 import static acorn.com.acorn_app.ui.viewModels.ArticleViewModel.QUERY_LIMIT;
 
 public class FbQuery implements Parcelable {
@@ -28,8 +26,9 @@ public class FbQuery implements Parcelable {
         numEqualTo = in.readLong();
     }
 
-    // States: 0 = Recent, 1 = Trending, 2 = Saved articles, 3 = Search,
+    // States: 0 = Recent, 1 = Trending, 2 = Saved articles, 3 = Search, 4 = Deals
     // -1 = mainTheme, -2 = source
+    // Index Types: 0 = start at index, 1 = equal to index, -1 = start at beginning
     public FbQuery(int state, Object index, int indexType) {
         this.state = state;
         if (state == 0) { // Recent
@@ -37,6 +36,9 @@ public class FbQuery implements Parcelable {
         } else if (state == 1) { // Trending
             orderByChild = "trendingIndex";
         } else if (state == 2) { // Saved articles
+            limit = 500;
+        } else if (state == 4) { // Deals
+            orderByChild = "trendingIndex";
         } else if (state == -1) { // mainTheme
             orderByChild = "mainTheme";
         } else if (state == -2) { // source
@@ -45,11 +47,9 @@ public class FbQuery implements Parcelable {
         if (indexType == 0) {
             strStartAt = index instanceof String ? (String) index : "";
             numStartAt = index instanceof Number ? ((Number) index).longValue() : Long.MAX_VALUE;
-
         } else if (indexType == 1) {
             strEqualTo = index instanceof String ? (String) index : "";
             numEqualTo = index instanceof Number ? ((Number) index).longValue() : Long.MAX_VALUE;
-
         }
     }
 

@@ -11,16 +11,16 @@
             android:title="@string/nav_subscriptions"
             android:checked="true"/>
         <item
-            android:id="@+id/nav_recent"
-            android:title="@string/nav_recent" />
-        <item
             android:id="@+id/nav_trending"
             android:title="@string/nav_trending" />
+        <item
+            android:id="@+id/nav_deals"
+            android:title="@string/nav_deals" />
     </group>
 
     <group
         android:id="@+id/nav_menu_2"
-        android:checkableBehavior="single">
+        android:checkableBehavior="none">
         <item
             android:id="@+id/nav_saved"
             android:title="@string/nav_saved" />

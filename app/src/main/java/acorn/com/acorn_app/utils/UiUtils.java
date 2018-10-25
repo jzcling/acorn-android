@@ -10,7 +10,6 @@ import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.support.v7.widget.helper.ItemTouchHelper;
 import android.util.DisplayMetrics;
-import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.TouchDelegate;
 import android.view.View;
@@ -31,7 +30,7 @@ import acorn.com.acorn_app.models.Notif;
 import acorn.com.acorn_app.ui.adapters.NotificationAdapter;
 import acorn.com.acorn_app.ui.adapters.NotificationViewHolder;
 
-public class UiUtils implements RecyclerItemTouchHelper.RecyclerItemTouchHelperListener {
+public class UiUtils implements NotificationItemTouchHelper.RecyclerItemTouchHelperListener {
     private static final String TAG = "UiUtils";
     private NotificationAdapter mAdapter;
 
@@ -72,8 +71,7 @@ public class UiUtils implements RecyclerItemTouchHelper.RecyclerItemTouchHelperL
     public void onSwiped(RecyclerView.ViewHolder viewHolder, int direction, int position) {
         if (viewHolder instanceof NotificationViewHolder) {
             // remove the item from recycler view
-            mAdapter.removeItem(viewHolder.getAdapterPosition());
-
+            mAdapter.removeItem(position);
         }
     }
 
@@ -133,7 +131,7 @@ public class UiUtils implements RecyclerItemTouchHelper.RecyclerItemTouchHelperL
         mAdapter.setList(notificationList);
 
         ItemTouchHelper.SimpleCallback itemTouchHelperCallback =
-                new RecyclerItemTouchHelper(0, ItemTouchHelper.LEFT|ItemTouchHelper.RIGHT, this);
+                new NotificationItemTouchHelper(0, ItemTouchHelper.LEFT|ItemTouchHelper.RIGHT, this);
         new ItemTouchHelper(itemTouchHelperCallback).attachToRecyclerView(mRecyclerView);
 
         // Set up empty textview
@@ -148,10 +146,18 @@ public class UiUtils implements RecyclerItemTouchHelper.RecyclerItemTouchHelperL
 
         String keys = sharedPrefs.getString(context.getString(R.string.notif_pref_key), "");
         if (!keys.equals("")) {
-            List<String> keyList = Arrays.asList(keys.split("·"));
+            String[] keyList = keys.split("·");
             for (String key : keyList) {
                 String value = sharedPrefs.getString(key, "");
                 List<String> valueList = Arrays.asList(value.split("·"));
+
+                // new as of 1.4.2 to clear all notifications of previous versions
+                // due to addition of link (index position 9)
+                if (valueList.size() < 10) {
+                    sharedPrefs.edit().clear().apply();
+                    return new ArrayList<>();
+                }
+
                 Notif notification = new Notif(valueList.get(0), valueList.get(1), valueList.get(2),
                         valueList.get(3), valueList.get(4), valueList.get(5), valueList.get(6),
                         valueList.get(7), Long.parseLong(valueList.get(8)), valueList.get(9));

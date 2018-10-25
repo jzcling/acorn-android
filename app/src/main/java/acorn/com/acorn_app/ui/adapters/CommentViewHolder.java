@@ -8,12 +8,10 @@ import android.graphics.Bitmap;
 import android.net.ConnectivityManager;
 import android.net.Uri;
 import android.support.constraint.ConstraintLayout;
-import android.support.v4.view.GravityCompat;
 import android.support.v7.widget.RecyclerView;
 import android.text.Html;
 import android.text.method.LinkMovementMethod;
 import android.util.DisplayMetrics;
-import android.util.Log;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageView;
@@ -26,7 +24,6 @@ import com.google.firebase.storage.StorageReference;
 
 import java.io.File;
 import java.io.FileOutputStream;
-import java.util.concurrent.Executor;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -105,6 +102,7 @@ public class CommentViewHolder extends RecyclerView.ViewHolder {
                 commenterTextView.setText(comment.getUserDisplayName());
             commentDateTextView.setText(DateUtils.parseCommentDate(comment.getPubDate()));
         } else {
+            commentTextView.setTextColor(mContext.getResources().getColor(R.color.comment_text_color));
             if (comment.getIsUrl()) {
                 commentTextView.setVisibility(View.GONE);
                 commentImageView.setVisibility(View.GONE);

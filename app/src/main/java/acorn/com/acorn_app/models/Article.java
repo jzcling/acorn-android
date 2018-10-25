@@ -27,6 +27,7 @@ public class Article {
     private Integer commentCount = 0;
     private Integer saveCount = 0;
     private Integer shareCount = 0;
+    private Integer openCount = 0;
     public List<String> category = new ArrayList<>();
     public List<String> theme = new ArrayList<>();
     public final Map<String, Long> upvoters = new HashMap<>();
@@ -34,6 +35,7 @@ public class Article {
     public final Map<String, Integer> commenters = new HashMap<>();
     public final Map<String, Long> savers = new HashMap<>();
     public final Map<String, Long> sharers = new HashMap<>();
+    public final Map<String, Long> openedBy = new HashMap<>();
     public final Map<String, String> notificationTokens = new HashMap<>();
     public boolean changedSinceLastJob = true;
     public boolean isReported = false;
@@ -94,6 +96,8 @@ public class Article {
 
     public Integer getShareCount() { return shareCount; }
 
+    public Integer getOpenCount() { return openCount; }
+
     public String getTrendingIndex() { return trendingIndex; }
 
     public String getImageUrl() { return imageUrl; }
@@ -137,6 +141,8 @@ public class Article {
     public void setSaveCount(Integer saveCount) { this.saveCount = saveCount; }
 
     public void setShareCount(Integer shareCount) { this.shareCount = shareCount; }
+
+    public void setOpenCount(Integer openCount) { this.openCount = openCount; }
 
     public void setTrendingIndex(String trendingIndex) { this.trendingIndex = trendingIndex; }
 

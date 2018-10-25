@@ -13,9 +13,11 @@ import com.bumptech.glide.Glide;
 import com.google.android.gms.common.util.NumberUtils;
 
 import acorn.com.acorn_app.R;
+import acorn.com.acorn_app.data.NetworkDataSource;
 import acorn.com.acorn_app.models.Notif;
 import acorn.com.acorn_app.ui.activities.CommentActivity;
 import acorn.com.acorn_app.ui.activities.WebViewActivity;
+import acorn.com.acorn_app.utils.AppExecutors;
 import acorn.com.acorn_app.utils.DateUtils;
 
 public class NotificationViewHolder extends RecyclerView.ViewHolder {
@@ -28,8 +30,11 @@ public class NotificationViewHolder extends RecyclerView.ViewHolder {
     private final TextView contributor;
     private final ImageView mainImage;
     private final TextView extra;
-    public final ConstraintLayout viewBackground;
+    private final ConstraintLayout viewBackground;
     public final ConstraintLayout viewForeground;
+
+    private NetworkDataSource mDataSource;
+    private AppExecutors mExecutors = AppExecutors.getInstance();
 
     public NotificationViewHolder(Context context, View view) {
         super(view);
@@ -43,6 +48,8 @@ public class NotificationViewHolder extends RecyclerView.ViewHolder {
         extra = (TextView) view.findViewById(R.id.notification_extra);
         viewBackground = (ConstraintLayout) view.findViewById(R.id.view_background);
         viewForeground = (ConstraintLayout) view.findViewById(R.id.view_foreground);
+
+        mDataSource = NetworkDataSource.getInstance(context, mExecutors);
     }
 
     public void bind(Notif notif) {
@@ -53,6 +60,7 @@ public class NotificationViewHolder extends RecyclerView.ViewHolder {
                     intent.putExtra("id", notif.articleId);
                     mContext.startActivity(intent);
                 } else {
+                    mDataSource.recordArticleOpenDetails(notif.articleId, notif.theme);
                     Intent intent = new Intent(mContext, WebViewActivity.class);
                     intent.putExtra("id", notif.articleId);
                     mContext.startActivity(intent);

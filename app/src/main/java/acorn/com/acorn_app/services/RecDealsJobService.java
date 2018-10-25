@@ -36,34 +36,30 @@ import static android.support.v4.app.NotificationCompat.GROUP_ALERT_SUMMARY;
 import static android.support.v4.app.NotificationCompat.PRIORITY_HIGH;
 import static android.support.v4.app.NotificationCompat.VISIBILITY_PUBLIC;
 
-public class RecArticlesJobService extends JobService {
-    private static final String TAG = "RecArticlesService";
+public class RecDealsJobService extends JobService {
+    private static final String TAG = "RecDealsService";
     private AppExecutors mExecutors;
     private NetworkDataSource mDataSource;
     private SharedPreferences sharedPrefs;
     private String mUid;
-    private String themeSearchKey;
             
     @Override
     public boolean onStartJob(JobParameters params) {
         mExecutors = AppExecutors.getInstance();
         mDataSource = NetworkDataSource.getInstance(this, mExecutors);
         sharedPrefs = PreferenceManager.getDefaultSharedPreferences(this);
-        Long lastRecArticlesPushTime = sharedPrefs.getLong("lastRecArticlesPushTime", 0L);
+        Long lastRecDealsPushTime = sharedPrefs.getLong("lastRecDealsPushTime", 0L);
         Long timeNow = (new Date()).getTime();
 
-        themeSearchKey = sharedPrefs.getString("themeSearchKey", "");
-        if (themeSearchKey.equals("")) { return false; }
-        final String hitsRef = "search/" + themeSearchKey + "/hits";
-
-        if (timeNow - lastRecArticlesPushTime > 6L * 60L * 60L * 1000L) { // 6 hours
+        if (timeNow - lastRecDealsPushTime > 8L * 60L * 60L * 1000L) { // 8 hours
             mExecutors.networkIO().execute(
-                    () -> mDataSource.getThemeData(() -> mDataSource.getRecommendedArticles(hitsRef, () -> mExecutors.networkIO().execute(() -> {
-                        sendRecArticlesNotification();
-                        mDataSource.recordLastRecArticlesPushTime();
-                        jobFinished(params, true);
-
-                    }))));
+                    () -> mDataSource.getRecommendedDeals((dealsList) -> {
+                        mExecutors.networkIO().execute(() -> {
+                            sendRecDealsNotification(dealsList);
+                            mDataSource.recordLastRecDealsPushTime();
+                            jobFinished(params, true);
+                        });
+                    }));
             return true;
         }
         jobFinished(params, true);
@@ -76,13 +72,12 @@ public class RecArticlesJobService extends JobService {
         return true;
     }
 
-    private void sendRecArticlesNotification() {
-        final String GROUP_NAME = "recommendedArticles";
-        final int ARTICLE_NOTIFICATION_ID = 9002;
-        final int PENDINGINTENT_RC = 502;
-        final String CHANNEL_ID = getString(R.string.article_notification_channel_id);
-        final String CHANNEL_NAME = getString(R.string.article_notification_channel_name);
-        final List<Article> articleList = NetworkDataSource.mRecArticleList;
+    private void sendRecDealsNotification(List<Article> dealsList) {
+        final String GROUP_NAME = "recommendedDeals";
+        final int DEALS_NOTIFICATION_ID = 9012;
+        final int PENDINGINTENT_RC = 512;
+        final String CHANNEL_ID = getString(R.string.deals_notification_channel_id);
+        final String CHANNEL_NAME = getString(R.string.deals_notification_channel_name);
 
         SharedPreferences sharedPrefs = getSharedPreferences(getString(R.string.notif_pref_id), MODE_PRIVATE);
 
@@ -95,12 +90,12 @@ public class RecArticlesJobService extends JobService {
                 (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
 
         NotificationCompat.InboxStyle inboxStyle = new NotificationCompat.InboxStyle();
-        inboxStyle.setSummaryText("Based on your subscriptions");
+        inboxStyle.setSummaryText("Trending Deals");
         String keys = sharedPrefs.getString(getString(R.string.notif_pref_key), "");
         String value;
-        for (int i = articleList.size() - 1; i >= 0; i--) {
-            Article article = articleList.get(i);
-            String key = "a_" + article.getObjectID();
+        for (int i = dealsList.size() - 1; i >= 0; i--) {
+            Article article = dealsList.get(i);
+            String key = "d_" + article.getObjectID();
 
             //Save in shared prefs
             if (keys.equals("")) {
@@ -127,9 +122,9 @@ public class RecArticlesJobService extends JobService {
             }
 
             // type, articleId, text, title, source, imageUrl, theme, extra, timestamp
-            value = "article" + "·" + // type
+            value = "deal" + "·" + // type
                     article.getObjectID() + "·" + // articleId
-                    "Recommended based on your subscription to " + article.getMainTheme() + "·" + // text
+                    "Trending Deal·" + // text
                     title + "·" + // title
                     source + "·" + // source
                     imageUrl + "·" + // imageUrl
@@ -184,7 +179,7 @@ public class RecArticlesJobService extends JobService {
                         .setSmallIcon(R.drawable.ic_launcher)
                         .setAutoCancel(true)
                         .setContentIntent(pendingIntent)
-                        .setNumber(articleList.size());
+                        .setNumber(dealsList.size());
 
         // Since android Oreo notification channel is needed.
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -202,6 +197,6 @@ public class RecArticlesJobService extends JobService {
 
         NotificationViewModel.sharedPrefs.postValue(sharedPrefs);
 
-        notificationManager.notify(ARTICLE_NOTIFICATION_ID, summaryNotificationBuilder.build());
+        notificationManager.notify(DEALS_NOTIFICATION_ID, summaryNotificationBuilder.build());
     }
 }

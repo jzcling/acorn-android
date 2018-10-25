@@ -6,7 +6,6 @@ import android.preference.ListPreference;
 import android.preference.Preference;
 import android.preference.PreferenceFragment;
 import android.preference.PreferenceManager;
-import android.util.Log;
 import android.view.MenuItem;
 
 import java.util.ArrayList;
@@ -31,11 +30,11 @@ public class SettingsFragment extends PreferenceFragment {
         bindPreferenceSummaryToValue(findPreference(getString(R.string.pref_key_night_mode)));
         bindSwitchPreferenceSummaryToValue(findPreference(getString(R.string.pref_key_notif_comment)));
         bindSwitchPreferenceSummaryToValue(findPreference(getString(R.string.pref_key_notif_article)));
+        bindSwitchPreferenceSummaryToValue(findPreference(getString(R.string.pref_key_notif_deals)));
 
         // Set up night mode
         ListPreference dayNightPref = (ListPreference) findPreference(getString(R.string.pref_key_night_mode));
         dayNightPref.setOnPreferenceChangeListener(((preference, newValue) -> {
-
             getActivity().recreate();
             return true;
         }));
@@ -51,17 +50,15 @@ public class SettingsFragment extends PreferenceFragment {
 
         // Set up comments notification pref
         Preference commentNotif = (Preference) findPreference(getString(R.string.pref_key_notif_comment));
-        commentNotif.setOnPreferenceChangeListener(((preference, newValue) -> {
-
-            return true;
-        }));
+        commentNotif.setOnPreferenceChangeListener(((preference, newValue) -> true));
 
         // Set up articles notification pref
         Preference articleNotif = (Preference) findPreference(getString(R.string.pref_key_notif_article));
-        articleNotif.setOnPreferenceChangeListener(((preference, newValue) -> {
+        articleNotif.setOnPreferenceChangeListener(((preference, newValue) -> true));
 
-            return true;
-        }));
+        // Set up deals notification pref
+        Preference dealsNotif = (Preference) findPreference(getString(R.string.pref_key_notif_deals));
+        dealsNotif.setOnPreferenceChangeListener(((preference, newValue) -> true));
     }
 
     @Override

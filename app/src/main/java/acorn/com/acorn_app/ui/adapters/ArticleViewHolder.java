@@ -7,9 +7,7 @@ import android.support.constraint.ConstraintLayout;
 import android.support.v7.widget.CardView;
 import android.support.v7.widget.RecyclerView;
 import android.text.Html;
-import android.util.Log;
 import android.view.HapticFeedbackConstants;
-import android.view.MenuItem;
 import android.view.View;
 import android.widget.CheckBox;
 import android.widget.ImageButton;
@@ -38,7 +36,6 @@ import static android.content.Context.CLIPBOARD_SERVICE;
 
 public class ArticleViewHolder extends RecyclerView.ViewHolder {
     private static final String TAG = "ArticleViewHolder";
-    private final String mCardType;
     private final String mArticleType;
     private final Context mContext;
     private final ArticleAdapter.OnLongClickListener longClickListener;
@@ -54,7 +51,6 @@ public class ArticleViewHolder extends RecyclerView.ViewHolder {
     private final ImageView mainImage;
     private ImageView postImage;
 
-    private ConstraintLayout rootView;
     private TextView theme;
     private TextView readTime;
     private TextView topSeparator;
@@ -75,11 +71,10 @@ public class ArticleViewHolder extends RecyclerView.ViewHolder {
     private NetworkDataSource mDataSource;
     private final AppExecutors mExecutors = AppExecutors.getInstance();
 
-    public ArticleViewHolder(Context context, View view, String cardType, String articleType,
+    public ArticleViewHolder(Context context, View view, String articleType,
                              ArticleAdapter.OnLongClickListener longClickListener) {
         super(view);
         mContext = context;
-        mCardType = cardType;
         mArticleType = articleType;
         this.longClickListener = longClickListener;
 
@@ -96,30 +91,26 @@ public class ArticleViewHolder extends RecyclerView.ViewHolder {
         commentCount = (TextView) view.findViewById(R.id.card_comment_count);
         mainImage = (ImageView) view.findViewById(R.id.card_image);
 
-        if (mCardType.equals("card")) {
-            if (mArticleType.equals("article")) {
-                readTime = (TextView) view.findViewById(R.id.card_read_time);
-                topSeparator = (TextView) view.findViewById(R.id.card_top_separator);
-            } else {
-                postAuthor = (TextView) view.findViewById(R.id.post_author);
-                postDate = (TextView) view.findViewById(R.id.post_date);
-                postText = (TextView) view.findViewById(R.id.post_text);
-                postExpand = (ImageView) view.findViewById(R.id.post_expand);
-                postImage = (ImageView) view.findViewById(R.id.post_image);
-                cardArticle = (CardView) view.findViewById(R.id.card_article);
-
-                optionsButton = (ImageButton) view.findViewById(R.id.card_button_options);
-            }
-            theme = (TextView) view.findViewById(R.id.card_theme);
-
-            upVoteView = (CheckBox) view.findViewById(R.id.card_button_upvote);
-            downVoteView = (CheckBox) view.findViewById(R.id.card_button_downvote);
-            commentView = (CheckBox) view.findViewById(R.id.card_button_comment);
-            favView = (CheckBox) view.findViewById(R.id.card_button_favourite);
-            shareView = (CheckBox) view.findViewById(R.id.card_button_share);
+        if (mArticleType.equals("article")) {
+            readTime = (TextView) view.findViewById(R.id.card_read_time);
+            topSeparator = (TextView) view.findViewById(R.id.card_top_separator);
         } else {
-            rootView = (ConstraintLayout) view.findViewById(R.id.card_root);
+            postAuthor = (TextView) view.findViewById(R.id.post_author);
+            postDate = (TextView) view.findViewById(R.id.post_date);
+            postText = (TextView) view.findViewById(R.id.post_text);
+            postExpand = (ImageView) view.findViewById(R.id.post_expand);
+            postImage = (ImageView) view.findViewById(R.id.post_image);
+            cardArticle = (CardView) view.findViewById(R.id.card_article);
+
+            optionsButton = (ImageButton) view.findViewById(R.id.card_button_options);
         }
+        theme = (TextView) view.findViewById(R.id.card_theme);
+
+        upVoteView = (CheckBox) view.findViewById(R.id.card_button_upvote);
+        downVoteView = (CheckBox) view.findViewById(R.id.card_button_downvote);
+        commentView = (CheckBox) view.findViewById(R.id.card_button_comment);
+        favView = (CheckBox) view.findViewById(R.id.card_button_favourite);
+        shareView = (CheckBox) view.findViewById(R.id.card_button_share);
     }
 
     private ArticleOnClickListener onClickListener(Article article, String cardAttribute) {
@@ -183,200 +174,161 @@ public class ArticleViewHolder extends RecyclerView.ViewHolder {
             Glide.with(mContext)
                     .load(imageUrl)
                     .into(mainImage);
-            if (mCardType.equals("card")) {
-                if (mArticleType.equals("post")) {
-                    cardArticle.setVisibility(View.VISIBLE);
-                    if (article.getSource() == null || article.getSource().equals(""))
-                        contributor.setVisibility(View.GONE);
-                    postImage.setVisibility(View.GONE);
-                }
-            } else {
-                if (mArticleType.equals("post")) {
-                    if (article.getSource() == null || article.getSource().equals("")) {
-                        contributor.setText(article.getPostAuthor());
-                        title.setText(article.getPostText().length() > 200 ?
-                                article.getPostText().substring(0, 197) + "..." :
-                                article.getPostText());
-                    } else if (article.getTitle() != null && !article.getTitle().equals("")) {
-                        separator.setVisibility(View.GONE);
-                        pubDate.setVisibility(View.GONE);
-                    }
-                }
+
+            if (mArticleType.equals("post")) {
+                cardArticle.setVisibility(View.VISIBLE);
+                if (article.getSource() == null || article.getSource().equals(""))
+                    contributor.setVisibility(View.GONE);
+                postImage.setVisibility(View.GONE);
             }
+
         } else if (!(article.getPostImageUrl() == null || article.getPostImageUrl().equals(""))) {
             StorageReference storageReference = FirebaseStorage.getInstance()
                     .getReferenceFromUrl(article.getPostImageUrl());
-            if (mCardType.equals("card")) {
-                mainImage.setVisibility(View.GONE);
-                cardArticle.setVisibility(View.GONE);
-                postImage.setVisibility(View.VISIBLE);
-                Glide.with(mContext)
-                        .load(storageReference)
-                        .apply(new RequestOptions()
-                                .placeholder(R.drawable.loading_spinner))
-                        .into(postImage);
-            } else {
-                title.setText(article.getPostText());
-                contributor.setText(article.getPostAuthor());
-                Glide.with(mContext)
-                        .load(storageReference)
-                        .apply(new RequestOptions()
-                                .placeholder(R.drawable.loading_spinner))
-                        .into(mainImage);
-            }
+            mainImage.setVisibility(View.GONE);
+            cardArticle.setVisibility(View.GONE);
+            postImage.setVisibility(View.VISIBLE);
+            Glide.with(mContext)
+                    .load(storageReference)
+                    .apply(new RequestOptions()
+                            .placeholder(R.drawable.loading_spinner))
+                    .into(postImage);
         } else {
-            if (mCardType.equals("card")) {
-                if (mArticleType.equals("post")) {
-                    if (article.getTitle() != null && !article.getTitle().equals("")) {
-                        cardArticle.setVisibility(View.VISIBLE);
-                    } else {
-                        cardArticle.setVisibility(View.GONE);
-                    }
-                    postImage.setVisibility(View.GONE);
+            if (mArticleType.equals("post")) {
+                if (article.getTitle() != null && !article.getTitle().equals("")) {
+                    cardArticle.setVisibility(View.VISIBLE);
+                } else {
+                    cardArticle.setVisibility(View.GONE);
                 }
-            } else {
-                if (mArticleType.equals("post")) {
-                    title.setText(article.getPostText());
-                    contributor.setText(article.getPostAuthor());
-                }
+                postImage.setVisibility(View.GONE);
             }
             mainImage.setVisibility(View.GONE);
         }
 
-        if (mCardType.equals("card")) {
-            if (mArticleType.equals("article")) {
-                title.setOnClickListener(onClickListener(article, "title"));
-                title.setOnLongClickListener(v -> {
+        if (mArticleType.equals("article")) {
+            title.setOnClickListener(onClickListener(article, "title"));
+            title.setOnLongClickListener(v -> {
+                ClipboardManager clipboard = (ClipboardManager) mContext.getSystemService(CLIPBOARD_SERVICE);
+                ClipData clip = ClipData.newPlainText("simple text", article.getLink());
+                clipboard.setPrimaryClip(clip);
+                createToast(mContext, "Link copied", 1000);
+                return true;
+            });
+            contributor.setOnClickListener(v -> {
+                createToast(mContext, "Hold to filter by source", 1000);
+                contributor.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY);
+            });
+            contributor.setOnLongClickListener(onLongClickListener(article));
+            mainImage.setOnClickListener(onClickListener(article, "title"));
+        } else {
+            if (article.getLink() != null) {
+                cardArticle.setOnClickListener(onClickListener(article, "title"));
+                cardArticle.setOnLongClickListener(v -> {
                     ClipboardManager clipboard = (ClipboardManager) mContext.getSystemService(CLIPBOARD_SERVICE);
                     ClipData clip = ClipData.newPlainText("simple text", article.getLink());
                     clipboard.setPrimaryClip(clip);
                     createToast(mContext, "Link copied", 1000);
                     return true;
                 });
-                contributor.setOnClickListener(v -> {
-                    createToast(mContext, "Hold to filter by source", 1000);
-                    contributor.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY);
-                });
-                contributor.setOnLongClickListener(onLongClickListener(article));
-                mainImage.setOnClickListener(onClickListener(article, "title"));
             } else {
-                if (article.getLink() != null) {
-                    cardArticle.setOnClickListener(onClickListener(article, "title"));
-                    cardArticle.setOnLongClickListener(v -> {
-                        ClipboardManager clipboard = (ClipboardManager) mContext.getSystemService(CLIPBOARD_SERVICE);
-                        ClipData clip = ClipData.newPlainText("simple text", article.getLink());
-                        clipboard.setPrimaryClip(clip);
-                        createToast(mContext, "Link copied", 1000);
-                        return true;
-                    });
-                } else {
-                    postImage.setOnClickListener(onClickListener(article, "postImage"));
-                    cardArticle.setOnClickListener(onClickListener(article, "postImage"));
-                }
-
-                optionsButton.setVisibility(View.VISIBLE);
-                optionsButton.setOnClickListener(v -> {
-                    PopupMenu popup = new PopupMenu(mContext, optionsButton);
-                    popup.inflate(R.menu.card_options_menu);
-                    popup.setOnMenuItemClickListener(item -> {
-                        switch (item.getItemId()) {
-                            case R.id.action_report_post:
-                                mExecutors.networkIO().execute(() -> {
-                                    mDataSource.reportPost(article);
-                                });
-                                return true;
-                            default:
-                                return false;
-                        }
-                    });
-                    popup.show();
-                });
+                postImage.setOnClickListener(onClickListener(article, "postImage"));
+                cardArticle.setOnClickListener(onClickListener(article, "postImage"));
             }
-            theme.setText(article.getMainTheme());
-            theme.setOnClickListener(v -> {
-                createToast(mContext, "Hold to filter by theme", 1000);
-                theme.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY);
+
+            optionsButton.setVisibility(View.VISIBLE);
+            optionsButton.setOnClickListener(v -> {
+                PopupMenu popup = new PopupMenu(mContext, optionsButton);
+                popup.inflate(R.menu.card_options_menu);
+                popup.setOnMenuItemClickListener(item -> {
+                    switch (item.getItemId()) {
+                        case R.id.action_report_post:
+                            mExecutors.networkIO().execute(() -> {
+                                mDataSource.reportPost(article);
+                            });
+                            return true;
+                        default:
+                            return false;
+                    }
+                });
+                popup.show();
             });
-            theme.setOnLongClickListener(onLongClickListener(article));
-            if (mArticleType.equals("article")) {
-                if (article.getReadTime() != null) {
-                    topSeparator.setVisibility(View.VISIBLE);
-                    readTime.setVisibility(View.VISIBLE);
-                    readTime.setText(article.getReadTime() + "m read");
-                } else {
-                    topSeparator.setVisibility(View.GONE);
-                    readTime.setVisibility(View.GONE);
-                }
+        }
+        theme.setText(article.getMainTheme());
+        theme.setOnClickListener(v -> {
+            createToast(mContext, "Hold to filter by theme", 1000);
+            theme.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY);
+        });
+        theme.setOnLongClickListener(onLongClickListener(article));
+        if (mArticleType.equals("article")) {
+            if (article.getReadTime() != null) {
+                topSeparator.setVisibility(View.VISIBLE);
+                readTime.setVisibility(View.VISIBLE);
+                readTime.setText(article.getReadTime() + "m read");
             } else {
-                postAuthor.setText(article.getPostAuthor().length() > 20 ?
-                        article.getPostAuthor().substring(0, 17) + "..." : article.getPostAuthor());
-                postText.setText(article.getPostText().length() > 200 ?
-                        article.getPostText().substring(0, 197) + "..." : article.getPostText());
-                if (article.getPostText().length() > 200) {
-                    postExpand.setVisibility(View.VISIBLE);
-                    increaseTouchArea(postExpand);
-                    postExpand.setOnClickListener(v -> {
-                        if (isExpanded) {
-                            postExpand.setBackground(mContext.getDrawable(R.drawable.chevron_down));
-                            postText.setText(article.getPostText().substring(0, 197) + "...");
-                            isExpanded = false;
-                        } else {
-                            postExpand.setBackground(mContext.getDrawable(R.drawable.chevron_up));
-                            postText.setText(article.getPostText());
-                            isExpanded = true;
-                        }
-                    });
-                } else {
-                    postExpand.setVisibility(View.GONE);
-                }
-                postDate.setText(DateUtils.parseDate(article.getPostDate()));
-
-                if (article.getTitle() == null || article.getTitle().equals(""))
-                    cardArticle.setVisibility(View.GONE);
-            }
-
-            increaseTouchArea(upVoteView);
-            increaseTouchArea(downVoteView);
-            increaseTouchArea(commentView);
-            increaseTouchArea(favView);
-            increaseTouchArea(shareView);
-
-            upVoteView.setOnClickListener(onClickListener(article, "upvote"));
-            downVoteView.setOnClickListener(onClickListener(article, "downvote"));
-            if (mArticleType.equals("article"))
-                commentFrame.setOnClickListener(onClickListener(article, "comment"));
-            commentView.setOnClickListener(onClickListener(article, "comment"));
-            favView.setOnClickListener(onClickListener(article, "favourite"));
-            shareView.setOnClickListener(onClickListener(article, "share"));
-
-            if (article.upvoters.containsKey(mUid)) {
-                upVoteView.setChecked(true);
-            } else {
-                upVoteView.setChecked(false);
-            }
-            if (article.downvoters.containsKey(mUid)) {
-                downVoteView.setChecked(true);
-            } else {
-                downVoteView.setChecked(false);
-            }
-            if (article.commenters.containsKey(mUid)) {
-                commentView.setChecked(true);
-            } else {
-                commentView.setChecked(false);
-            }
-            if (article.savers.containsKey(mUid)) {
-                favView.setChecked(true);
-            } else {
-                favView.setChecked(false);
+                topSeparator.setVisibility(View.GONE);
+                readTime.setVisibility(View.GONE);
             }
         } else {
-            if (article.getLink() != null && !article.getLink().equals("")) {
-                rootView.setOnClickListener(onClickListener(article, "title"));
+            postAuthor.setText(article.getPostAuthor().length() > 20 ?
+                    article.getPostAuthor().substring(0, 17) + "..." : article.getPostAuthor());
+            postText.setText(article.getPostText().length() > 200 ?
+                    article.getPostText().substring(0, 197) + "..." : article.getPostText());
+            if (article.getPostText().length() > 200) {
+                postExpand.setVisibility(View.VISIBLE);
+                increaseTouchArea(postExpand);
+                postExpand.setOnClickListener(v -> {
+                    if (isExpanded) {
+                        postExpand.setBackground(mContext.getDrawable(R.drawable.chevron_down));
+                        postText.setText(article.getPostText().substring(0, 197) + "...");
+                        isExpanded = false;
+                    } else {
+                        postExpand.setBackground(mContext.getDrawable(R.drawable.chevron_up));
+                        postText.setText(article.getPostText());
+                        isExpanded = true;
+                    }
+                });
             } else {
-                rootView.setOnClickListener(onClickListener(article, "comment"));
+                postExpand.setVisibility(View.GONE);
             }
-            title.setClickable(false);
-            mainImage.setClickable(false);
+            postDate.setText(DateUtils.parseDate(article.getPostDate()));
+
+            if (article.getTitle() == null || article.getTitle().equals(""))
+                cardArticle.setVisibility(View.GONE);
+        }
+
+        increaseTouchArea(upVoteView);
+        increaseTouchArea(downVoteView);
+        increaseTouchArea(commentView);
+        increaseTouchArea(favView);
+        increaseTouchArea(shareView);
+
+        upVoteView.setOnClickListener(onClickListener(article, "upvote"));
+        downVoteView.setOnClickListener(onClickListener(article, "downvote"));
+        if (mArticleType.equals("article"))
+            commentFrame.setOnClickListener(onClickListener(article, "comment"));
+        commentView.setOnClickListener(onClickListener(article, "comment"));
+        favView.setOnClickListener(onClickListener(article, "favourite"));
+        shareView.setOnClickListener(onClickListener(article, "share"));
+
+        if (article.upvoters.containsKey(mUid)) {
+            upVoteView.setChecked(true);
+        } else {
+            upVoteView.setChecked(false);
+        }
+        if (article.downvoters.containsKey(mUid)) {
+            downVoteView.setChecked(true);
+        } else {
+            downVoteView.setChecked(false);
+        }
+        if (article.commenters.containsKey(mUid)) {
+            commentView.setChecked(true);
+        } else {
+            commentView.setChecked(false);
+        }
+        if (article.savers.containsKey(mUid)) {
+            favView.setChecked(true);
+        } else {
+            favView.setChecked(false);
         }
 
         // replace links in title with hyperlinks

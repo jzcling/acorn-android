@@ -3,7 +3,6 @@ package acorn.com.acorn_app.ui.activities;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.support.v7.app.AppCompatActivity;
-import android.util.Log;
 import android.view.ViewGroup;
 import android.widget.ImageView;
 import android.widget.ProgressBar;
@@ -91,23 +90,18 @@ public class UserActivity extends AppCompatActivity {
             public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
                 mUser = dataSnapshot.getValue(User.class);
                 mDisplayNameView.setText(mUser.getDisplayName());
-                switch (mUser.getStatus()) {
-                    case 0:
-                        mStatusImageView.setBackground(getDrawable(R.drawable.user_acorn));
-                        mStatusView.setText(LEVEL_0);
-                        break;
-                    case 1:
-                        mStatusImageView.setBackground(getDrawable(R.drawable.user_sprout));
-                        mStatusView.setText(LEVEL_1);
-                        break;
-                    case 2:
-                        mStatusImageView.setBackground(getDrawable(R.drawable.user_sapling));
-                        mStatusView.setText(LEVEL_2);
-                        break;
-                    case 3:
-                        mStatusImageView.setBackground(getDrawable(R.drawable.user_oak));
-                        mStatusView.setText(LEVEL_3);
-                        break;
+                if (mUser.getStatus() == 0) {
+                    mStatusImageView.setBackground(getDrawable(R.drawable.user_acorn));
+                    mStatusView.setText(LEVEL_0);
+                } else if (mUser.getStatus() == 1) {
+                    mStatusImageView.setBackground(getDrawable(R.drawable.user_sprout));
+                    mStatusView.setText(LEVEL_1);
+                } else if (mUser.getStatus() == 2) {
+                    mStatusImageView.setBackground(getDrawable(R.drawable.user_sapling));
+                    mStatusView.setText(LEVEL_2);
+                } else if (mUser.getStatus() >= 3) {
+                    mStatusImageView.setBackground(getDrawable(R.drawable.user_oak));
+                    mStatusView.setText(LEVEL_3);
                 }
                 mUpvoteCountView.setText(String.valueOf(mUser.getUpvotedItemsCount()));
                 mDownvoteCountView.setText(String.valueOf(mUser.getDownvotedItemsCount()));

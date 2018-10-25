@@ -1,72 +1,51 @@
 package acorn.com.acorn_app.ui.activities;
 
+import android.app.AlertDialog;
 import android.arch.lifecycle.LiveData;
 import android.arch.lifecycle.Observer;
 import android.arch.lifecycle.ViewModelProviders;
 import android.content.Context;
-import android.content.Intent;
 import android.os.Bundle;
-import android.os.Handler;
 import android.os.Parcelable;
 import android.support.annotation.Nullable;
-import android.support.v4.widget.SwipeRefreshLayout;
 import android.support.v7.app.AppCompatActivity;
-import android.support.v7.widget.ActionMenuView;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.support.v7.widget.SearchView;
 import android.support.v7.widget.Toolbar;
 import android.support.v7.widget.helper.ItemTouchHelper;
-import android.text.SpannableString;
-import android.text.style.BackgroundColorSpan;
+import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.EditText;
-import android.widget.Toast;
 
-import com.algolia.instantsearch.events.ErrorEvent;
-import com.algolia.instantsearch.helpers.InstantSearch;
-import com.algolia.instantsearch.helpers.Searcher;
-import com.algolia.instantsearch.ui.views.Hits;
-import com.algolia.instantsearch.ui.views.SearchBox;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
-
-import org.greenrobot.eventbus.EventBus;
-import org.greenrobot.eventbus.Subscribe;
-import org.json.JSONObject;
 
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 import acorn.com.acorn_app.R;
+import acorn.com.acorn_app.data.ArticleListLiveData;
 import acorn.com.acorn_app.data.NetworkDataSource;
 import acorn.com.acorn_app.models.Article;
 import acorn.com.acorn_app.models.FbQuery;
-import acorn.com.acorn_app.models.Notif;
-import acorn.com.acorn_app.ui.adapters.ArticleAdapter;
-import acorn.com.acorn_app.ui.adapters.CommentAdapter;
-import acorn.com.acorn_app.ui.adapters.CommentViewHolder;
-import acorn.com.acorn_app.ui.adapters.NotificationAdapter;
+import acorn.com.acorn_app.ui.adapters.SavedArticleAdapter;
+import acorn.com.acorn_app.ui.adapters.SavedArticleViewHolder;
 import acorn.com.acorn_app.ui.viewModels.ArticleViewModel;
 import acorn.com.acorn_app.ui.viewModels.ArticleViewModelFactory;
 import acorn.com.acorn_app.utils.AppExecutors;
 import acorn.com.acorn_app.utils.InjectorUtils;
-import acorn.com.acorn_app.utils.RecyclerItemTouchHelper;
-
-import static acorn.com.acorn_app.data.NetworkDataSource.NOTIFICATION_TOKENS;
-import static acorn.com.acorn_app.utils.UiUtils.createToast;
-import static android.text.Spanned.SPAN_INCLUSIVE_INCLUSIVE;
+import acorn.com.acorn_app.utils.SavedArticleTouchHelper;
 
 
-public class SavedArticlesActivity extends AppCompatActivity {
+public class SavedArticlesActivity extends AppCompatActivity
+    implements SavedArticleTouchHelper.RecyclerItemTouchHelperListener {
     private static final String TAG = "SavedArticlesActivity";
 
     //Firebase database
@@ -84,41 +63,60 @@ public class SavedArticlesActivity extends AppCompatActivity {
 
     //RecyclerView
     private RecyclerView mRecyclerView;
-    private ArticleAdapter mAdapter;
+    private SavedArticleAdapter mAdapter;
     private LinearLayoutManager mLinearLayoutManager;
     private boolean isLoadingMore = false;
 
     //For restoring state
     private static Parcelable mLlmState;
-    private static List<Article> mLoadedList = null;
 
     //For filtering
+    String[] themeList;
+    boolean[] checkedStatus;
     private String mSearchText;
+    List<String> mThemeFilterList = new ArrayList<>();
+
+    // Article list
+    ArticleListLiveData articleListLD;
+
 
     @Override protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_search);
+        setContentView(R.layout.activity_saved_articles);
         Toolbar toolbar = findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
         getSupportActionBar().setDisplayHomeAsUpEnabled(true);
 
+        // Set up data source
+        mDataSource = NetworkDataSource.getInstance(this, mExecutors);
+
         // Set up recycler view
-        RecyclerView mRecyclerView = (RecyclerView) findViewById(R.id.saved_articles_rv);
-        LinearLayoutManager mLinearLayoutManager = new LinearLayoutManager(this);
+        mRecyclerView = (RecyclerView) findViewById(R.id.saved_articles_rv);
+        mLinearLayoutManager = new LinearLayoutManager(this);
         mLinearLayoutManager.setOrientation(LinearLayoutManager.VERTICAL);
         mRecyclerView.setLayoutManager(mLinearLayoutManager);
-        mAdapter = new ArticleAdapter(this, "list", null);
+        mAdapter = new SavedArticleAdapter(this);
         mRecyclerView.setAdapter(mAdapter);
-        mRecyclerView.addOnScrollListener(new RecyclerView.OnScrollListener() {
-            @Override
-            public void onScrolled(RecyclerView recyclerView, int dx, int dy) {
-                loadMoreArticles();
-            }
-        });
+//        mRecyclerView.addOnScrollListener(new RecyclerView.OnScrollListener() {
+//            @Override
+//            public void onScrolled(RecyclerView recyclerView, int dx, int dy) {
+//                loadMoreArticles();
+//            }
+//        });
 
+        // Set up swipe mechanism
         ItemTouchHelper.SimpleCallback itemTouchHelperCallback =
-                new RecyclerItemTouchHelper(0, ItemTouchHelper.LEFT|ItemTouchHelper.RIGHT, this);
+                new SavedArticleTouchHelper(0, ItemTouchHelper.LEFT|ItemTouchHelper.RIGHT, this);
         new ItemTouchHelper(itemTouchHelperCallback).attachToRecyclerView(mRecyclerView);
+
+        // Set up theme filters
+        themeList = getResources().getStringArray(R.array.theme_array);
+        checkedStatus = new boolean[themeList.length];
+        for (int i = 0; i < themeList.length; i++) {
+            checkedStatus[i] = false;
+        }
+
+        setUpInitialViewModelObserver();
     }
 
     @Override
@@ -132,6 +130,7 @@ public class SavedArticlesActivity extends AppCompatActivity {
         SearchView searchView = (SearchView) menu.findItem(R.id.action_search).getActionView();
         EditText searchEditText = (EditText) searchView.findViewById(R.id.search_src_text);
         searchEditText.setOnEditorActionListener((v, actionId, event) -> {
+            mSearchText = searchEditText.getText().toString().trim().toLowerCase();
             if (actionId == EditorInfo.IME_ACTION_SEARCH) {
                 View view = getCurrentFocus();
                 if (view != null) {
@@ -139,7 +138,8 @@ public class SavedArticlesActivity extends AppCompatActivity {
                     imm.hideSoftInputFromWindow(view.getWindowToken(), 0);
                 }
 
-                mAdapter.notifyDataSetChanged();
+                mAdapter.clearSearch();
+                mAdapter.filterBySearchText(mSearchText);
             }
             return false;
         });
@@ -155,6 +155,7 @@ public class SavedArticlesActivity extends AppCompatActivity {
             public boolean onMenuItemActionCollapse(MenuItem item) {
                 filterItem.setVisible(true);
                 mSearchText = null;
+                mAdapter.clearSearch();
                 return true;
             }
         });
@@ -165,7 +166,26 @@ public class SavedArticlesActivity extends AppCompatActivity {
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
         if (item.getItemId() == R.id.action_filter) {
+            AlertDialog.Builder builder = new AlertDialog.Builder(this);
+            builder.setTitle("Filter by themes")
+                    .setMultiChoiceItems(themeList, checkedStatus, ((dialog, which, isChecked) -> {
+                checkedStatus[which] = isChecked;
+            }));
 
+            builder.setNegativeButton("Cancel", (dialog, which) -> dialog.dismiss());
+            builder.setPositiveButton("Done", ((dialog, which) -> {
+                mThemeFilterList.clear();
+                for (int i = 0; i < themeList.length; i++) {
+                    if (checkedStatus[i]) {
+                        mThemeFilterList.add(themeList[i]);
+                    }
+                }
+                Log.d(TAG, "themeFilterList: " + mThemeFilterList);
+                mAdapter.filterByThemes(mThemeFilterList);
+            }));
+
+            AlertDialog dialog = builder.create();
+            dialog.show();
         }
         return super.onOptionsItemSelected(item);
     }
@@ -173,6 +193,24 @@ public class SavedArticlesActivity extends AppCompatActivity {
     @Override
     protected void onDestroy() {
         super.onDestroy();
+        if (mObservedList.size() > 0) {
+            for (LiveData<List<Article>> liveData : mObservedList.keySet()) {
+                liveData.removeObserver(mObservedList.get(liveData));
+            }
+            mObservedList.clear();
+        }
+    }
+
+    @Override
+    protected void onSaveInstanceState(Bundle outState) {
+        super.onSaveInstanceState(outState);
+        mLlmState = mLinearLayoutManager.onSaveInstanceState();
+    }
+
+    @Override
+    protected void onRestoreInstanceState(Bundle savedInstanceState) {
+        super.onRestoreInstanceState(savedInstanceState);
+        mLinearLayoutManager.onRestoreInstanceState(mLlmState);
     }
 
     @Override
@@ -181,47 +219,36 @@ public class SavedArticlesActivity extends AppCompatActivity {
         return true;
     }
 
-    private void startWebViewActivity(JSONObject article) {
-        try {
-            Intent intent = new Intent(this, WebViewActivity.class);
-            intent.putExtra("id", article.getString("objectID"));
-            startActivity(intent);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-    }
-
-    private void startCommentActivity(JSONObject article) {
-        try {
-            Intent commentIntent = new Intent(this, CommentActivity.class);
-            commentIntent.putExtra("id", article.getString("objectID"));
-            startActivity(commentIntent);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-    }
-
     private void setUpInitialViewModelObserver() {
         // Set up view model
         ArticleViewModelFactory factory = InjectorUtils.provideArticleViewModelFactory(this.getApplicationContext());
         mArticleViewModel = ViewModelProviders.of(this, factory).get(ArticleViewModel.class);
+        mQuery = new FbQuery(2, 0, 0);
 
-
-        mArticleViewModel.newQuery.setValue(mQuery);
-        LiveData<List<Article>> articleListLD = mArticleViewModel.getArticles();
+        articleListLD = mArticleViewModel.getSavedArticles(mQuery);
         Observer<List<Article>> articleListObserver = articles -> {
             if (articles != null) {
-
-                List<Article> combinedList = mLoadedList == null ?
-                        new ArrayList<>() : new ArrayList<>(mLoadedList);
+                /*
+                1 - While child listener adds articles incrementally to live data list,
+                we add to adapter list if it had not already been added.
+                2 - On any changes to live data list after adapter list is set,
+                update changes in-situ.
+                This way, adapter list expands up to size of all observed live data lists
+                (includes all loadMoreArticles lists), with no repeat articles on changes.
+                */
+                List<Article> currentList = mAdapter.getList();
                 for (int i = 0; i < articles.size(); i++) {
-                    if (combinedList.size() < i+1) {
-                        combinedList.add(i, articles.get(i));
+                    if (currentList.size() < i+1) {
+                        //1
+                        currentList.add(i, articles.get(i));
+                        Log.d(TAG, "added: " + currentList.size());
                     } else {
-                        combinedList.set(i, articles.get(i));
+                        //2
+                        currentList.set(i, articles.get(i));
+                        Log.d(TAG, "set: " + currentList.size());
                     }
                 }
-                mAdapter.setList(combinedList);
+                mAdapter.setList(currentList, mThemeFilterList, mSearchText);
             }
         };
         articleListLD.observeForever(articleListObserver);
@@ -232,35 +259,55 @@ public class SavedArticlesActivity extends AppCompatActivity {
 
     }
 
-    private void loadMoreArticles() {
-        if (isLoadingMore) return;
-
-        int currentPosition = mLinearLayoutManager.findLastCompletelyVisibleItemPosition();
-        final int trigger = 5;
-        final List<Article> initialList = mAdapter.getList();
-        mLoadedList = initialList;
-        final Object index;
-
-        if (currentPosition > mAdapter.getItemCount() - trigger) {
-            isLoadingMore = true;
-
-            index = mAdapter.getItemCount();
-
-            int indexType = 0;
-            LiveData<List<Article>> addListLD = mArticleViewModel.getAdditionalArticles(index, indexType);
-            Observer<List<Article>> addListObserver = articles -> {
-                if (articles != null) {
-
-                    List<Article> combinedList = new ArrayList<>(initialList);
-                    combinedList.remove(combinedList.size()-1);
-                    combinedList.addAll(articles);
-                    mAdapter.setList(combinedList);
-                }
-            };
-            addListLD.observeForever(addListObserver);
-            mObservedList.put(addListLD, addListObserver);
-
-            new Handler().postDelayed(()->isLoadingMore = false,100);
+    @Override
+    public void onSwiped(RecyclerView.ViewHolder viewHolder, int direction, int position) {
+        if (viewHolder instanceof SavedArticleViewHolder) {
+            Article article = mAdapter.getList().get(position);
+            mDataSource.removeSavedArticle(article.getObjectID(), articleListLD);
+            mAdapter.removeItem(position);
         }
     }
+//
+//    private void loadMoreArticles() {
+//        if (isLoadingMore) return;
+//
+//        int currentPosition = mLinearLayoutManager.findLastCompletelyVisibleItemPosition();
+//        final int trigger = 5;
+//        final int initialListCount = mAdapter.getItemCount();
+//        List<Article> currentList = mAdapter.getList();
+//        final Object index;
+//
+//        if (currentPosition > mAdapter.getItemCount() - trigger) {
+//            isLoadingMore = true;
+//
+//            index = mAdapter.getItemCount();
+//
+//            int indexType = 0;
+//            LiveData<List<Article>> addListLD = mArticleViewModel.getAdditionalArticles(index, indexType);
+//            Observer<List<Article>> addListObserver = articles -> {
+//                if (articles != null) {
+//                    /*
+//                    initialListCount marks where the end of the list was before additional
+//                    articles are loaded. Live data list of additional articles will start
+//                    from the last article in the current list, so startIndex is initialListCount - 1
+//                    */
+//                    int startIndex = initialListCount - 1;
+//                    for (int i = 0; i < articles.size(); i++) {
+//                        if (currentList.size() < startIndex + i + 1) {
+//                            Log.d(TAG, "add: " + (startIndex + i));
+//                            currentList.add(startIndex + i, articles.get(i));
+//                        } else {
+//                            Log.d(TAG, "set: " + (startIndex + i));
+//                            currentList.set(startIndex + i, articles.get(i));
+//                        }
+//                    }
+//                    mAdapter.setList(currentList, mThemeFilterList, mSearchText);
+//                }
+//            };
+//            addListLD.observeForever(addListObserver);
+//            mObservedList.put(addListLD, addListObserver);
+//
+//            new Handler().postDelayed(()->isLoadingMore = false,100);
+//        }
+//    }
 }

@@ -4,7 +4,6 @@ import android.content.Context;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.v7.widget.RecyclerView;
-import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -28,17 +27,15 @@ import static acorn.com.acorn_app.ui.activities.AcornActivity.mQuery;
 public class ArticleAdapter extends RecyclerView.Adapter<ArticleViewHolder> {
     private static final String TAG = "ArticleAdapter";
     private final Context mContext;
-    private final String mCardType;
     private String mArticleType;
     private final OnLongClickListener longClickListener;
     private List<Article> mArticleList = new ArrayList<>();
 
     private final Map<DatabaseReference, ValueEventListener> mRefObservedList = new HashMap<>();
 
-    public ArticleAdapter(final Context context, String cardType,
+    public ArticleAdapter(final Context context,
                           @Nullable OnLongClickListener longClickListener) {
         mContext = context;
-        mCardType = cardType;
         this.longClickListener = longClickListener;
     }
 
@@ -58,16 +55,12 @@ public class ArticleAdapter extends RecyclerView.Adapter<ArticleViewHolder> {
         View view;
         mArticleType = viewType == 0 ? "article" : "post";
         LayoutInflater inflater = LayoutInflater.from(mContext);
-        if (mCardType.equals("card")) {
-            if (mArticleType.equals("post")) {
-                view = inflater.inflate(R.layout.item_post_card, parent, false);
-            } else {
-                view = inflater.inflate(R.layout.item_article_card, parent, false);
-            }
+        if (mArticleType.equals("post")) {
+            view = inflater.inflate(R.layout.item_post_card, parent, false);
         } else {
-            view = inflater.inflate(R.layout.item_article_list, parent, false);
+            view = inflater.inflate(R.layout.item_article_card, parent, false);
         }
-        return new ArticleViewHolder(mContext, view, mCardType, mArticleType, longClickListener);
+        return new ArticleViewHolder(mContext, view, mArticleType, longClickListener);
     }
 
     @Override
@@ -84,7 +77,7 @@ public class ArticleAdapter extends RecyclerView.Adapter<ArticleViewHolder> {
     @Override
     public void onViewAttachedToWindow(@NonNull ArticleViewHolder holder) {
         super.onViewAttachedToWindow(holder);
-        if (mQuery.state == 3) {
+        if (mQuery.state == 3 || mQuery.state == 4) {
             int adapterPos = holder.getAdapterPosition();
             Article article = mArticleList.get(adapterPos);
             DatabaseReference articleRef = FirebaseDatabase.getInstance()
@@ -109,7 +102,7 @@ public class ArticleAdapter extends RecyclerView.Adapter<ArticleViewHolder> {
     @Override
     public void onViewDetachedFromWindow(@NonNull ArticleViewHolder holder) {
         super.onViewDetachedFromWindow(holder);
-        if (mQuery.state == 3) {
+        if (mQuery.state == 3 || mQuery.state == 4) {
             Article article;
             if (getItemCount() > 0 && holder.getAdapterPosition() != -1) {
                 article = mArticleList.get(holder.getAdapterPosition());

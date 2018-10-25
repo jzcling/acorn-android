@@ -6,8 +6,8 @@
     <!-- Navigation drawer -->
     <string name="navigation_drawer_open">Open navigation drawer</string>
     <string name="navigation_drawer_close">Close navigation drawer</string>
-    <string name="nav_recent">Recent</string>
     <string name="nav_trending">Trending</string>
+    <string name="nav_deals">Deals</string>
     <string name="nav_saved">Saved Articles</string>
     <string name="nav_subscriptions">Subscriptions</string>
     <string name="nav_themes">Edit Subscribed Themes</string>
@@ -46,6 +46,7 @@
     <string name="pref_key_edit_themes">editThemesPref</string>
     <string name="pref_key_notif_comment">commentNotifPref</string>
     <string name="pref_key_notif_article">articleNotifPref</string>
+    <string name="pref_key_notif_deals">dealsNotifPref</string>
     <string name="pref_cat_general_settings">GENERAL</string>
     <string name="pref_cat_notif_settings">NOTIFICATIONS</string>
     <string name="pref_cat_user_account_settings">MANAGE ACCOUNT</string>
@@ -53,6 +54,7 @@
     <string name="pref_title_edit_themes_pref">Edit subscribed themes</string>
     <string name="pref_title_notif_comment">Comment notifications</string>
     <string name="pref_title_notif_article">Recommended articles</string>
+    <string name="pref_title_notif_deals">Recommended deals</string>
     <string name="pref_title_change_password">Change password</string>
     <string name="pref_title_change_email">Change email address</string>
     <string name="pref_title_delete_account">Delete account</string>
@@ -74,18 +76,19 @@
     <string name="theme_save">Save</string>
     <string name="theme_all">All themes</string>
     <string name="theme_0">Please select</string>
-    <string name="theme_1">Lifestyle</string>
-    <string name="theme_2">Food</string>
-    <string name="theme_3">Travel</string>
-    <string name="theme_4">Deals</string>
-    <string name="theme_5">Credit Cards</string>
-    <string name="theme_6">Housing</string>
-    <string name="theme_7">Savings and Loans</string>
-    <string name="theme_8">Insurance</string>
-    <string name="theme_9">Parenting</string>
-    <string name="theme_10">Beauty and Fashion</string>
-    <string name="theme_11">Investing</string>
-    <string name="theme_12">Innovation</string>
+    <string name="theme_1">News and Current Affairs</string>
+    <string name="theme_2">Lifestyle</string>
+    <string name="theme_3">Food</string>
+    <string name="theme_4">Travel</string>
+    <string name="theme_5">Deals</string>
+    <string name="theme_6">Credit Cards</string>
+    <string name="theme_7">Housing</string>
+    <string name="theme_8">Savings and Loans</string>
+    <string name="theme_9">Insurance</string>
+    <string name="theme_10">Parenting</string>
+    <string name="theme_11">Beauty and Fashion</string>
+    <string name="theme_12">Investing</string>
+    <string name="theme_13">Innovation</string>
 
     <array name="theme_array">
         <item>@string/theme_1</item>
@@ -100,6 +103,7 @@
         <item>@string/theme_10</item>
         <item>@string/theme_11</item>
         <item>@string/theme_12</item>
+        <item>@string/theme_13</item>
     </array>
 
     <array name="post_theme_array">
@@ -116,6 +120,7 @@
         <item>@string/theme_10</item>
         <item>@string/theme_11</item>
         <item>@string/theme_12</item>
+        <item>@string/theme_13</item>
     </array>
 
     <!-- Notifications -->
@@ -125,6 +130,8 @@
     <string name="manual_article_notification_channel_name" translatable="true">Manual Article</string>
     <string name="article_notification_channel_id" translatable="false">fcm_article_channel</string>
     <string name="article_notification_channel_name" translatable="true">Recommended Articles</string>
+    <string name="deals_notification_channel_id" translatable="false">fcm_deals_channel</string>
+    <string name="deals_notification_channel_name" translatable="true">Recommended Deals</string>
     <string name="notif_clear_button">Clear all</string>
     <string name="notif_empty_text">You have no new notifications!</string>
     <string name="notif_delete">DELETE</string>
@@ -133,24 +140,24 @@
     <string name="notif_pref_id">notificationsPref</string>
     <string name="notif_pref_key">key</string>
     <string name="notif_pref_value">value</string>
-    <string name="notif_pref_c_index">comments_index</string>
+    <!--<string name="notif_pref_c_index">comments_index</string>-->
     <string name="notif_pref_c_text">comments_text</string>
-    <string name="notif_pref_c_commenters">comments_commenters</string>
-    <string name="notif_pref_c_articleIds">comments_articleIds</string>
-    <string name="notif_pref_c_articleTitles">comments_articleTitles</string>
-    <string name="notif_pref_c_articleSources">comments_articleSources</string>
-    <string name="notif_pref_c_articleImageUrls">comments_articleImageUrls</string>
-    <string name="notif_pref_c_articleThemes">comments_articleThemes</string>
-    <string name="notif_pref_c_timestamps">comments_timestamps</string>
-    <string name="notif_pref_index">index</string>
-    <string name="notif_pref_texts">texts</string>
-    <string name="notif_pref_articleIds">articleIds</string>
-    <string name="notif_pref_articleTitles">articleTitles</string>
-    <string name="notif_pref_articleSources">articleSources</string>
-    <string name="notif_pref_articleImageUrls">articleImageUrls</string>
-    <string name="notif_pref_articleThemes">articleThemes</string>
-    <string name="notif_pref_extras">extras</string>
-    <string name="notif_pref_timestamps">timestamps</string>
+    <!--<string name="notif_pref_c_commenters">comments_commenters</string>-->
+    <!--<string name="notif_pref_c_articleIds">comments_articleIds</string>-->
+    <!--<string name="notif_pref_c_articleTitles">comments_articleTitles</string>-->
+    <!--<string name="notif_pref_c_articleSources">comments_articleSources</string>-->
+    <!--<string name="notif_pref_c_articleImageUrls">comments_articleImageUrls</string>-->
+    <!--<string name="notif_pref_c_articleThemes">comments_articleThemes</string>-->
+    <!--<string name="notif_pref_c_timestamps">comments_timestamps</string>-->
+    <!--<string name="notif_pref_index">index</string>-->
+    <!--<string name="notif_pref_texts">texts</string>-->
+    <!--<string name="notif_pref_articleIds">articleIds</string>-->
+    <!--<string name="notif_pref_articleTitles">articleTitles</string>-->
+    <!--<string name="notif_pref_articleSources">articleSources</string>-->
+    <!--<string name="notif_pref_articleImageUrls">articleImageUrls</string>-->
+    <!--<string name="notif_pref_articleThemes">articleThemes</string>-->
+    <!--<string name="notif_pref_extras">extras</string>-->
+    <!--<string name="notif_pref_timestamps">timestamps</string>-->
 
     <!-- Preview Image -->
     <string name="preview_text_hint">Add caption for image</string>

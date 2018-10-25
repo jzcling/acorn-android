@@ -1,7 +1,26 @@
 Android
 
+v1.4.7, v1.4.8, v1.4.9
+Replaced Recent page with Deals page
+Reduced recommended articles push to 3 articles at a go
+Introduced new recommended deals push
+
+v1.4.6
+Fixed crashes on opening saved articles
+Added new category: News and Current Affairs
+
+v1.4.5
+Minor edits
+
+v1.4.3, v1.4.4
+Minor bug fixes
+Minor edits to open original site article if article parse fails
+Fixed comment notifications causing crash
+
 v1.4.2
 Configured to handle manual article push
+Saved articles can now be filtered and searched
+Saved articles can be easily removed by swiping
 
 v1.4.1
 In article back button now brings you back to previous pages

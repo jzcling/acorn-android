@@ -7,7 +7,6 @@ import android.content.Intent;
 import android.os.Handler;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
-import android.util.Log;
 import android.view.View;
 import android.view.animation.Animation;
 import android.view.animation.AnimationUtils;
@@ -23,9 +22,9 @@ import com.google.firebase.storage.FirebaseStorage;
 import com.google.firebase.storage.StorageReference;
 
 import java.util.Date;
-import java.util.concurrent.Executor;
 
 import acorn.com.acorn_app.R;
+import acorn.com.acorn_app.data.NetworkDataSource;
 import acorn.com.acorn_app.models.Article;
 import acorn.com.acorn_app.models.User;
 import acorn.com.acorn_app.ui.activities.CommentActivity;
@@ -37,7 +36,6 @@ import static acorn.com.acorn_app.ui.activities.AcornActivity.LEVEL_0;
 import static acorn.com.acorn_app.ui.activities.AcornActivity.LEVEL_1;
 import static acorn.com.acorn_app.ui.activities.AcornActivity.LEVEL_2;
 import static acorn.com.acorn_app.ui.activities.AcornActivity.LEVEL_3;
-import static acorn.com.acorn_app.ui.activities.AcornActivity.RC_SHARE;
 import static acorn.com.acorn_app.ui.activities.AcornActivity.TARGET_POINTS_MULTIPLIER;
 import static acorn.com.acorn_app.ui.activities.AcornActivity.isUserAuthenticated;
 import static acorn.com.acorn_app.ui.activities.AcornActivity.mUid;
@@ -62,7 +60,9 @@ public class ArticleOnClickListener implements View.OnClickListener {
     private final Animation downvoteAnim;
     private final Animation bounceAnim;
 
-    private final Executor mainThread = AppExecutors.getInstance().mainThread();
+    //Data source
+    private NetworkDataSource mDataSource;
+    private final AppExecutors mExecutors = AppExecutors.getInstance();
 
     public ArticleOnClickListener(Context context, Article article, String cardAttribute,
                                   View upvoteView, View downvoteView, View commentView,
@@ -70,6 +70,8 @@ public class ArticleOnClickListener implements View.OnClickListener {
         mContext = context;
         mArticle = article;
         mCardAttribute = cardAttribute;
+
+        mDataSource = NetworkDataSource.getInstance(context, mExecutors);
 
         mUpvoteView = upvoteView;
         mDownvoteView = downvoteView;
@@ -87,11 +89,30 @@ public class ArticleOnClickListener implements View.OnClickListener {
         downvoteAnim.setInterpolator(interpolator);
     }
 
+    public ArticleOnClickListener(Context context, Article article, String cardAttribute) {
+        mContext = context;
+        mArticle = article;
+        mCardAttribute = cardAttribute;
+
+        mDataSource = NetworkDataSource.getInstance(context, mExecutors);
+
+        mUpvoteView = null;
+        mDownvoteView = null;
+        mCommentView = null;
+        mFavView = null;
+        mShareView = null;
+
+        upvoteAnim = null;
+        downvoteAnim = null;
+        bounceAnim = null;
+    }
+
     @Override
     public void onClick(View v) {
         switch (mCardAttribute) {
             case "title":
             case "image":
+                mExecutors.networkIO().execute(() -> mDataSource.recordArticleOpenDetails(mArticle));
                 startWebViewActivity();
                 break;
             case "upvote":
@@ -175,16 +196,16 @@ public class ArticleOnClickListener implements View.OnClickListener {
                 if (article.upvoters.containsKey(mUid)) {
                     article.upvoters.remove(mUid);
                     article.setVoteCount(currentVoteCount - 1);
-                    mainThread.execute(()->mUpvoteView.startAnimation(downvoteAnim));
+                    mExecutors.mainThread().execute(()->mUpvoteView.startAnimation(downvoteAnim));
                 } else if (article.downvoters.containsKey(mUid)) {
                     article.downvoters.remove(mUid);
                     article.upvoters.put(mUid, clickTime);
                     article.setVoteCount(currentVoteCount + 2);
-                    mainThread.execute(()->mUpvoteView.startAnimation(upvoteAnim));
+                    mExecutors.mainThread().execute(()->mUpvoteView.startAnimation(upvoteAnim));
                 } else {
                     article.upvoters.put(mUid, clickTime);
                     article.setVoteCount(currentVoteCount + 1);
-                    mainThread.execute(()->mUpvoteView.startAnimation(upvoteAnim));
+                    mExecutors.mainThread().execute(()->mUpvoteView.startAnimation(upvoteAnim));
                 }
 
                 article.changedSinceLastJob = true;
@@ -249,7 +270,7 @@ public class ArticleOnClickListener implements View.OnClickListener {
                             newStatus = LEVEL_3;
                             break;
                     }
-                    mainThread.execute(()->createToast(mContext,
+                    mExecutors.mainThread().execute(()->createToast(mContext,
                             "Congratulations! You have grown into a " + newStatus, Toast.LENGTH_SHORT));
                 }
                 mutableData.setValue(user);
@@ -299,16 +320,16 @@ public class ArticleOnClickListener implements View.OnClickListener {
                 if (article.downvoters.containsKey(mUid)) {
                     article.downvoters.remove(mUid);
                     article.setVoteCount(currentVoteCount + 1);
-                    mainThread.execute(()->mDownvoteView.startAnimation(upvoteAnim));
+                    mExecutors.mainThread().execute(()->mDownvoteView.startAnimation(upvoteAnim));
                 } else if (article.upvoters.containsKey(mUid)) {
                     article.upvoters.remove(mUid);
                     article.downvoters.put(mUid, clickTime);
                     article.setVoteCount(currentVoteCount - 2);
-                    mainThread.execute(()->mDownvoteView.startAnimation(downvoteAnim));
+                    mExecutors.mainThread().execute(()->mDownvoteView.startAnimation(downvoteAnim));
                 } else {
                     article.downvoters.put(mUid, clickTime);
                     article.setVoteCount(currentVoteCount - 1);
-                    mainThread.execute(()->mDownvoteView.startAnimation(downvoteAnim));
+                    mExecutors.mainThread().execute(()->mDownvoteView.startAnimation(downvoteAnim));
                 }
 
                 article.changedSinceLastJob = true;
@@ -373,7 +394,7 @@ public class ArticleOnClickListener implements View.OnClickListener {
                             newStatus = LEVEL_3;
                             break;
                     }
-                    mainThread.execute(()->createToast(mContext,
+                    mExecutors.mainThread().execute(()->createToast(mContext,
                             "Congratulations! You have grown into a " + newStatus, Toast.LENGTH_SHORT));
 
                 }
@@ -419,7 +440,7 @@ public class ArticleOnClickListener implements View.OnClickListener {
                     article.savers.put(mUid, clickTime);
                     article.setSaveCount(currentSaveCount + 1);
                 }
-                mainThread.execute(()->{
+                mExecutors.mainThread().execute(()->{
                     bounceAnim.setAnimationListener(null);
                     mFavView.startAnimation(bounceAnim);
                 });
@@ -505,7 +526,7 @@ public class ArticleOnClickListener implements View.OnClickListener {
 
                 @Override
                 public void onComplete(@Nullable DatabaseError databaseError, boolean b, @Nullable DataSnapshot dataSnapshot) {
-                    mainThread.execute(() -> {
+                    mExecutors.mainThread().execute(() -> {
                         Intent shareIntent = new Intent();
                         shareIntent.setType("text/plain");
                         shareIntent.putExtra(Intent.EXTRA_SUBJECT, mArticle.getTitle());
@@ -569,7 +590,7 @@ public class ArticleOnClickListener implements View.OnClickListener {
 
         @Override
         public void onAnimationEnd(Animation animation) {
-            mainThread.execute(()->((Activity) mContext).startActivity(intent));
+            mExecutors.mainThread().execute(()->((Activity) mContext).startActivity(intent));
         }
 
         @Override
