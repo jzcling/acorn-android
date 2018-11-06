@@ -32,6 +32,7 @@ import com.google.firebase.database.Transaction;
 import com.google.firebase.database.ValueEventListener;
 
 import acorn.com.acorn_app.R;
+import acorn.com.acorn_app.data.NetworkDataSource;
 import acorn.com.acorn_app.models.Article;
 import acorn.com.acorn_app.ui.adapters.ArticleOnClickListener;
 import acorn.com.acorn_app.ui.views.ObservableWebView;
@@ -75,6 +76,9 @@ public class WebViewActivity extends AppCompatActivity {
     private CheckBox favView;
     private CheckBox shareView;
 
+    // Data Source
+    private NetworkDataSource mDataSource;
+
     private final AppExecutors mExecutors = AppExecutors.getInstance();
 
     private static float lastScrollPercent = 0f;
@@ -91,12 +95,14 @@ public class WebViewActivity extends AppCompatActivity {
 
         intent = getIntent();
         articleId = intent.getStringExtra("id");
-//
 
         // Set up Firebase Database
         if (mDatabase == null) mDatabase = FirebaseDatabase.getInstance();
         DatabaseReference databaseReference = mDatabase.getReference();
         mArticleRef = databaseReference.child(ARTICLE_REF).child(articleId);
+
+        // Set up data source
+        mDataSource = NetworkDataSource.getInstance(this, mExecutors);
 
         progressBar = (ProgressBar) findViewById(R.id.webview_progress_bar);
 
@@ -331,6 +337,10 @@ public class WebViewActivity extends AppCompatActivity {
         super.onDestroy();
 
         lastScrollPercent = 0f;
+
+        if (mArticle != null) mExecutors.networkIO().execute(() -> {
+            mDataSource.recordArticleOpenDetails(mArticle);
+        });
     }
 
     public void genHtml() {

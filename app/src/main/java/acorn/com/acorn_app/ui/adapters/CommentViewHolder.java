@@ -95,7 +95,7 @@ public class CommentViewHolder extends RecyclerView.ViewHolder {
             commentDownloadImageView.setVisibility(View.GONE);
 
             commentTextView.setText("Comment reported for inappropriate content");
-            commentTextView.setTextColor(mContext.getResources().getColor(R.color.card_button_default));
+            commentTextView.setTextColor(mContext.getColor(R.color.card_button_default));
             commentTextView.setMaxWidth(maxWidth);
 
             if (commenterTextView != null)

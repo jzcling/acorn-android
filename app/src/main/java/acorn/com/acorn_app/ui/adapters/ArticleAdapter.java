@@ -117,7 +117,7 @@ public class ArticleAdapter extends RecyclerView.Adapter<ArticleViewHolder> {
     }
 
     public void setList(List<Article> newList) {
-        mArticleList = newList;
+        mArticleList = new ArrayList<>(newList);
         notifyDataSetChanged();
     }
 

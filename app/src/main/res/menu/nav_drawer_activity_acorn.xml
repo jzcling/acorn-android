@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <menu xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     tools:showIn="navigation_view">
 
     <group
@@ -28,6 +29,16 @@
 
     <group
         android:id="@+id/nav_menu_3"
+        android:checkableBehavior="none">
+        <item
+            android:id="@+id/nav_video_feed"
+            android:title="@string/nav_video_feed"
+            android:icon="@drawable/ic_new"
+            app:showAsAction="withText" />
+    </group>
+
+    <group
+        android:id="@+id/nav_menu_4"
         android:checkableBehavior="none">
         <item
             android:id="@+id/nav_settings"

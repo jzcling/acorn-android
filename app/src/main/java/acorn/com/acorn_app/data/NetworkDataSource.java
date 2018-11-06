@@ -68,6 +68,7 @@ public class NetworkDataSource {
     private static final String REC_DEALS_TAG = "recommendedDeals";
 
     public static final String ARTICLE_REF = "article";
+    public static final String VIDEO_REF = "video";
     public static final String COMMENT_REF = "comment";
     public static final String USER_REF = "user";
     public static final String SEARCH_REF = "search";
@@ -76,7 +77,8 @@ public class NetworkDataSource {
     public static final String COMMENTS_NOTIFICATION = "commentsNotificationValue";
     public static final String REC_ARTICLES_NOTIFICATION = "recArticlesNotificationValue";
     public static final String REC_DEALS_NOTIFICATION = "recDealsNotificationValue";
-    public static final String ALGOLIA_REF = "algoliaApiKey";
+    public static final String ALGOLIA_API_KEY_REF = "algoliaApiKey";
+    public static final String YOUTUBE_API_KEY_REF = "youtubeApiKey";
     public static final String REPORT_REF = "report";
 
     // Recommended articles
@@ -87,7 +89,7 @@ public class NetworkDataSource {
     private List<Query> mSavedArticlesQueryList = new ArrayList<>();
 
     // Algolia
-    public static String mAlgoliaApiKey;
+    public static String ALGOLIA_API_KEY;
     private static Client mAlgoliaClient;
     private static Index mAlgoliaIndex;
 
@@ -427,14 +429,16 @@ public class NetworkDataSource {
 
     // Algolia
     public void setupAlgoliaClient(@Nullable Runnable onComplete) {
-        mDatabaseReference.child(ALGOLIA_REF).addListenerForSingleValueEvent(new ValueEventListener() {
+        mDatabaseReference.child(ALGOLIA_API_KEY_REF).addListenerForSingleValueEvent(new ValueEventListener() {
             @Override
             public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
-                mAlgoliaApiKey = dataSnapshot.getValue(String.class);
-                mAlgoliaClient = new Client("O96PPLSF19", mAlgoliaApiKey);
-                mAlgoliaIndex = mAlgoliaClient.getIndex("article");
+                if (dataSnapshot.exists()) {
+                    ALGOLIA_API_KEY = dataSnapshot.getValue(String.class);
+                    mAlgoliaClient = new Client("O96PPLSF19", ALGOLIA_API_KEY);
+                    mAlgoliaIndex = mAlgoliaClient.getIndex("article");
 
-                if (onComplete != null) onComplete.run();
+                    if (onComplete != null) onComplete.run();
+                }
             }
 
             @Override
@@ -442,6 +446,43 @@ public class NetworkDataSource {
         });
     }
 
+
+    // Youtube Key
+    public void getYoutubeApiKey(Consumer<String> onComplete) {
+        mDatabaseReference.child(YOUTUBE_API_KEY_REF).addListenerForSingleValueEvent(new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+                if (dataSnapshot.exists()) {
+                    String apiKey = dataSnapshot.getValue(String.class);
+                    onComplete.accept(apiKey);
+                }
+            }
+
+            @Override
+            public void onCancelled(@NonNull DatabaseError databaseError) {
+
+            }
+        });
+    }
+
+    // Videos
+    public VideoListLiveData getVideos(String orderByChild, @Nullable String startAt, int limit) {
+        DatabaseReference ref = mDatabaseReference.child(VIDEO_REF);
+        Query query = ref.orderByChild(orderByChild);
+        if (startAt != null) {
+            query = query.startAt(startAt).limitToFirst(limit + 1);
+        } else {
+            query = query.limitToFirst(limit);
+        }
+        query.keepSynced(true);
+
+        return new VideoListLiveData(query);
+    }
+
+
+
+
+    // Reporting
     public void reportPost(Article post) {
         mDatabaseReference.child(ARTICLE_REF).child(post.getObjectID()).child("isReported")
                 .setValue(true);
@@ -493,6 +534,8 @@ public class NetworkDataSource {
         });
     }
 
+
+    // Remove saved article
     public void removeSavedArticle(String articleId, ArticleListLiveData articleListLD) {
         DatabaseReference articleRef = FirebaseDatabase.getInstance()
                 .getReference("article/"+articleId);
@@ -552,6 +595,8 @@ public class NetworkDataSource {
         });
     }
 
+
+    // Record open article
     public void recordArticleOpenDetails(Article article) {
         Long timeNow = new Date().getTime();
         DatabaseReference articleRef = FirebaseDatabase.getInstance()

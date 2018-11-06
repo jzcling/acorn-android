@@ -15,14 +15,20 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.URL;
+import java.net.URLConnection;
 
 import static acorn.com.acorn_app.utils.UiUtils.createToast;
 
 public class IOUtils {
     public static String getInputStream(Context context, String urlString) throws IOException {
         URL url = new URL(urlString);
+        URLConnection connection = url.openConnection();
+        String redirect = connection.getHeaderField("Location");
+        if (redirect != null) {
+            connection = new URL(redirect).openConnection();
+        }
         try {
-            InputStream inputStream = new BufferedInputStream(url.openConnection().getInputStream());
+            InputStream inputStream = new BufferedInputStream(connection.getInputStream());
             BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream));
             StringBuilder response = new StringBuilder();
 

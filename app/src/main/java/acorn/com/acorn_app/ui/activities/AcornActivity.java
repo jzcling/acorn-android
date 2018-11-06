@@ -8,6 +8,8 @@ import android.content.SharedPreferences;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.content.pm.Signature;
+import android.graphics.Color;
+import android.graphics.PorterDuff;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Parcelable;
@@ -77,12 +79,12 @@ import acorn.com.acorn_app.ui.viewModels.NotificationViewModel;
 import acorn.com.acorn_app.utils.AppExecutors;
 import acorn.com.acorn_app.utils.InjectorUtils;
 
+import static acorn.com.acorn_app.data.NetworkDataSource.ALGOLIA_API_KEY;
 import static acorn.com.acorn_app.data.NetworkDataSource.COMMENTS_NOTIFICATION;
 import static acorn.com.acorn_app.data.NetworkDataSource.PREFERENCES_REF;
 import static acorn.com.acorn_app.data.NetworkDataSource.REC_ARTICLES_NOTIFICATION;
 import static acorn.com.acorn_app.data.NetworkDataSource.REC_DEALS_NOTIFICATION;
 import static acorn.com.acorn_app.data.NetworkDataSource.SEARCH_REF;
-import static acorn.com.acorn_app.data.NetworkDataSource.mAlgoliaApiKey;
 import static acorn.com.acorn_app.utils.UiUtils.createToast;
 
 public class AcornActivity extends AppCompatActivity
@@ -308,6 +310,9 @@ public class AcornActivity extends AppCompatActivity
         MenuItem signInMenuItem = (MenuItem) navMenu.findItem(R.id.nav_login);
         MenuItem signOutMenuItem = (MenuItem) navMenu.findItem(R.id.nav_logout);
 
+        MenuItem videosItem = (MenuItem) navMenu.findItem(R.id.nav_video_feed);
+        videosItem.getIcon().setColorFilter(Color.RED, PorterDuff.Mode.SRC_ATOP);
+
         final MenuItem notificationItem = menu.findItem(R.id.action_notifications);
         mSearchButton = menu.findItem(R.id.action_search);
         ConstraintLayout notificationView = (ConstraintLayout) notificationItem.getActionView();
@@ -388,6 +393,10 @@ public class AcornActivity extends AppCompatActivity
             case R.id.nav_saved:
                 Intent savedArticlesIntent = new Intent(this, SavedArticlesActivity.class);
                 startActivity(savedArticlesIntent);
+                break;
+            case R.id.nav_video_feed:
+                Intent videoFeedIntent = new Intent(this, VideoFeedActivity.class);
+                startActivity(videoFeedIntent);
                 break;
             case R.id.nav_themes:
                 Intent editThemeIntent = new Intent(this, ThemeSelectionActivity.class);
@@ -598,7 +607,7 @@ public class AcornActivity extends AppCompatActivity
         List<Article> currentList = mAdapter.getList();
         final Object index;
 
-        if (mAdapter.getItemCount() < 10) return;
+        if (initialListCount <= trigger) return;
 
 
         if (currentPosition > mAdapter.getItemCount() - trigger) {
@@ -767,7 +776,7 @@ public class AcornActivity extends AppCompatActivity
 
                                     // set up search button
                                     mDataSource.setupAlgoliaClient(() -> {
-                                        mSearcher = Searcher.create(ALGOLIA_APP_ID, mAlgoliaApiKey, ALGOLIA_INDEX_NAME);
+                                        mSearcher = Searcher.create(ALGOLIA_APP_ID, ALGOLIA_API_KEY, ALGOLIA_INDEX_NAME);
                                         mSearchButton.setEnabled(true);
                                     });
 
@@ -837,7 +846,7 @@ public class AcornActivity extends AppCompatActivity
 
                                     // set up search button
                                     mDataSource.setupAlgoliaClient(() -> {
-                                        mSearcher = Searcher.create(ALGOLIA_APP_ID, mAlgoliaApiKey, ALGOLIA_INDEX_NAME);
+                                        mSearcher = Searcher.create(ALGOLIA_APP_ID, ALGOLIA_API_KEY, ALGOLIA_INDEX_NAME);
                                         mSearchButton.setEnabled(true);
                                     });
 

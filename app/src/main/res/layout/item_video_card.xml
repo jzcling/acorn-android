@@ -12,51 +12,60 @@
         android:layout_height="match_parent"
         android:background="@color/card_background">
 
-        <TextView
-            android:id="@+id/card_theme"
+        <android.support.constraint.ConstraintLayout
+            android:id="@+id/card_top_layout"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginStart="12dp"
             android:layout_marginTop="@dimen/card_margin_top_medium"
-            android:background="@drawable/ripple"
-            android:clickable="true"
-            android:focusable="true"
-            android:hapticFeedbackEnabled="true"
-            android:text="theme"
-            android:textColor="@color/card_text_color_faint"
-            android:textSize="@dimen/font_size_small"
-            android:textStyle="italic"
             app:layout_constraintBottom_toTopOf="@id/card_title"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintEnd_toStartOf="@id/card_top_separator"
-            app:layout_constraintTop_toTopOf="parent" />
+            app:layout_constraintTop_toTopOf="parent">
+            <TextView
+                android:id="@+id/card_theme"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="@dimen/card_margin_in_between"
+                android:background="@drawable/ripple"
+                android:clickable="true"
+                android:focusable="true"
+                android:hapticFeedbackEnabled="true"
+                android:text="theme"
+                android:textColor="@color/card_text_color_faint"
+                android:textSize="@dimen/font_size_small"
+                android:textStyle="italic"
+                app:layout_constraintTop_toTopOf="parent"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintEnd_toStartOf="@id/card_top_separator" />
 
-        <TextView
-            android:id="@+id/card_top_separator"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="@dimen/card_margin_in_between"
-            android:text="·"
-            android:textColor="@color/card_text_color_faint"
-            android:textSize="@dimen/font_size_small"
-            android:textStyle="italic"
-            app:layout_constraintBottom_toBottomOf="@id/card_theme"
-            app:layout_constraintEnd_toStartOf="@id/card_read_time"
-            app:layout_constraintStart_toEndOf="@id/card_theme"
-            app:layout_constraintTop_toTopOf="@id/card_theme" />
+            <TextView
+                android:id="@+id/card_top_separator"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="@dimen/card_margin_in_between"
+                android:text="·"
+                android:textColor="@color/card_text_color_faint"
+                android:textSize="@dimen/font_size_small"
+                android:textStyle="italic"
+                app:layout_constraintTop_toTopOf="parent"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintStart_toEndOf="@id/card_theme"
+                app:layout_constraintEnd_toStartOf="@id/card_youtube_view_count" />
 
-        <TextView
-            android:id="@+id/card_read_time"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="@dimen/card_margin_in_between"
-            android:text="readTime"
-            android:textColor="@color/card_text_color_faint"
-            android:textSize="@dimen/font_size_small"
-            android:textStyle="italic"
-            app:layout_constraintBottom_toBottomOf="@id/card_theme"
-            app:layout_constraintStart_toEndOf="@id/card_top_separator"
-            app:layout_constraintTop_toTopOf="@id/card_theme" />
+            <TextView
+                android:id="@+id/card_youtube_view_count"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="viewCount"
+                android:textColor="@color/card_text_color_faint"
+                android:textSize="@dimen/font_size_small"
+                android:textStyle="italic"
+                app:layout_constraintTop_toTopOf="parent"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintStart_toEndOf="@id/card_top_separator"
+                app:layout_constraintEnd_toEndOf="parent"/>
+        </android.support.constraint.ConstraintLayout>
 
         <TextView
             android:id="@+id/card_title"
@@ -74,7 +83,7 @@
             app:layout_constraintBottom_toTopOf="@id/metadata_layout"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/card_theme" />
+            app:layout_constraintTop_toBottomOf="@id/card_top_layout" />
 
         <android.support.constraint.ConstraintLayout
             android:id="@+id/metadata_layout"
@@ -209,16 +218,22 @@
             </android.support.constraint.ConstraintLayout>
         </android.support.constraint.ConstraintLayout>
 
-        <com.google.android.youtube.player.YouTubePlayerView
-            android:id="@+id/card_video"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
+        <ImageView
+            android:id="@+id/card_image"
+            android:layout_width="0dp"
+            android:layout_height="0dp"
             android:layout_marginTop="@dimen/card_margin_top_large"
-            android:contentDescription="main video"
+            android:clickable="true"
+            android:contentDescription="main image"
+            android:focusable="true"
+            android:foreground="@drawable/ripple"
+            android:scaleType="centerCrop"
             app:layout_constraintBottom_toTopOf="@id/card_button_comment_layout"
+            app:layout_constraintDimensionRatio="H,16:9"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/metadata_layout" />
+            app:layout_constraintTop_toBottomOf="@id/metadata_layout"
+            app:srcCompat="@android:color/transparent" />
 
         <FrameLayout
             android:id="@+id/card_button_upvote_layout"

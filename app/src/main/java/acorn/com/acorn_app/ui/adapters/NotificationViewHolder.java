@@ -60,7 +60,6 @@ public class NotificationViewHolder extends RecyclerView.ViewHolder {
                     intent.putExtra("id", notif.articleId);
                     mContext.startActivity(intent);
                 } else {
-                    mDataSource.recordArticleOpenDetails(notif.articleId, notif.theme);
                     Intent intent = new Intent(mContext, WebViewActivity.class);
                     intent.putExtra("id", notif.articleId);
                     mContext.startActivity(intent);

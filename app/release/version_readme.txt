@@ -1,5 +1,13 @@
 Android
 
+v1.5.1
+Improved image alignment in-article/Cleaned up HTML content
+Caters for url redirection when opening articles (TechieLobang)
+Fixed search results showing incorrect vote and comment counts 
+
+v1.5.0
+Added Videos feature that aggregates local YouTube videos
+
 v1.4.7, v1.4.8, v1.4.9
 Replaced Recent page with Deals page
 Reduced recommended articles push to 3 articles at a go

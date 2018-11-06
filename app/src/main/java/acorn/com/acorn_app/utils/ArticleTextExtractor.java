@@ -60,7 +60,7 @@ public class ArticleTextExtractor {
 
         // now remove the clutter
         prepareDocument(doc);
-//
+
 
         // init elements
         Collection<Element> nodes = getNodes(doc);

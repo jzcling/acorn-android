@@ -18,8 +18,8 @@ android {
         applicationId 'acorn.com.acorn_app'
         minSdkVersion 24
         targetSdkVersion 28
-        versionCode 37
-        versionName "1.4.9"
+        versionCode 39
+        versionName "1.5.1"
         testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
     }
     buildTypes {

@@ -20,10 +20,10 @@ public class VoteCountHitView extends AppCompatImageView implements AlgoliaHitVi
         Integer voteCount = result.optInt("voteCount", 0);
         if (voteCount < 0) {
             setImageResource(R.drawable.ic_arrow_down);
-            setColorFilter(getContext().getResources().getColor(R.color.card_down_arrow_tint));
+            setColorFilter(getContext().getColor(R.color.card_down_arrow_tint));
         } else {
             setImageResource(R.drawable.ic_arrow_up);
-            setColorFilter(getContext().getResources().getColor(R.color.card_up_arrow_tint));
+            setColorFilter(getContext().getColor(R.color.card_up_arrow_tint));
         }
     }
 }

@@ -257,11 +257,9 @@ public class CommentActivity extends AppCompatActivity implements View.OnTouchLi
                 // Set up on click interface for article
                 if (mArticle.getLink() != null && !mArticle.getLink().equals("")) {
                     mArticleTitleView.setOnClickListener(v -> {
-                        mExecutors.networkIO().execute(() -> mDataSource.recordArticleOpenDetails(mArticle));
                         mExecutors.mainThread().execute(() -> startWebViewActivity());
                     });
                     mArticleImageView.setOnClickListener(v -> {
-                        mExecutors.networkIO().execute(() -> mDataSource.recordArticleOpenDetails(mArticle));
                         mExecutors.mainThread().execute(() -> startWebViewActivity());
                     });
                 } else if (mArticle.getImageUrl() != null && !mArticle.getImageUrl().equals("") ||
@@ -491,7 +489,7 @@ public class CommentActivity extends AppCompatActivity implements View.OnTouchLi
                             Matcher m = p.matcher(originalText);
                             while (m.find()) {
                                 highlightedText.setSpan(new BackgroundColorSpan(
-                                                getResources().getColor(R.color.search_comment_highlight)),
+                                                getColor(R.color.search_comment_highlight)),
                                         m.start(), m.end(), SPAN_INCLUSIVE_INCLUSIVE);
                             }
                             vh.commentTextView.setText(highlightedText);

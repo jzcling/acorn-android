@@ -1,7 +1,6 @@
 package acorn.com.acorn_app.ui.adapters;
 
 import android.app.Activity;
-import android.app.Dialog;
 import android.content.Context;
 import android.content.Intent;
 import android.os.Handler;
@@ -12,23 +11,20 @@ import android.view.animation.Animation;
 import android.view.animation.AnimationUtils;
 import android.widget.Toast;
 
+import com.google.android.youtube.player.YouTubeStandalonePlayer;
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.MutableData;
 import com.google.firebase.database.Transaction;
-import com.google.firebase.storage.FirebaseStorage;
-import com.google.firebase.storage.StorageReference;
 
 import java.util.Date;
 
 import acorn.com.acorn_app.R;
 import acorn.com.acorn_app.data.NetworkDataSource;
-import acorn.com.acorn_app.models.Article;
 import acorn.com.acorn_app.models.User;
-import acorn.com.acorn_app.ui.activities.CommentActivity;
-import acorn.com.acorn_app.ui.activities.WebViewActivity;
+import acorn.com.acorn_app.models.Video;
 import acorn.com.acorn_app.utils.AppExecutors;
 import acorn.com.acorn_app.utils.UiUtils;
 
@@ -41,14 +37,15 @@ import static acorn.com.acorn_app.ui.activities.AcornActivity.isUserAuthenticate
 import static acorn.com.acorn_app.ui.activities.AcornActivity.mUid;
 import static acorn.com.acorn_app.utils.UiUtils.createToast;
 
-public class ArticleOnClickListener implements View.OnClickListener {
-    private final static String TAG = "ArticleOnClickListener";
+public class VideoOnClickListener implements View.OnClickListener {
+    private final static String TAG = "VideoOnClickListener";
     private final Handler handler = new Handler();
     private boolean isTransactionRunning = false;
 
     private final Context mContext;
-    private final Article mArticle;
+    private final Video mVideo;
     private final String mCardAttribute;
+    private final String mYoutubeApiKey;
 
     private final View mUpvoteView;
     private final View mDownvoteView;
@@ -64,12 +61,13 @@ public class ArticleOnClickListener implements View.OnClickListener {
     private NetworkDataSource mDataSource;
     private final AppExecutors mExecutors = AppExecutors.getInstance();
 
-    public ArticleOnClickListener(Context context, Article article, String cardAttribute,
-                                  View upvoteView, View downvoteView, View commentView,
-                                  View favView, View shareView) {
+    public VideoOnClickListener(Context context, String youtubeApiKey, Video video, String cardAttribute,
+                                View upvoteView, View downvoteView, View commentView,
+                                View favView, View shareView) {
         mContext = context;
-        mArticle = article;
+        mVideo = video;
         mCardAttribute = cardAttribute;
+        mYoutubeApiKey = youtubeApiKey;
 
         mDataSource = NetworkDataSource.getInstance(context, mExecutors);
 
@@ -89,30 +87,14 @@ public class ArticleOnClickListener implements View.OnClickListener {
         downvoteAnim.setInterpolator(interpolator);
     }
 
-    public ArticleOnClickListener(Context context, Article article, String cardAttribute) {
-        mContext = context;
-        mArticle = article;
-        mCardAttribute = cardAttribute;
-
-        mDataSource = NetworkDataSource.getInstance(context, mExecutors);
-
-        mUpvoteView = null;
-        mDownvoteView = null;
-        mCommentView = null;
-        mFavView = null;
-        mShareView = null;
-
-        upvoteAnim = null;
-        downvoteAnim = null;
-        bounceAnim = null;
-    }
-
     @Override
     public void onClick(View v) {
         switch (mCardAttribute) {
             case "title":
-            case "image":
-                startWebViewActivity();
+            case "videoThumbnail":
+                Intent intent = YouTubeStandalonePlayer
+                        .createVideoIntent((Activity) mContext, mYoutubeApiKey, mVideo.youtubeVideoId);
+                mContext.startActivity(intent);
                 break;
             case "upvote":
                 onUpvoteClicked();
@@ -121,14 +103,14 @@ public class ArticleOnClickListener implements View.OnClickListener {
                 onDownvoteClicked();
                 break;
             case "comment":
-                Intent commentIntent = new Intent(mContext, CommentActivity.class);
-                commentIntent.putExtra("id", mArticle.getObjectID());
-                bounceAnim.setAnimationListener(new MyAnimationListener(commentIntent));
-                if (mCommentView != null) {
-                    mCommentView.startAnimation(bounceAnim);
-                } else {
-                    mContext.startActivity(commentIntent);
-                }
+//                Intent commentIntent = new Intent(mContext, CommentActivity.class);
+//                commentIntent.putExtra("id", mVideo.getObjectID());
+//                bounceAnim.setAnimationListener(new MyAnimationListener(commentIntent));
+//                if (mCommentView != null) {
+//                    mCommentView.startAnimation(bounceAnim);
+//                } else {
+//                    mContext.startActivity(commentIntent);
+//                }
                 break;
             case "favourite":
                 onSaveClicked();
@@ -136,31 +118,8 @@ public class ArticleOnClickListener implements View.OnClickListener {
             case "share":
                 onShareClicked();
                 break;
-            case "postImage":
-                StorageReference storageReference;
-                if (mArticle.getPostImageUrl() != null) {
-                    storageReference = FirebaseStorage.getInstance()
-                            .getReferenceFromUrl(mArticle.getPostImageUrl());
-                } else {
-                    storageReference = FirebaseStorage.getInstance()
-                            .getReferenceFromUrl(mArticle.getImageUrl());
-                }
-                Dialog imagePopUp =
-                        new UiUtils().configureImagePopUp(mContext, storageReference);
-                imagePopUp.show();
-                break;
+            default: break;
         }
-    }
-
-    private void startWebViewActivity() {
-//        if (mArticle.getType().equals("article")) {
-            Intent intent = new Intent(mContext, WebViewActivity.class);
-            intent.putExtra("id", mArticle.getObjectID());
-            mContext.startActivity(intent);
-//        } else {
-//            Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(mArticle.getLink()));
-//            mContext.startActivity(intent);
-//        }
     }
 
     private void onUpvoteClicked() {
@@ -174,41 +133,41 @@ public class ArticleOnClickListener implements View.OnClickListener {
         disableVoteViews(isTransactionRunning);
 
         Long clickTime = new Date().getTime();
-        String articleId = mArticle.getObjectID();
+        String videoId = mVideo.getObjectID();
 
-        // Update article with upvote data
-        DatabaseReference articleRef = FirebaseDatabase.getInstance()
-                .getReference("article/"+articleId);
+        // Update video with upvote data
+        DatabaseReference videoRef = FirebaseDatabase.getInstance()
+                .getReference("video/"+videoId);
 
-        articleRef.runTransaction(new Transaction.Handler() {
+        videoRef.runTransaction(new Transaction.Handler() {
             @NonNull
             @Override
             public Transaction.Result doTransaction(@NonNull MutableData mutableData) {
-                Article article = mutableData.getValue(Article.class);
-                if (article == null) {
+                Video video = mutableData.getValue(Video.class);
+                if (video == null) {
 
                     return Transaction.success(mutableData);
                 }
 
-                int currentVoteCount = article.getVoteCount() == null ? 0 : article.getVoteCount();
+                int currentVoteCount = video.getVoteCount() == null ? 0 : video.getVoteCount();
 
-                if (article.upvoters.containsKey(mUid)) {
-                    article.upvoters.remove(mUid);
-                    article.setVoteCount(currentVoteCount - 1);
+                if (video.upvoters.containsKey(mUid)) {
+                    video.upvoters.remove(mUid);
+                    video.setVoteCount(currentVoteCount - 1);
                     mExecutors.mainThread().execute(()->mUpvoteView.startAnimation(downvoteAnim));
-                } else if (article.downvoters.containsKey(mUid)) {
-                    article.downvoters.remove(mUid);
-                    article.upvoters.put(mUid, clickTime);
-                    article.setVoteCount(currentVoteCount + 2);
+                } else if (video.downvoters.containsKey(mUid)) {
+                    video.downvoters.remove(mUid);
+                    video.upvoters.put(mUid, clickTime);
+                    video.setVoteCount(currentVoteCount + 2);
                     mExecutors.mainThread().execute(()->mUpvoteView.startAnimation(upvoteAnim));
                 } else {
-                    article.upvoters.put(mUid, clickTime);
-                    article.setVoteCount(currentVoteCount + 1);
+                    video.upvoters.put(mUid, clickTime);
+                    video.setVoteCount(currentVoteCount + 1);
                     mExecutors.mainThread().execute(()->mUpvoteView.startAnimation(upvoteAnim));
                 }
 
-                article.changedSinceLastJob = true;
-                mutableData.setValue(article);
+                video.changedSinceLastJob = true;
+                mutableData.setValue(video);
                 return Transaction.success(mutableData);
             }
 
@@ -237,17 +196,17 @@ public class ArticleOnClickListener implements View.OnClickListener {
                 int currentPointsCount = user.getPoints();
                 int targetPoints = user.getTargetPoints();
 
-                if (user.upvotedItems.containsKey(articleId)) {
-                    user.upvotedItems.remove(articleId);
+                if (user.upvotedItems.containsKey(videoId)) {
+                    user.upvotedItems.remove(videoId);
                     user.setUpvotedItemsCount(currentUpvoteCount - 1);
                     user.setPoints(currentPointsCount - 1);
-                } else if (user.downvotedItems.containsKey(articleId)) {
-                    user.downvotedItems.remove(articleId);
-                    user.upvotedItems.put(articleId, clickTime);
+                } else if (user.downvotedItems.containsKey(videoId)) {
+                    user.downvotedItems.remove(videoId);
+                    user.upvotedItems.put(videoId, clickTime);
                     user.setUpvotedItemsCount(currentUpvoteCount + 1);
                     user.setDownvotedItemsCount(currentDownvoteCount - 1);
                 } else {
-                    user.upvotedItems.put(articleId, clickTime);
+                    user.upvotedItems.put(videoId, clickTime);
                     user.setUpvotedItemsCount(currentUpvoteCount + 1);
                     user.setPoints(currentPointsCount + 1);
                 }
@@ -298,41 +257,41 @@ public class ArticleOnClickListener implements View.OnClickListener {
         disableVoteViews(isTransactionRunning);
 
         Long clickTime = new Date().getTime();
-        String articleId = mArticle.getObjectID();
+        String videoId = mVideo.getObjectID();
 
-        // Update article with downvote data
-        DatabaseReference articleRef = FirebaseDatabase.getInstance()
-                .getReference("article/"+articleId);
+        // Update video with downvote data
+        DatabaseReference videoRef = FirebaseDatabase.getInstance()
+                .getReference("video/"+videoId);
 
-        articleRef.runTransaction(new Transaction.Handler() {
+        videoRef.runTransaction(new Transaction.Handler() {
             @NonNull
             @Override
             public Transaction.Result doTransaction(@NonNull MutableData mutableData) {
-                Article article = mutableData.getValue(Article.class);
-                if (article == null) {
+                Video video = mutableData.getValue(Video.class);
+                if (video == null) {
 
                     return Transaction.success(mutableData);
                 }
 
-                int currentVoteCount = article.getVoteCount() == null ? 0 : article.getVoteCount();
+                int currentVoteCount = video.getVoteCount() == null ? 0 : video.getVoteCount();
 
-                if (article.downvoters.containsKey(mUid)) {
-                    article.downvoters.remove(mUid);
-                    article.setVoteCount(currentVoteCount + 1);
+                if (video.downvoters.containsKey(mUid)) {
+                    video.downvoters.remove(mUid);
+                    video.setVoteCount(currentVoteCount + 1);
                     mExecutors.mainThread().execute(()->mDownvoteView.startAnimation(upvoteAnim));
-                } else if (article.upvoters.containsKey(mUid)) {
-                    article.upvoters.remove(mUid);
-                    article.downvoters.put(mUid, clickTime);
-                    article.setVoteCount(currentVoteCount - 2);
+                } else if (video.upvoters.containsKey(mUid)) {
+                    video.upvoters.remove(mUid);
+                    video.downvoters.put(mUid, clickTime);
+                    video.setVoteCount(currentVoteCount - 2);
                     mExecutors.mainThread().execute(()->mDownvoteView.startAnimation(downvoteAnim));
                 } else {
-                    article.downvoters.put(mUid, clickTime);
-                    article.setVoteCount(currentVoteCount - 1);
+                    video.downvoters.put(mUid, clickTime);
+                    video.setVoteCount(currentVoteCount - 1);
                     mExecutors.mainThread().execute(()->mDownvoteView.startAnimation(downvoteAnim));
                 }
 
-                article.changedSinceLastJob = true;
-                mutableData.setValue(article);
+                video.changedSinceLastJob = true;
+                mutableData.setValue(video);
                 return Transaction.success(mutableData);
             }
 
@@ -361,17 +320,17 @@ public class ArticleOnClickListener implements View.OnClickListener {
                 int currentPointsCount = user.getPoints();
                 int targetPoints = user.getTargetPoints();
 
-                if (user.downvotedItems.containsKey(articleId)) {
-                    user.downvotedItems.remove(articleId);
+                if (user.downvotedItems.containsKey(videoId)) {
+                    user.downvotedItems.remove(videoId);
                     user.setDownvotedItemsCount(currentDownvoteCount - 1);
                     user.setPoints(currentPointsCount - 1);
-                } else if (user.upvotedItems.containsKey(articleId)) {
-                    user.upvotedItems.remove(articleId);
-                    user.downvotedItems.put(articleId, clickTime);
+                } else if (user.upvotedItems.containsKey(videoId)) {
+                    user.upvotedItems.remove(videoId);
+                    user.downvotedItems.put(videoId, clickTime);
                     user.setDownvotedItemsCount(currentDownvoteCount + 1);
                     user.setUpvotedItemsCount(currentUpvoteCount - 1);
                 } else {
-                    user.downvotedItems.put(articleId, clickTime);
+                    user.downvotedItems.put(videoId, clickTime);
                     user.setDownvotedItemsCount(currentDownvoteCount + 1);
                     user.setPoints(currentPointsCount + 1);
                 }
@@ -413,113 +372,113 @@ public class ArticleOnClickListener implements View.OnClickListener {
     }
 
     private void onSaveClicked() {
-        Long clickTime = new Date().getTime();
-        String articleId = mArticle.getObjectID();
-
-        // Update article with save data
-        DatabaseReference articleRef = FirebaseDatabase.getInstance()
-                .getReference("article/"+articleId);
-
-        articleRef.runTransaction(new Transaction.Handler() {
-            @NonNull
-            @Override
-            public Transaction.Result doTransaction(@NonNull MutableData mutableData) {
-                Article article = mutableData.getValue(Article.class);
-                if (article == null) {
-
-                    return Transaction.success(mutableData);
-                }
-
-                int currentSaveCount = article.getSaveCount() == null ? 0 : article.getSaveCount();
-
-                if (article.savers.containsKey(mUid)) {
-                    article.savers.remove(mUid);
-                    article.setSaveCount(currentSaveCount - 1);
-                } else {
-                    article.savers.put(mUid, clickTime);
-                    article.setSaveCount(currentSaveCount + 1);
-                }
-                mExecutors.mainThread().execute(()->{
-                    bounceAnim.setAnimationListener(null);
-                    mFavView.startAnimation(bounceAnim);
-                });
-
-                article.changedSinceLastJob = true;
-                mutableData.setValue(article);
-                return Transaction.success(mutableData);
-            }
-
-            @Override
-            public void onComplete(@Nullable DatabaseError databaseError, boolean b, @Nullable DataSnapshot dataSnapshot) {
-
-            }
-        });
-
-        // Update user with save data
-        DatabaseReference userRef = FirebaseDatabase.getInstance()
-                .getReference("user/"+mUid);
-
-        userRef.runTransaction(new Transaction.Handler() {
-            @NonNull
-            @Override
-            public Transaction.Result doTransaction(@NonNull MutableData mutableData) {
-                User user = mutableData.getValue(User.class);
-                if (user == null) {
-
-                    return Transaction.success(mutableData);
-                }
-
-                int currentSaveCount = user.getSavedItemsCount() == null ? 0 : user.getSavedItemsCount();
-
-                if (user.savedItems.containsKey(articleId)) {
-                    user.savedItems.remove(articleId);
-                    user.setSavedItemsCount(currentSaveCount - 1);
-                } else {
-                    user.savedItems.put(articleId, clickTime);
-                    user.setSavedItemsCount(currentSaveCount + 1);
-                }
-                mutableData.setValue(user);
-                return Transaction.success(mutableData);
-            }
-
-            @Override
-            public void onComplete(@Nullable DatabaseError databaseError, boolean b, @Nullable DataSnapshot dataSnapshot) {
-
-            }
-        });
+//        Long clickTime = new Date().getTime();
+//        String videoId = mVideo.getObjectID();
+//
+//        // Update video with save data
+//        DatabaseReference videoRef = FirebaseDatabase.getInstance()
+//                .getReference("video/"+videoId);
+//
+//        videoRef.runTransaction(new Transaction.Handler() {
+//            @NonNull
+//            @Override
+//            public Transaction.Result doTransaction(@NonNull MutableData mutableData) {
+//                Video video = mutableData.getValue(Video.class);
+//                if (video == null) {
+//
+//                    return Transaction.success(mutableData);
+//                }
+//
+//                int currentSaveCount = video.getSaveCount() == null ? 0 : video.getSaveCount();
+//
+//                if (video.savers.containsKey(mUid)) {
+//                    video.savers.remove(mUid);
+//                    video.setSaveCount(currentSaveCount - 1);
+//                } else {
+//                    video.savers.put(mUid, clickTime);
+//                    video.setSaveCount(currentSaveCount + 1);
+//                }
+//                mExecutors.mainThread().execute(()->{
+//                    bounceAnim.setAnimationListener(null);
+//                    mFavView.startAnimation(bounceAnim);
+//                });
+//
+//                video.changedSinceLastJob = true;
+//                mutableData.setValue(video);
+//                return Transaction.success(mutableData);
+//            }
+//
+//            @Override
+//            public void onComplete(@Nullable DatabaseError databaseError, boolean b, @Nullable DataSnapshot dataSnapshot) {
+//
+//            }
+//        });
+//
+//        // Update user with save data
+//        DatabaseReference userRef = FirebaseDatabase.getInstance()
+//                .getReference("user/"+mUid);
+//
+//        userRef.runTransaction(new Transaction.Handler() {
+//            @NonNull
+//            @Override
+//            public Transaction.Result doTransaction(@NonNull MutableData mutableData) {
+//                User user = mutableData.getValue(User.class);
+//                if (user == null) {
+//
+//                    return Transaction.success(mutableData);
+//                }
+//
+//                int currentSaveCount = user.getSavedItemsCount() == null ? 0 : user.getSavedItemsCount();
+//
+//                if (user.savedItems.containsKey(videoId)) {
+//                    user.savedItems.remove(videoId);
+//                    user.setSavedItemsCount(currentSaveCount - 1);
+//                } else {
+//                    user.savedItems.put(videoId, clickTime);
+//                    user.setSavedItemsCount(currentSaveCount + 1);
+//                }
+//                mutableData.setValue(user);
+//                return Transaction.success(mutableData);
+//            }
+//
+//            @Override
+//            public void onComplete(@Nullable DatabaseError databaseError, boolean b, @Nullable DataSnapshot dataSnapshot) {
+//
+//            }
+//        });
     }
 
     private void onShareClicked() {
-        if (mArticle.getLink() != null && !mArticle.getLink().equals("")) {
+        if (mVideo.youtubeVideoId != null && !mVideo.youtubeVideoId.equals("")) {
             Long clickTime = new Date().getTime();
-            String articleId = mArticle.getObjectID();
+            String videoId = mVideo.getObjectID();
 
-            // Update article with share data
-            DatabaseReference articleRef = FirebaseDatabase.getInstance()
-                    .getReference("article/" + articleId);
+            // Update video with share data
+            DatabaseReference videoRef = FirebaseDatabase.getInstance()
+                    .getReference("video/" + videoId);
 
-            articleRef.runTransaction(new Transaction.Handler() {
+            videoRef.runTransaction(new Transaction.Handler() {
                 @NonNull
                 @Override
                 public Transaction.Result doTransaction(@NonNull MutableData mutableData) {
-                    Article article = mutableData.getValue(Article.class);
-                    if (article == null) {
+                    Video video = mutableData.getValue(Video.class);
+                    if (video == null) {
 
                         return Transaction.success(mutableData);
                     }
 
-                    int currentShareCount = article.getShareCount() == null ? 0 : article.getShareCount();
+                    int currentShareCount = video.getShareCount() == null ? 0 : video.getShareCount();
 
-                    if (article.sharers.containsKey(mUid)) {
-//                    article.sharers.remove(mUid);
-//                    article.setShareCount(currentShareCount - 1);
+                    if (video.sharers.containsKey(mUid)) {
+//                    video.sharers.remove(mUid);
+//                    video.setShareCount(currentShareCount - 1);
                     } else {
-                        article.sharers.put(mUid, clickTime);
-                        article.setShareCount(currentShareCount + 1);
+                        video.sharers.put(mUid, clickTime);
+                        video.setShareCount(currentShareCount + 1);
                     }
 
-                    article.changedSinceLastJob = true;
-                    mutableData.setValue(article);
+                    video.changedSinceLastJob = true;
+                    mutableData.setValue(video);
                     return Transaction.success(mutableData);
                 }
 
@@ -528,11 +487,11 @@ public class ArticleOnClickListener implements View.OnClickListener {
                     mExecutors.mainThread().execute(() -> {
                         Intent shareIntent = new Intent();
                         shareIntent.setType("text/plain");
-                        shareIntent.putExtra(Intent.EXTRA_SUBJECT, mArticle.getTitle());
-                        shareIntent.putExtra(Intent.EXTRA_TEXT, mArticle.getLink() + "\n- shared using Acorn: Your favourite blogs in a nutshell");
+                        shareIntent.putExtra(Intent.EXTRA_SUBJECT, mVideo.getTitle());
+                        shareIntent.putExtra(Intent.EXTRA_TEXT, mVideo.getVideoUrl() + "\n- shared using Acorn: Your favourite blogs in a nutshell");
                         shareIntent.setAction(Intent.ACTION_SEND);
                         bounceAnim.setAnimationListener(
-                                new MyAnimationListener(Intent.createChooser(shareIntent, "Share link with")));
+                                new MyAnimationListener(Intent.createChooser(shareIntent, "Share video with")));
                         mShareView.startAnimation(bounceAnim);
                     });
 
@@ -555,11 +514,11 @@ public class ArticleOnClickListener implements View.OnClickListener {
 
                     int currentShareCount = user.getSharedItemsCount() == null ? 0 : user.getSharedItemsCount();
 
-                    if (user.sharedItems.containsKey(articleId)) {
-//                    user.sharedItems.remove(articleId);
+                    if (user.sharedItems.containsKey(videoId)) {
+//                    user.sharedItems.remove(videoId);
 //                    user.setSharedItemsCount(currentShareCount - 1);
                     } else {
-                        user.sharedItems.put(articleId, clickTime);
+                        user.sharedItems.put(videoId, clickTime);
                         user.setSharedItemsCount(currentShareCount + 1);
                     }
                     mutableData.setValue(user);

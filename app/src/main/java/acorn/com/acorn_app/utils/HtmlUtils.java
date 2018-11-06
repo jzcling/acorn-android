@@ -2,6 +2,7 @@ package acorn.com.acorn_app.utils;
 
 import android.content.Context;
 
+import org.jsoup.Jsoup;
 import org.jsoup.safety.Whitelist;
 
 import java.util.regex.Pattern;
@@ -14,13 +15,15 @@ public class HtmlUtils {
     private static final String TAG = "HtmlUtils";
 
     private static final Whitelist JSOUP_WHITELIST = Whitelist.relaxed().preserveRelativeLinks(true)
-            .addProtocols("img", "src", "http", "https")
-            .addTags("iframe", "video", "audio", "source", "track", "img")
+//            .addProtocols("img", "src", "http", "https")
+            .addTags("iframe", "video", "audio", "source", "track", "img", "span")
             .addAttributes("iframe", "src", "frameborder", "height", "width")
             .addAttributes("video", "src", "controls", "height", "width", "poster")
             .addAttributes("audio", "src", "controls")
             .addAttributes("source", "src", "type")
-            .addAttributes("track", "src", "kind", "srclang", "label");
+            .addAttributes("track", "src", "kind", "srclang", "label")
+            .addAttributes("img", "src", "alt")
+            .addAttributes("span", "style");
 
     private static final Pattern IMG_PATTERN = Pattern.compile("<img\\s+[^>]*src=\\s*['\"]([^'\"]+)['\"][^>]*>", Pattern.CASE_INSENSITIVE);
     private static final Pattern NOSCRIPT_PATTERN = Pattern.compile("<noscript>.*?</noscript>", Pattern.CASE_INSENSITIVE);
@@ -30,6 +33,7 @@ public class HtmlUtils {
     private static final Pattern LAZY_LOADING_PATTERN_3 = Pattern.compile("\\s+(src=['\"].*?['\"])([^>]+?)data-lazy-src=(['\"].*?['\"])", Pattern.CASE_INSENSITIVE);
     private static final Pattern LAZY_LOADING_PATTERN_4 = Pattern.compile("\\s+data-original=", Pattern.CASE_INSENSITIVE);
     private static final Pattern LAZY_LOADING_PATTERN_5 = Pattern.compile("\\s+src=[^\\s]+\\s(src=['\"].*?['\"])", Pattern.CASE_INSENSITIVE);
+    private static final Pattern SMARTLOCAL_IMG_PATTERN = Pattern.compile("\\s+(src=[^\\s]+\\s[^>]+?)\\ssrc=[^\\s]+\\sonload.*?>", Pattern.CASE_INSENSITIVE);
     private static final Pattern EMPTY_IMAGE_PATTERN = Pattern.compile("<img\\s+(height=['\"]1['\"]\\s+width=['\"]1['\"]|width=['\"]1['\"]\\s+height=['\"]1['\"])\\s+[^>]*src=\\s*['\"]([^'\"]+)['\"][^>]*>", Pattern.CASE_INSENSITIVE);
     private static final Pattern RELATIVE_IMAGE_PATTERN = Pattern.compile("\\s+(href|src)=([\"'])//", Pattern.CASE_INSENSITIVE);
     private static final Pattern RELATIVE_IMAGE_PATTERN_2 = Pattern.compile("\\s+(href|src)=([\"'])/", Pattern.CASE_INSENSITIVE);
@@ -68,13 +72,14 @@ public class HtmlUtils {
             content = LAZY_LOADING_PATTERN_3.matcher(content).replaceAll(" $2src=$3");
             content = LAZY_LOADING_PATTERN_4.matcher(content).replaceAll("src=");
             content = LAZY_LOADING_PATTERN_5.matcher(content).replaceAll(" $1");
+            content = SMARTLOCAL_IMG_PATTERN.matcher(content).replaceAll(" $1>");
             // fix relative image paths
             content = RELATIVE_IMAGE_PATTERN.matcher(content).replaceAll(" $1=$2http://");
             // fix alternative image tags
             content = ALT_IMAGE_PATTERN.matcher(content).replaceAll("img ");
 
             // clean by JSoup
-            //content = Jsoup.clean(content, baseUrl, JSOUP_WHITELIST);
+            content = Jsoup.clean(content, baseUrl, JSOUP_WHITELIST);
 
             content = RELATIVE_IMAGE_PATTERN_2.matcher(content).replaceAll(" $1=$2" + baseUrl);
 
@@ -92,15 +97,16 @@ public class HtmlUtils {
             content = TABLE_END_PATTERN.matcher(content).replaceAll("$1</div>");
         }
 
+//        System.out.print(content);
         return content;
     }
 
     private static String generateHtmlContent(Context context, String title, String link,
                                               String contentText, String author, String source, String date) {
-        String BACKGROUND_COLOR = String.format("#%06X", (0xFFFFFF & context.getResources().getColor(R.color.webview_background)));
-        String TEXT_COLOR = String.format("#%06X", (0xFFFFFF & context.getResources().getColor(R.color.webview_text_color)));
-        String SUBTITLE_COLOR = String.format("#%06X", (0xFFFFFF & context.getResources().getColor(R.color.webview_subtitle_color)));
-        String QUOTE_BACKGROUND_COLOR = String.format("#%06X", (0xFFFFFF & context.getResources().getColor(R.color.webview_quote_background_color)));
+        String BACKGROUND_COLOR = String.format("#%06X", (0xFFFFFF & context.getColor(R.color.webview_background)));
+        String TEXT_COLOR = String.format("#%06X", (0xFFFFFF & context.getColor(R.color.webview_text_color)));
+        String SUBTITLE_COLOR = String.format("#%06X", (0xFFFFFF & context.getColor(R.color.webview_subtitle_color)));
+        String QUOTE_BACKGROUND_COLOR = String.format("#%06X", (0xFFFFFF & context.getColor(R.color.webview_quote_background_color)));
 
         String CSS = "<head><style type='text/css'> "
                 + "body {max-width: 100%; margin: 0.3cm; font-family: sans-serif-light; font-size: " + TEXT_SIZE + "; text-align: justify; color: " + TEXT_COLOR + "; background-color:" + BACKGROUND_COLOR + "; line-height: 150%} "

@@ -132,7 +132,6 @@ public class ArticleListLiveData extends LiveData<List<Article>> {
             String articleKey = dataSnapshot.getKey();
 
             int articleIndex = mArticleIds.indexOf(articleKey);
-            Log.d(TAG, "articleIndex: " + articleIndex);
             if (articleIndex > -1) {
                 if (newArticle != null) {
                     if (newArticle.isReported) {

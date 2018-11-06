@@ -1,7 +1,6 @@
 package acorn.com.acorn_app.ui.activities;
 
 import android.app.AlertDialog;
-import android.arch.lifecycle.LiveData;
 import android.arch.lifecycle.Observer;
 import android.arch.lifecycle.ViewModelProviders;
 import android.content.Context;
@@ -21,9 +20,6 @@ import android.view.View;
 import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.EditText;
-
-import com.google.firebase.database.DatabaseReference;
-import com.google.firebase.database.FirebaseDatabase;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -48,18 +44,14 @@ public class SavedArticlesActivity extends AppCompatActivity
     implements SavedArticleTouchHelper.RecyclerItemTouchHelperListener {
     private static final String TAG = "SavedArticlesActivity";
 
-    //Firebase database
-    private FirebaseDatabase mDatabase;
-    private DatabaseReference mDatabaseReference;
-    public static FbQuery mQuery;
-
-    //Data source
+    //Data
     private NetworkDataSource mDataSource;
+    public static FbQuery mQuery;
     private final AppExecutors mExecutors = AppExecutors.getInstance();
 
     //View Models
     private ArticleViewModel mArticleViewModel;
-    private final Map<LiveData<List<Article>>, Observer<List<Article>>> mObservedList = new HashMap<>();
+    private final Map<ArticleListLiveData, Observer<List<Article>>> mObservedList = new HashMap<>();
 
     //RecyclerView
     private RecyclerView mRecyclerView;
@@ -194,7 +186,7 @@ public class SavedArticlesActivity extends AppCompatActivity
     protected void onDestroy() {
         super.onDestroy();
         if (mObservedList.size() > 0) {
-            for (LiveData<List<Article>> liveData : mObservedList.keySet()) {
+            for (ArticleListLiveData liveData : mObservedList.keySet()) {
                 liveData.removeObserver(mObservedList.get(liveData));
             }
             mObservedList.clear();
@@ -283,7 +275,7 @@ public class SavedArticlesActivity extends AppCompatActivity
 //            index = mAdapter.getItemCount();
 //
 //            int indexType = 0;
-//            LiveData<List<Article>> addListLD = mArticleViewModel.getAdditionalArticles(index, indexType);
+//            ArticleListLiveData addListLD = mArticleViewModel.getAdditionalArticles(index, indexType);
 //            Observer<List<Article>> addListObserver = articles -> {
 //                if (articles != null) {
 //                    /*

@@ -22,8 +22,6 @@ import org.greenrobot.eventbus.Subscribe;
 import org.json.JSONObject;
 
 import acorn.com.acorn_app.R;
-import acorn.com.acorn_app.data.NetworkDataSource;
-import acorn.com.acorn_app.utils.AppExecutors;
 
 
 public class SearchActivity extends AppCompatActivity {
@@ -34,9 +32,6 @@ public class SearchActivity extends AppCompatActivity {
     private Searcher mSearcher;
     private SearchView mSearchBox;
     private Hits mHits;
-
-    private NetworkDataSource mDataSource;
-    private AppExecutors mExecutors = AppExecutors.getInstance();
 
     @Override protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -52,25 +47,18 @@ public class SearchActivity extends AppCompatActivity {
 
         this.mSearcher = AcornActivity.mSearcher;
 
-        mDataSource = NetworkDataSource.getInstance(this, mExecutors);
-
         mHits = findViewById(R.id.hits);
 
         mHits.setOnItemClickListener((recyclerView, position, v) -> {
 
             JSONObject article = mHits.get(position);
             String link = null;
-            String articleId = null;
-            String mainTheme = null;
             try {
                 link = article.getString("link");
-                articleId = article.getString("objectID");
-                mainTheme = article.getString("mainTheme");
             } catch (Exception e) {
                 e.printStackTrace();
             } finally {
                 if (link != null && !link.equals("")) {
-                    mDataSource.recordArticleOpenDetails(articleId, mainTheme);
                     startWebViewActivity(article);
                 } else {
                     startCommentActivity(article);

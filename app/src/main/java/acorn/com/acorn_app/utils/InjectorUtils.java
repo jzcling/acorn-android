@@ -20,6 +20,7 @@ import android.content.Context;
 
 import acorn.com.acorn_app.data.NetworkDataSource;
 import acorn.com.acorn_app.ui.viewModels.ArticleViewModelFactory;
+import acorn.com.acorn_app.ui.viewModels.VideoViewModelFactory;
 
 public class InjectorUtils {
     public static NetworkDataSource provideNetworkDataSource(Context context) {
@@ -30,5 +31,10 @@ public class InjectorUtils {
     public static ArticleViewModelFactory provideArticleViewModelFactory(Context context) {
         NetworkDataSource dataSource = provideNetworkDataSource(context.getApplicationContext());
         return new ArticleViewModelFactory(dataSource);
+    }
+
+    public static VideoViewModelFactory provideVideoViewModelFactory(Context context) {
+        NetworkDataSource dataSource = provideNetworkDataSource(context.getApplicationContext());
+        return new VideoViewModelFactory(dataSource);
     }
 }

@@ -83,7 +83,7 @@ public class CommentAdapter extends FirebaseRecyclerAdapter<Comment, CommentView
             Matcher m = p.matcher(originalText);
             while (m.find()) {
                 highlightedText.setSpan(new BackgroundColorSpan(
-                        mContext.getResources().getColor(R.color.search_comment_highlight)),
+                        mContext.getColor(R.color.search_comment_highlight)),
                         m.start(), m.end(), SPAN_INCLUSIVE_INCLUSIVE);
             }
             holder.commentTextView.setText(highlightedText);
