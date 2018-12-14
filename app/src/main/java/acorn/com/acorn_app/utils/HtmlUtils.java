@@ -1,6 +1,7 @@
 package acorn.com.acorn_app.utils;
 
 import android.content.Context;
+import android.util.Log;
 
 import org.jsoup.Jsoup;
 import org.jsoup.safety.Whitelist;
@@ -101,7 +102,7 @@ public class HtmlUtils {
         return content;
     }
 
-    private static String generateHtmlContent(Context context, String title, String link,
+    public static String generateHtmlContent(Context context, String title, String link,
                                               String contentText, String author, String source, String date) {
         String BACKGROUND_COLOR = String.format("#%06X", (0xFFFFFF & context.getColor(R.color.webview_background)));
         String TEXT_COLOR = String.format("#%06X", (0xFFFFFF & context.getColor(R.color.webview_text_color)));
@@ -179,6 +180,24 @@ public class HtmlUtils {
             if (extractedHtml != null) {
                 parsedHtml = improveHtmlContent(extractedHtml, baseUrl);
                 return generateHtmlContent(context,title,url,parsedHtml,author,source,date);
+            } else {
+                return null;
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+    public static String getCleanedHtml(Context context, String url) {
+        Pattern baseUrlPattern = Pattern.compile("(https?://.*?/).*", Pattern.CASE_INSENSITIVE);
+        String baseUrl = baseUrlPattern.matcher(url).replaceAll("$1");
+        String parsedHtml;
+        try {
+            String extractedHtml = ArticleTextExtractor.extractContent(getInputStream(context, url));
+            if (extractedHtml != null) {
+                parsedHtml = improveHtmlContent(extractedHtml, baseUrl);
+                return parsedHtml;
             } else {
                 return null;
             }

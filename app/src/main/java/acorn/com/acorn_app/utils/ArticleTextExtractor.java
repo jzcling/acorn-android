@@ -1,5 +1,7 @@
 package acorn.com.acorn_app.utils;
 
+import android.util.Log;
+
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
@@ -21,16 +23,16 @@ public class ArticleTextExtractor {
     private static final String TAG = "TextExtractor";
 
     // Interesting nodes
-    private static final Pattern NODES = Pattern.compile("p|div|td|h1|h2|article|section");
+    private static final Pattern NODES = Pattern.compile("p|div|td|h1|h2|article|section|span");
 
     // Unlikely candidates
     private static final Pattern UNLIKELY = Pattern.compile("com(bx|ment|munity)|dis(qus|cuss)|e(xtra|[-]?mail)|foot|"
-            + "header|menu|re(mark|ply)|rss|sh(are|outbox)|social|twitter|facebook|sponsor"
+            + "header|menu|re(mark|ply)|rss|sh(are|outbox)|social|twitter|facebook|pinterest|sponsor|"
             + "a(d|ll|gegate|rchive|ttachment)|(pag(er|ination))|popup|print|"
             + "login|si(debar|gn|ngle)|hinweis|expla(in|nation)?|metablock");
 
     // Most likely positive candidates
-    private static final Pattern POSITIVE = Pattern.compile("(^(body|content|h?entry|main|page|post|text|blog|story|haupt))"
+    private static final Pattern POSITIVE = Pattern.compile("(^(body|content|h?entry|cb-(entry|itemprop)|main|page|post|text|blog|story|haupt))"
             + "|arti(cle|kel)|instapaper_body");
 
     // Very most likely positive candidates, used by Joomla CMS
@@ -68,8 +70,11 @@ public class ArticleTextExtractor {
         Element bestMatchElement = null;
 
         for (Element entry : nodes) {
-            int currentWeight = getWeight(entry);
-            if (currentWeight > 0)
+            String htmlText = entry.outerHtml();
+            String startText = htmlText.substring(0,Math.min(htmlText.length(),20));
+            String endText = htmlText.substring(Math.max(0,htmlText.length()-20), htmlText.length());
+            int currentWeight = getWeight(entry, false);
+            //Log.d(TAG, String.valueOf(currentWeight) + ": " + startText + "..." + endText);
 
             if (currentWeight > maxWeight) {
                 maxWeight = currentWeight;
@@ -110,10 +115,11 @@ public class ArticleTextExtractor {
      *
      * @param e                Element to weight, along with child nodes
      */
-    private static int getWeight(Element e) {
-        int weight = calcWeight(e);
+    private static int getWeight(Element e, boolean debugIndicator) {
+        int weight = calcWeight(e, debugIndicator);
         weight += e.ownText().length() / 10;
-        weight += weightChildNodes(e);
+        if (debugIndicator) Log.d(TAG, "textLength: +" + e.ownText().length() / 10);
+        weight += weightChildNodes(e, debugIndicator);
         return weight;
     }
 
@@ -129,10 +135,11 @@ public class ArticleTextExtractor {
      *
      * @param rootEl           Element, who's child nodes will be weighted
      */
-    private static int weightChildNodes(Element rootEl) {
+    private static int weightChildNodes(Element rootEl, boolean debugIndicator) {
         int weight = 0;
         List<Element> pEls = new ArrayList<>(5);
         for (Element child : rootEl.children()) {
+            if (debugIndicator) Log.d(TAG, child.tagName());
             String text = child.text();
             int textLength = text.length();
             if (textLength < 20) {
@@ -142,17 +149,21 @@ public class ArticleTextExtractor {
             String ownText = child.ownText();
             int ownTextLength = ownText.length();
             if (ownTextLength > 200) {
+                if (debugIndicator) Log.d(TAG, "childTextLength: " + Math.max(50, ownTextLength / 10));
                 weight += Math.max(50, ownTextLength / 10);
             }
 
             if (child.tagName().equals("h1") || child.tagName().equals("h2")) {
+                if (debugIndicator) Log.d(TAG, child.tagName() + ": h1/h2 +30");
                 weight += 30;
-            } else if (child.tagName().equals("div") || child.tagName().equals("p")) {
-                weight += calcWeightForChild(ownText);
+            } else if (child.tagName().equals("div") || child.tagName().equals("p")
+                    || child.tagName().equals("span")) {
+                weight += calcWeightForChild(ownText, debugIndicator);
                 if (child.tagName().equals("p") && textLength > 50)
                     pEls.add(child);
 
                 if (child.className().toLowerCase().equals("caption"))
+                    if (debugIndicator) Log.d(TAG, child.className().toLowerCase() + ": caption +30");
                     weight += 30;
             }
         }
@@ -160,6 +171,7 @@ public class ArticleTextExtractor {
         if (pEls.size() >= 2) {
             for (Element subEl : rootEl.children()) {
                 if ("h1;h2;h3;h4;h5;h6".contains(subEl.tagName())) {
+                    if (debugIndicator) Log.d(TAG, subEl.tagName() + ": h1-h6 +20");
                     weight += 20;
                 }
             }
@@ -167,42 +179,59 @@ public class ArticleTextExtractor {
         return weight;
     }
 
-    private static int calcWeightForChild(String text) {
+    private static int calcWeightForChild(String text, boolean debugIndicator) {
+        if (debugIndicator) Log.d(TAG, "childWeight: text length " + text.length() / 25);
         return text.length() / 25;
 //		return Math.min(100, text.length() / ((child.getAllElements().size()+1)*5));
     }
 
-    private static int calcWeight(Element e) {
+    private static int calcWeight(Element e, boolean debugIndicator) {
         int weight = 0;
-        if (POSITIVE.matcher(e.className()).find())
+        if (POSITIVE.matcher(e.className()).find()) {
+            if (debugIndicator) Log.d(TAG, e.className() + ": class positive +35");
             weight += 35;
+        }
 
-        if (POSITIVE.matcher(e.id()).find())
+        if (POSITIVE.matcher(e.id()).find()) {
+            if (debugIndicator) Log.d(TAG, e.id() + ": id positive +40");
             weight += 40;
+        }
 
-        if (ITSJOOMLA.matcher(e.attributes().toString()).find())
+        if (ITSJOOMLA.matcher(e.attributes().toString()).find()) {
+            if (debugIndicator) Log.d(TAG, e.attributes() + ": attributes joomla +200");
             weight += 200;
-
-        if (UNLIKELY.matcher(e.className()).find())
+        }
+        if (UNLIKELY.matcher(e.className()).find()) {
+            if (debugIndicator) Log.d(TAG, e.className() + ": class unlikely -20");
             weight -= 20;
+        }
 
-        if (UNLIKELY.matcher(e.id()).find())
+        if (UNLIKELY.matcher(e.id()).find()) {
+            if (debugIndicator) Log.d(TAG, e.id() + ": id unlikely -20");
             weight -= 20;
+        }
 
-        if (NEGATIVE.matcher(e.className()).find())
+        if (NEGATIVE.matcher(e.className()).find()) {
+            if (debugIndicator) Log.d(TAG, e.className() + ": class negative -50");
             weight -= 50;
+        }
 
-        if (NEGATIVE.matcher(e.id()).find())
+        if (NEGATIVE.matcher(e.id()).find()) {
+            if (debugIndicator) Log.d(TAG, e.id() + ": id negative -50");
             weight -= 50;
+        }
 
         String style = e.attr("style");
-        if (style != null && !style.isEmpty() && NEGATIVE_STYLE.matcher(style).find())
+        if (style != null && !style.isEmpty() && NEGATIVE_STYLE.matcher(style).find()) {
+            if (debugIndicator) Log.d(TAG, style + ": style negative -50");
             weight -= 50;
+        }
+
         return weight;
     }
 
     /**
-     * Prepares document. Currently only stipping unlikely candidates, since
+     * Prepares document. Currently only stripping unlikely candidates, since
      * from time to time they're getting more score than good ones especially in
      * cases when major text is short.
      *
@@ -227,17 +256,6 @@ public class ArticleTextExtractor {
      *
      * @param doc document to strip unlikely candidates from
      */
-//    protected void stripUnlikelyCandidates(Document doc) {
-//        for (Element child : doc.select("body").select("*")) {
-//            String className = child.className().toLowerCase();
-//            String id = child.id().toLowerCase();
-//
-//            if (NEGATIVE.matcher(className).find()
-//                    || NEGATIVE.matcher(id).find()) {
-//                child.remove();
-//            }
-//        }
-//    }
     private static void removeNav(Document doc) {
         Elements nav = doc.getElementsByTag("nav");
         for (Element item : nav) {
@@ -338,8 +356,14 @@ public class ArticleTextExtractor {
     }
 
     private static void removeMisc(Document doc) {
+        // The Independent specific
+        Elements misc = doc.select("iframe[security~=restricted]");
+        for (Element item : misc) {
+            item.remove();
+        }
+
         // Seedly specific
-        Elements misc = doc.select("a:contains(back to main blog)");
+        misc = doc.select("a:contains(back to main blog)");
         for (Element item : misc) {
             item.remove();
         }

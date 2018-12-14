@@ -1,5 +1,12 @@
 Android
 
+v1.5.2, v1.5.3
+Latest 50 articles now available for offline reading if on wifi
+Saved articles are now available for offline reading
+Revised Trending Articles pull method
+Fixed deals notifications date display
+Fixed incomplete article text for City Nomads
+
 v1.5.1
 Improved image alignment in-article/Cleaned up HTML content
 Caters for url redirection when opening articles (TechieLobang)

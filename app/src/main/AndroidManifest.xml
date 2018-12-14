@@ -145,6 +145,14 @@
             </intent-filter>
         </service>
 
+        <service
+            android:name=".services.DownloadArticlesJobService"
+            android:exported="false" >
+            <intent-filter>
+                <action android:name="com.firebase.jobdispatcher.ACTION_EXECUTE"/>
+            </intent-filter>
+        </service>
+
         <provider
             android:name="android.support.v4.content.FileProvider"
             android:authorities="com.example.android.fileprovider"

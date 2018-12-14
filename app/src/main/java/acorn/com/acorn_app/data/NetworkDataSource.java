@@ -45,6 +45,7 @@ import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
@@ -52,13 +53,17 @@ import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
+import acorn.com.acorn_app.R;
 import acorn.com.acorn_app.models.Article;
 import acorn.com.acorn_app.models.Comment;
 import acorn.com.acorn_app.models.FbQuery;
 import acorn.com.acorn_app.models.User;
+import acorn.com.acorn_app.models.dbArticle;
+import acorn.com.acorn_app.services.DownloadArticlesJobService;
 import acorn.com.acorn_app.services.RecArticlesJobService;
 import acorn.com.acorn_app.services.RecDealsJobService;
 import acorn.com.acorn_app.utils.AppExecutors;
+import acorn.com.acorn_app.utils.HtmlUtils;
 
 import static acorn.com.acorn_app.ui.activities.AcornActivity.mUid;
 
@@ -66,6 +71,7 @@ public class NetworkDataSource {
     private static final String TAG = "NetworkDataSource";
     private static final String REC_ARTICLES_TAG = "recommendedArticles";
     private static final String REC_DEALS_TAG = "recommendedDeals";
+    private static final String DOWNLOAD_ARTICLES_TAG = "downloadArticles";
 
     public static final String ARTICLE_REF = "article";
     public static final String VIDEO_REF = "video";
@@ -170,6 +176,53 @@ public class NetworkDataSource {
         }
     }
 
+    public void getTrendingData(Runnable bindToUi) {
+        mExecutors.networkIO().execute(() -> {
+            StringBuilder searchKeyBuilder = new StringBuilder();
+            StringBuilder filterStringBuilder = new StringBuilder();
+
+            String[] themePrefs = mContext.getResources().getStringArray(R.array.theme_array);
+            Arrays.sort(themePrefs);
+            for (int i = 0; i < themePrefs.length; i++) {
+                if (i == 0) {
+                    searchKeyBuilder.append(themePrefs[i]);
+                    filterStringBuilder.append("mainTheme: \"").append(themePrefs[i]).append("\"");
+                } else {
+                    searchKeyBuilder.append("_").append(themePrefs[i]);
+                    filterStringBuilder.append(" OR mainTheme: \"").append(themePrefs[i]).append("\"");
+                }
+            }
+            String themeSearchKey = searchKeyBuilder.toString();
+            String themeSearchFilter = filterStringBuilder.toString();
+
+            DatabaseReference resultRef = mDatabaseReference.child(SEARCH_REF).child(themeSearchKey);
+            resultRef.addListenerForSingleValueEvent(new ValueEventListener() {
+                @Override
+                public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+                    if (dataSnapshot.getValue() == null) {
+                        searchThemeArticles(themeSearchKey, themeSearchFilter, bindToUi);
+                    } else {
+                        Long timeNow = (new Date().getTime());
+                        Long lastQueryTimestamp = (Long) dataSnapshot.child("lastQueryTimestamp").getValue();
+                        if (lastQueryTimestamp == null) {
+                            searchThemeArticles(themeSearchKey, themeSearchFilter, bindToUi);
+                        } else {
+                            if (timeNow - lastQueryTimestamp < 60L * 60L * 1000L) { // 1 hour
+                                mExecutors.mainThread().execute(bindToUi);
+                            } else {
+                                searchThemeArticles(themeSearchKey, themeSearchFilter, bindToUi);
+                            }
+                        }
+                    }
+                }
+
+                @Override
+                public void onCancelled(@NonNull DatabaseError databaseError) {
+                }
+            });
+        });
+    }
+
     public void getThemeData(Runnable bindToUi) {
         mExecutors.networkIO().execute(() -> {
             mThemeSearchKey = mSharedPrefs.getString("themeSearchKey", "");
@@ -206,7 +259,7 @@ public class NetworkDataSource {
         mExecutors.networkIO().execute(() -> {
             DatabaseReference resultRef = mDatabaseReference.child(SEARCH_REF).child(themeSearchKey);
             com.algolia.search.saas.Query query = new com.algolia.search.saas.Query();
-    //        query.setFacets("*");
+            //        query.setFacets("*");
             query.setFilters(themeSearchFilter);
 
             setupAlgoliaClient(() -> {
@@ -259,6 +312,71 @@ public class NetworkDataSource {
                 }
             });
         });
+    }
+
+    // Trending Articles
+    public void getTrendingArticles(Runnable onComplete, Runnable onError) {
+        int limit = 25;
+        List<dbArticle> localArticles = new ArrayList<>();
+        List<String> localArticlesId = new ArrayList<>();
+        ArticleRoomDatabase roomDb = ArticleRoomDatabase.getInstance(mContext);
+        mExecutors.networkIO().execute(() -> {
+            Query query = mDatabaseReference.child(ARTICLE_REF).orderByKey()
+                    .limitToFirst(limit);
+            query.keepSynced(true);
+            ValueEventListener listener = new ValueEventListener() {
+                @Override
+                public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+                    for (DataSnapshot snap : dataSnapshot.getChildren()) {
+                        Article article = snap.getValue(Article.class);
+                        if (article == null) return;
+
+                        mExecutors.diskIO().execute(() -> {
+                            Log.d(TAG, "article: " + article.getTitle());
+                            article.htmlContent = HtmlUtils.getCleanedHtml(mContext, article.getLink());
+                            dbArticle localArticle = new dbArticle(mContext, article);
+                            roomDb.articleDAO().insert(localArticle);
+                        });
+                    }
+                    onComplete.run();
+                }
+
+                @Override
+                public void onCancelled(@NonNull DatabaseError databaseError) {
+                    onError.run();
+                }
+            };
+            query.addValueEventListener(listener);
+        });
+    }
+
+    public void scheduleArticlesDownload() {
+        Driver driver = new GooglePlayDriver(mContext);
+        FirebaseJobDispatcher dispatcher = new FirebaseJobDispatcher(driver);
+
+        Job downloadArticlesJob = dispatcher.newJobBuilder()
+                .setService(DownloadArticlesJobService.class)
+                .setTag(DOWNLOAD_ARTICLES_TAG)
+                .setConstraints(Constraint.ON_ANY_NETWORK)
+                .setLifetime(Lifetime.FOREVER)
+                .setRecurring(true)
+                .setTrigger(Trigger.executionWindow(
+//                        (int) TimeUnit.MINUTES.toSeconds(5), //Testing
+//                        (int) TimeUnit.MINUTES.toSeconds(6))) //Testing
+                        (int) TimeUnit.HOURS.toSeconds(3), //Start every 3 hours
+                        (int) TimeUnit.HOURS.toSeconds(4))) //Execute within 4 hours
+                .setRetryStrategy(RetryStrategy.DEFAULT_EXPONENTIAL)
+                .setReplaceCurrent(true)
+                .build();
+
+        // Schedule the Job with the dispatcher
+        dispatcher.mustSchedule(downloadArticlesJob);
+    }
+
+    public void cancelDownloadArticles() {
+        Driver driver = new GooglePlayDriver(mContext);
+        FirebaseJobDispatcher dispatcher = new FirebaseJobDispatcher(driver);
+        dispatcher.cancel(DOWNLOAD_ARTICLES_TAG);
     }
 
     // Recommended Deals
@@ -314,7 +432,7 @@ public class NetworkDataSource {
                         (int) TimeUnit.HOURS.toSeconds(8), //Start every 8 hours
                         (int) TimeUnit.HOURS.toSeconds(9))) //Execute within 9 hours
                 .setRetryStrategy(RetryStrategy.DEFAULT_EXPONENTIAL)
-                .setReplaceCurrent(false)
+                .setReplaceCurrent(true)
                 .build();
 
         // Schedule the Job with the dispatcher
@@ -396,7 +514,7 @@ public class NetworkDataSource {
                         (int) TimeUnit.HOURS.toSeconds(6), //Start every 6 hours
                         (int) TimeUnit.HOURS.toSeconds(7))) //Execute within 7 hours
                 .setRetryStrategy(RetryStrategy.DEFAULT_EXPONENTIAL)
-                .setReplaceCurrent(false)
+                .setReplaceCurrent(true)
                 .build();
 
         // Schedule the Job with the dispatcher
@@ -626,7 +744,7 @@ public class NetworkDataSource {
             }
         });
 
-        // Update user with save data
+        // Update user with open article data
         DatabaseReference userRef = FirebaseDatabase.getInstance()
                 .getReference("user/"+mUid);
 
@@ -638,7 +756,6 @@ public class NetworkDataSource {
                 if (user == null) {
                     return Transaction.success(mutableData);
                 }
-                Log.d(TAG, article.getObjectID() + ", " + article.getMainTheme());
                 int themeOpenedCount = user.openedThemes.get(article.getMainTheme()) == null ?
                         0 : user.openedThemes.get(article.getMainTheme());
 

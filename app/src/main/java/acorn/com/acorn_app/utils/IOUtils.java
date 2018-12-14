@@ -3,6 +3,7 @@ package acorn.com.acorn_app.utils;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.util.Log;
 import android.widget.Toast;
 
 import com.google.firebase.storage.FirebaseStorage;

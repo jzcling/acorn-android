@@ -39,6 +39,7 @@ public class Article {
     public final Map<String, String> notificationTokens = new HashMap<>();
     public boolean changedSinceLastJob = true;
     public boolean isReported = false;
+    public String htmlContent;
 
     public Article() {}
 

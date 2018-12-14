@@ -41,7 +41,6 @@ public class RecArticlesJobService extends JobService {
     private AppExecutors mExecutors;
     private NetworkDataSource mDataSource;
     private SharedPreferences sharedPrefs;
-    private String mUid;
     private String themeSearchKey;
             
     @Override
@@ -58,12 +57,16 @@ public class RecArticlesJobService extends JobService {
 
         if (timeNow - lastRecArticlesPushTime > 6L * 60L * 60L * 1000L) { // 6 hours
             mExecutors.networkIO().execute(
-                    () -> mDataSource.getThemeData(() -> mDataSource.getRecommendedArticles(hitsRef, () -> mExecutors.networkIO().execute(() -> {
-                        sendRecArticlesNotification();
-                        mDataSource.recordLastRecArticlesPushTime();
-                        jobFinished(params, true);
-
-                    }))));
+                    () -> mDataSource.getThemeData(
+                            () -> mDataSource.getRecommendedArticles(hitsRef,
+                                    () -> mExecutors.networkIO().execute(() -> {
+                                        sendRecArticlesNotification();
+                                        mDataSource.recordLastRecArticlesPushTime();
+                                        jobFinished(params, true);
+                                    })
+                            )
+                    )
+            );
             return true;
         }
         jobFinished(params, true);

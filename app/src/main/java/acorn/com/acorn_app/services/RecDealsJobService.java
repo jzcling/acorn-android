@@ -41,7 +41,6 @@ public class RecDealsJobService extends JobService {
     private AppExecutors mExecutors;
     private NetworkDataSource mDataSource;
     private SharedPreferences sharedPrefs;
-    private String mUid;
             
     @Override
     public boolean onStartJob(JobParameters params) {
@@ -53,13 +52,16 @@ public class RecDealsJobService extends JobService {
 
         if (timeNow - lastRecDealsPushTime > 8L * 60L * 60L * 1000L) { // 8 hours
             mExecutors.networkIO().execute(
-                    () -> mDataSource.getRecommendedDeals((dealsList) -> {
-                        mExecutors.networkIO().execute(() -> {
-                            sendRecDealsNotification(dealsList);
-                            mDataSource.recordLastRecDealsPushTime();
-                            jobFinished(params, true);
-                        });
-                    }));
+                    () -> mDataSource.getDealsData(
+                            () -> mDataSource.getRecommendedDeals((dealsList) -> {
+                                mExecutors.networkIO().execute(() -> {
+                                    sendRecDealsNotification(dealsList);
+                                    mDataSource.recordLastRecDealsPushTime();
+                                    jobFinished(params, true);
+                                });
+                            })
+                    )
+            );
             return true;
         }
         jobFinished(params, true);

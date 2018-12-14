@@ -11,6 +11,7 @@ import android.support.design.widget.FloatingActionButton;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.SearchView;
 import android.support.v7.widget.Toolbar;
+import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
@@ -32,8 +33,10 @@ import com.google.firebase.database.Transaction;
 import com.google.firebase.database.ValueEventListener;
 
 import acorn.com.acorn_app.R;
+import acorn.com.acorn_app.data.ArticleRoomDatabase;
 import acorn.com.acorn_app.data.NetworkDataSource;
 import acorn.com.acorn_app.models.Article;
+import acorn.com.acorn_app.models.dbArticle;
 import acorn.com.acorn_app.ui.adapters.ArticleOnClickListener;
 import acorn.com.acorn_app.ui.views.ObservableWebView;
 import acorn.com.acorn_app.utils.AppExecutors;
@@ -54,14 +57,19 @@ public class WebViewActivity extends AppCompatActivity {
     private ProgressBar progressBar;
     private Intent intent;
 
-    private Article mArticle;
     private String articleId;
+
+    private dbArticle mDbArticle;
+    private Article mArticle;
     private String link;
     private String title;
     private String author;
     private String source;
     private String date;
     private boolean isArticleLoaded = false;
+
+    // Room Database;
+    private ArticleRoomDatabase mRoomDb;
 
     // Firebase
     private FirebaseDatabase mDatabase;
@@ -96,6 +104,9 @@ public class WebViewActivity extends AppCompatActivity {
         intent = getIntent();
         articleId = intent.getStringExtra("id");
 
+        // Set up Room Database
+        mRoomDb = ArticleRoomDatabase.getInstance(this);
+
         // Set up Firebase Database
         if (mDatabase == null) mDatabase = FirebaseDatabase.getInstance();
         DatabaseReference databaseReference = mDatabase.getReference();
@@ -128,63 +139,149 @@ public class WebViewActivity extends AppCompatActivity {
         increaseTouchArea(shareView);
 
         // Get article
-        mArticleListener = mArticleRef.addValueEventListener(new ValueEventListener() {
-            @Override
-            public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
-                mArticle = dataSnapshot.getValue(Article.class);
+        // Check room database if article is present, otherwise fetch from network
+        mExecutors.diskIO().execute(() -> {
+            mDbArticle = mRoomDb.articleDAO().getDbArticle(articleId);
+            if (mDbArticle != null) {
+                link = mDbArticle.link;
+                title = mDbArticle.title;
+                author = mDbArticle.author;
+                source = mDbArticle.source;
+                date = DateUtils.parseDate(mDbArticle.pubDate);
+                String generatedHtml = HtmlUtils.generateHtmlContent(this, title, link,
+                        mDbArticle.htmlContent, author, source, date);
+                mExecutors.mainThread().execute(() ->
+                        webView.loadData(generatedHtml, null, null));
 
-                // get data to set up card
-                if (mArticle != null) {
-                    link = mArticle.getLink();
-                    title = mArticle.getTitle();
-                    author = mArticle.getAuthor();
-                    source = mArticle.getSource();
-                    date = DateUtils.parseDate(mArticle.getPubDate());
-                    if (!isArticleLoaded) {
-                        if (mArticle.getType() != null && mArticle.getType().equals("article")) {
-                            genHtml();
-                        } else {
-                            webView.loadUrl(link);
+                double wordCount = generatedHtml.split("\\s+").length;
+                int readTime = (int) Math.ceil(wordCount / 200D);
+
+                mArticleRef.runTransaction(new Transaction.Handler() {
+                    @NonNull
+                    @Override
+                    public Transaction.Result doTransaction(@NonNull MutableData mutableData) {
+                        Article article = mutableData.getValue(Article.class);
+                        if (article == null) {
+                            return Transaction.success(mutableData);
                         }
-                        isArticleLoaded = true;
+
+                        article.setReadTime(readTime);
+                        mutableData.setValue(article);
+                        return Transaction.success(mutableData);
                     }
 
-                    // set up bottom toolbar
-                    if (mArticle.upvoters.containsKey(mUid)) {
-                        upVoteView.setChecked(true);
-                    } else {
-                        upVoteView.setChecked(false);
-                    }
-                    if (mArticle.downvoters.containsKey(mUid)) {
-                        downVoteView.setChecked(true);
-                    } else {
-                        downVoteView.setChecked(false);
-                    }
-                    if (mArticle.commenters.containsKey(mUid)) {
-                        commentView.setChecked(true);
-                    } else {
-                        commentView.setChecked(false);
-                    }
-                    if (mArticle.savers.containsKey(mUid)) {
-                        favView.setChecked(true);
-                    } else {
-                        favView.setChecked(false);
-                    }
+                    @Override
+                    public void onComplete(@Nullable DatabaseError databaseError, boolean b, @Nullable DataSnapshot dataSnapshot) { }
+                });
 
-                    upVoteView.setOnClickListener(onClickListener(mArticle, "upvote"));
-                    downVoteView.setOnClickListener(onClickListener(mArticle, "downvote"));
-                    commentView.setOnClickListener(onClickListener(mArticle, "comment"));
-                    favView.setOnClickListener(onClickListener(mArticle, "favourite"));
-                    shareView.setOnClickListener(onClickListener(mArticle, "share"));
-                }
-            }
+                mExecutors.networkIO().execute(() -> {
+                    mArticleListener = mArticleRef.addValueEventListener(new ValueEventListener() {
+                        @Override
+                        public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+                            // set up bottom toolbar
+                            if (dataSnapshot.exists()) {
+                                mArticle = dataSnapshot.getValue(Article.class);
 
-            @Override
-            public void onCancelled(@NonNull DatabaseError databaseError) {
-                createToast(WebViewActivity.this, databaseError.toString(), Toast.LENGTH_SHORT);
+                                if (mArticle != null) {
+                                    if (mArticle.upvoters.containsKey(mUid)) {
+                                        upVoteView.setChecked(true);
+                                    } else {
+                                        upVoteView.setChecked(false);
+                                    }
+                                    if (mArticle.downvoters.containsKey(mUid)) {
+                                        downVoteView.setChecked(true);
+                                    } else {
+                                        downVoteView.setChecked(false);
+                                    }
+                                    if (mArticle.commenters.containsKey(mUid)) {
+                                        commentView.setChecked(true);
+                                    } else {
+                                        commentView.setChecked(false);
+                                    }
+                                    if (mArticle.savers.containsKey(mUid)) {
+                                        favView.setChecked(true);
+                                    } else {
+                                        favView.setChecked(false);
+                                    }
+
+                                    upVoteView.setOnClickListener(onClickListener(mArticle, "upvote"));
+                                    downVoteView.setOnClickListener(onClickListener(mArticle, "downvote"));
+                                    commentView.setOnClickListener(onClickListener(mArticle, "comment"));
+                                    favView.setOnClickListener(onClickListener(mArticle, "favourite"));
+                                    shareView.setOnClickListener(onClickListener(mArticle, "share"));
+                                }
+                            }
+                        }
+
+                        @Override
+                        public void onCancelled(@NonNull DatabaseError databaseError) {
+                            createToast(WebViewActivity.this, databaseError.toString(), Toast.LENGTH_SHORT);
+                        }
+                    });
+                });
+            } else {
+                mExecutors.networkIO().execute(() -> {
+                    mArticleListener = mArticleRef.addValueEventListener(new ValueEventListener() {
+                        @Override
+                        public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+                            if (dataSnapshot.exists()) {
+                                mArticle = dataSnapshot.getValue(Article.class);
+
+                                // get data to set up card
+                                if (mArticle != null) {
+                                    link = mArticle.getLink();
+                                    title = mArticle.getTitle();
+                                    author = mArticle.getAuthor();
+                                    source = mArticle.getSource();
+                                    date = DateUtils.parseDate(mArticle.getPubDate());
+                                    if (!isArticleLoaded) {
+                                        if (mArticle.getType() != null && mArticle.getType().equals("article")) {
+                                            mExecutors.mainThread().execute(() -> genHtml());
+                                        } else {
+                                            mExecutors.mainThread().execute(() -> webView.loadUrl(link));
+                                        }
+                                        isArticleLoaded = true;
+                                    }
+
+                                    // set up bottom toolbar
+                                    if (mArticle.upvoters.containsKey(mUid)) {
+                                        upVoteView.setChecked(true);
+                                    } else {
+                                        upVoteView.setChecked(false);
+                                    }
+                                    if (mArticle.downvoters.containsKey(mUid)) {
+                                        downVoteView.setChecked(true);
+                                    } else {
+                                        downVoteView.setChecked(false);
+                                    }
+                                    if (mArticle.commenters.containsKey(mUid)) {
+                                        commentView.setChecked(true);
+                                    } else {
+                                        commentView.setChecked(false);
+                                    }
+                                    if (mArticle.savers.containsKey(mUid)) {
+                                        favView.setChecked(true);
+                                    } else {
+                                        favView.setChecked(false);
+                                    }
+
+                                    upVoteView.setOnClickListener(onClickListener(mArticle, "upvote"));
+                                    downVoteView.setOnClickListener(onClickListener(mArticle, "downvote"));
+                                    commentView.setOnClickListener(onClickListener(mArticle, "comment"));
+                                    favView.setOnClickListener(onClickListener(mArticle, "favourite"));
+                                    shareView.setOnClickListener(onClickListener(mArticle, "share"));
+                                }
+                            }
+                        }
+
+                        @Override
+                        public void onCancelled(@NonNull DatabaseError databaseError) {
+                            createToast(WebViewActivity.this, databaseError.toString(), Toast.LENGTH_SHORT);
+                        }
+                    });
+                });
             }
         });
-//
     }
 
     @Override

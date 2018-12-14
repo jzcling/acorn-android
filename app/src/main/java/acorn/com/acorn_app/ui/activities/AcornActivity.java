@@ -3,6 +3,8 @@ package acorn.com.acorn_app.ui.activities;
 import android.app.AlertDialog;
 import android.arch.lifecycle.Observer;
 import android.arch.lifecycle.ViewModelProviders;
+import android.arch.persistence.room.RoomDatabase;
+import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageInfo;
@@ -10,6 +12,8 @@ import android.content.pm.PackageManager;
 import android.content.pm.Signature;
 import android.graphics.Color;
 import android.graphics.PorterDuff;
+import android.net.ConnectivityManager;
+import android.net.NetworkInfo;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Parcelable;
@@ -67,10 +71,12 @@ import java.util.Map;
 
 import acorn.com.acorn_app.R;
 import acorn.com.acorn_app.data.ArticleListLiveData;
+import acorn.com.acorn_app.data.ArticleRoomDatabase;
 import acorn.com.acorn_app.data.NetworkDataSource;
 import acorn.com.acorn_app.models.Article;
 import acorn.com.acorn_app.models.FbQuery;
 import acorn.com.acorn_app.models.User;
+import acorn.com.acorn_app.models.dbArticle;
 import acorn.com.acorn_app.ui.adapters.ArticleAdapter;
 import acorn.com.acorn_app.ui.fragments.NotificationsDialogFragment;
 import acorn.com.acorn_app.ui.viewModels.ArticleViewModel;
@@ -115,6 +121,7 @@ public class AcornActivity extends AppCompatActivity
     public static boolean isFirstTimeLogin;
     public static String mThemeSearchKey;
     public static String mThemeSearchFilter;
+    public static String mAllThemesSearchKey;
 
     //Main UI
     private DrawerLayout mDrawer;
@@ -127,13 +134,17 @@ public class AcornActivity extends AppCompatActivity
     private DatabaseReference mDatabaseReference;
     public static FbQuery mQuery;
 
+    //Room database
+    private ArticleRoomDatabase mRoomDb;
+    private Context mContext;
+
     //Firebase analytics
     private FirebaseAnalytics mFirebaseAnalytics;
     
     //Data source
     private NetworkDataSource mDataSource;
     private final AppExecutors mExecutors = AppExecutors.getInstance();
-            
+
     //RecyclerView
     private RecyclerView mRecyclerView;
     private ArticleAdapter mAdapter;
@@ -205,7 +216,6 @@ public class AcornActivity extends AppCompatActivity
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
 
-
         mFirebaseAnalytics = FirebaseAnalytics.getInstance(this);
 
         try {
@@ -229,6 +239,10 @@ public class AcornActivity extends AppCompatActivity
         if (mDatabase == null) mDatabase = FirebaseDatabase.getInstance();
         mDatabaseReference = mDatabase.getReference();
         mDataSource = NetworkDataSource.getInstance(this, mExecutors);
+
+        // Set up room database
+        mRoomDb = ArticleRoomDatabase.getInstance(this);
+        mContext = this;
 
         setupUser(mFirebaseUser);
 
@@ -379,11 +393,11 @@ public class AcornActivity extends AppCompatActivity
 
         switch (id) {
             case R.id.nav_subscriptions:
-                if (mQuery != null && mQuery.state == 3) break;
+                if (mQuery != null && mQuery.state == 3 && item.isChecked()) break;
                 getThemeData();
                 break;
             case R.id.nav_trending:
-                if (mQuery != null && mQuery.state == 1) break;
+                if (mQuery != null && mQuery.state == 3 && item.isChecked()) break;
                 getTrendingData();
                 break;
             case R.id.nav_deals:
@@ -899,6 +913,45 @@ public class AcornActivity extends AppCompatActivity
                                         mSharedPreferences.edit().putBoolean("isRecDealsScheduled", true).apply();
                                     }
                                 }
+
+                                // Schedule articles download
+                                boolean isArticlesDownloadScheduled = mSharedPreferences.getBoolean("isArticlesDownloadScheduled", false);
+//                                if (!isArticlesDownloadScheduled) {
+                                    mDataSource.cancelDownloadArticles();
+                                    mDataSource.scheduleArticlesDownload();
+                                    Log.d(TAG, "articlesDownloadScheduled");
+                                    mSharedPreferences.edit().putBoolean("isArticlesDownloadScheduled", true);
+//                                }
+
+//                                Long lastDownloadArticlesTime = mSharedPreferences.getLong("lastDownloadArticlesTime", 0L);
+//                                Long now = (new Date()).getTime();
+//                                lastDownloadArticlesTime = 0L;
+//                                ConnectivityManager cm = (ConnectivityManager) getSystemService(CONNECTIVITY_SERVICE);
+//                                NetworkInfo activeNetwork = cm.getActiveNetworkInfo();
+//                                boolean isConnected = activeNetwork != null && activeNetwork.isConnectedOrConnecting();
+//                                if (isConnected) {
+//                                    if (lastDownloadArticlesTime == 0L || now > lastDownloadArticlesTime + 60L * 60L * 1000L) { // 1 hour
+//                                        mRecyclerView.setVisibility(View.INVISIBLE);
+//                                        mSwipeRefreshLayout.setRefreshing(true);
+//
+//                                        mExecutors.networkIO().execute(
+//                                                () -> mDataSource.getTrendingArticles(() -> {
+//                                                    Long cutOffDate = (new Date()).getTime() - 2L * 24L * 60L * 60L * 1000L; // more than 2 days ago
+//                                                    mExecutors.diskIO().execute(() -> mRoomDb.articleDAO().deleteOld(cutOffDate));
+//                                                    mSharedPreferences.edit().putLong("lastDownloadArticlesTime", now).apply();
+//                                                    mExecutors.mainThread().execute(() -> {
+//                                                        mRecyclerView.setVisibility(View.VISIBLE);
+//                                                        mSwipeRefreshLayout.setRefreshing(false);
+//                                                    });
+//                                                }, () -> {
+//                                                    mExecutors.mainThread().execute(() -> {
+//                                                        mRecyclerView.setVisibility(View.VISIBLE);
+//                                                        mSwipeRefreshLayout.setRefreshing(false);
+//                                                    });
+//                                                })
+//                                        );
+//                                    }
+//                                }
                             });
                 }
 
@@ -1013,9 +1066,26 @@ public class AcornActivity extends AppCompatActivity
     private void getTrendingData() {
         mRecyclerView.setVisibility(View.INVISIBLE);
         mSwipeRefreshLayout.setRefreshing(true);
-        mLlmState = null;
-        mQuery = new FbQuery(1, null, -1);
-        resetView();
+
+        StringBuilder searchKeyBuilder = new StringBuilder();
+
+        String[] themePrefs = getResources().getStringArray(R.array.theme_array);
+        Arrays.sort(themePrefs);
+        for (int i = 0; i < themePrefs.length; i++) {
+            if (i == 0) {
+                searchKeyBuilder.append(themePrefs[i]);
+            } else {
+                searchKeyBuilder.append("_").append(themePrefs[i]);
+            }
+        }
+        mAllThemesSearchKey = searchKeyBuilder.toString();
+
+        String hitsRef = SEARCH_REF + "/" + mAllThemesSearchKey + "/hits";
+        mDataSource.getTrendingData(()->{
+            mLlmState = null;
+            mQuery = new FbQuery(3, hitsRef, "trendingIndex");
+            resetView();
+        });
     }
 
     private void getDealsData() {
