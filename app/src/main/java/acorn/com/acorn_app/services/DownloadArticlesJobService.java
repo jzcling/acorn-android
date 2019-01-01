@@ -28,7 +28,7 @@ public class DownloadArticlesJobService extends JobService {
         mExecutors.networkIO().execute(
                 () -> mDataSource.getTrendingArticles(() -> {
                     Long cutOffDate = (new Date()).getTime() - 2L * 24L* 60L * 60L * 1000L; // more than 2 days ago
-                    mExecutors.diskIO().execute(() -> mRoomDb.articleDAO().deleteOld(cutOffDate));
+                    mExecutors.diskWrite().execute(() -> mRoomDb.articleDAO().deleteOld(cutOffDate));
                     jobFinished(params, true);
                 }, () -> {}));
         return false;

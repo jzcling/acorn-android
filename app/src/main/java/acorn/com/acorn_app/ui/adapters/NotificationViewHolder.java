@@ -10,7 +10,6 @@ import android.widget.ImageView;
 import android.widget.TextView;
 
 import com.bumptech.glide.Glide;
-import com.google.android.gms.common.util.NumberUtils;
 
 import acorn.com.acorn_app.R;
 import acorn.com.acorn_app.data.NetworkDataSource;
@@ -52,9 +51,13 @@ public class NotificationViewHolder extends RecyclerView.ViewHolder {
         mDataSource = NetworkDataSource.getInstance(context, mExecutors);
     }
 
+    private boolean isNumeric(String string) {
+        return string.matches("-?\\d+(\\.\\d+)?");
+    }
+
     public void bind(Notif notif) {
         parentView.setOnClickListener(v -> {
-            if (NumberUtils.isNumeric(notif.extra)) {
+            if (isNumeric(notif.extra)) {
                 if (notif.link.equals("")) {
                     Intent intent = new Intent(mContext, CommentActivity.class);
                     intent.putExtra("id", notif.articleId);

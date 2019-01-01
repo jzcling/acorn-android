@@ -316,7 +316,7 @@ public class NetworkDataSource {
 
     // Trending Articles
     public void getTrendingArticles(Runnable onComplete, Runnable onError) {
-        int limit = 25;
+        int limit = 50;
         List<dbArticle> localArticles = new ArrayList<>();
         List<String> localArticlesId = new ArrayList<>();
         ArticleRoomDatabase roomDb = ArticleRoomDatabase.getInstance(mContext);
@@ -331,7 +331,7 @@ public class NetworkDataSource {
                         Article article = snap.getValue(Article.class);
                         if (article == null) return;
 
-                        mExecutors.diskIO().execute(() -> {
+                        mExecutors.diskWrite().execute(() -> {
                             Log.d(TAG, "article: " + article.getTitle());
                             article.htmlContent = HtmlUtils.getCleanedHtml(mContext, article.getLink());
                             dbArticle localArticle = new dbArticle(mContext, article);
@@ -361,10 +361,10 @@ public class NetworkDataSource {
                 .setLifetime(Lifetime.FOREVER)
                 .setRecurring(true)
                 .setTrigger(Trigger.executionWindow(
-//                        (int) TimeUnit.MINUTES.toSeconds(5), //Testing
-//                        (int) TimeUnit.MINUTES.toSeconds(6))) //Testing
-                        (int) TimeUnit.HOURS.toSeconds(3), //Start every 3 hours
-                        (int) TimeUnit.HOURS.toSeconds(4))) //Execute within 4 hours
+                        (int) TimeUnit.MINUTES.toSeconds(5), //Testing
+                        (int) TimeUnit.MINUTES.toSeconds(6))) //Testing
+//                        (int) TimeUnit.HOURS.toSeconds(3), //Start every 3 hours
+//                        (int) TimeUnit.HOURS.toSeconds(4))) //Execute within 4 hours
                 .setRetryStrategy(RetryStrategy.DEFAULT_EXPONENTIAL)
                 .setReplaceCurrent(true)
                 .build();

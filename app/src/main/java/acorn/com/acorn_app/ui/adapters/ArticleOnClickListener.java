@@ -4,9 +4,11 @@ import android.app.Activity;
 import android.app.Dialog;
 import android.content.Context;
 import android.content.Intent;
+import android.net.Uri;
 import android.os.Handler;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
+import android.util.Log;
 import android.view.View;
 import android.view.animation.Animation;
 import android.view.animation.AnimationUtils;
@@ -30,6 +32,7 @@ import acorn.com.acorn_app.models.User;
 import acorn.com.acorn_app.ui.activities.CommentActivity;
 import acorn.com.acorn_app.ui.activities.WebViewActivity;
 import acorn.com.acorn_app.utils.AppExecutors;
+import acorn.com.acorn_app.utils.ShareUtils;
 import acorn.com.acorn_app.utils.UiUtils;
 
 import static acorn.com.acorn_app.ui.activities.AcornActivity.LEVEL_0;
@@ -526,14 +529,22 @@ public class ArticleOnClickListener implements View.OnClickListener {
                 @Override
                 public void onComplete(@Nullable DatabaseError databaseError, boolean b, @Nullable DataSnapshot dataSnapshot) {
                     mExecutors.mainThread().execute(() -> {
-                        Intent shareIntent = new Intent();
-                        shareIntent.setType("text/plain");
-                        shareIntent.putExtra(Intent.EXTRA_SUBJECT, mArticle.getTitle());
-                        shareIntent.putExtra(Intent.EXTRA_TEXT, mArticle.getLink() + "\n- shared using Acorn: Your favourite blogs in a nutshell");
-                        shareIntent.setAction(Intent.ACTION_SEND);
-                        bounceAnim.setAnimationListener(
-                                new MyAnimationListener(Intent.createChooser(shareIntent, "Share link with")));
-                        mShareView.startAnimation(bounceAnim);
+                        // Build share uri
+                        String shareUri = ShareUtils.createShareUri(mArticle.getObjectID(), mArticle.getLink(), mUid);
+
+                        // Generate dynamic link
+                        ShareUtils.createShortDynamicLink(shareUri, shortLink -> {
+                            String dynamicLink = shortLink;
+
+                            Intent shareIntent = new Intent();
+                            shareIntent.setType("text/plain");
+                            shareIntent.putExtra(Intent.EXTRA_SUBJECT, mArticle.getTitle());
+                            shareIntent.putExtra(Intent.EXTRA_TEXT, dynamicLink);
+                            shareIntent.setAction(Intent.ACTION_SEND);
+                            bounceAnim.setAnimationListener(
+                                    new MyAnimationListener(Intent.createChooser(shareIntent, "Share link with")));
+                            mShareView.startAnimation(bounceAnim);
+                        });
                     });
 
                 }

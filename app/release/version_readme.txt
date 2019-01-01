@@ -1,6 +1,9 @@
 Android
 
-v1.5.2, v1.5.3
+v1.5.5
+Fix for long load times at start up
+
+v1.5.2, v1.5.3, v1.5.4
 Latest 50 articles now available for offline reading if on wifi
 Saved articles are now available for offline reading
 Revised Trending Articles pull method

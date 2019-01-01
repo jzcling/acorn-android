@@ -61,7 +61,17 @@
             android:parentActivityName=".ui.activities.AcornActivity"
             android:label="@string/app_name"
             android:launchMode="singleTask"
-            android:theme="@style/AppTheme.NoActionBar" />
+            android:theme="@style/AppTheme.NoActionBar" >
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https"
+                    android:host="acorncommunity.sg"
+                    android:pathPrefix="/article" />
+                <data android:scheme="http" />
+            </intent-filter>
+        </activity>
         <activity
             android:name=".ui.activities.CommentActivity"
             android:parentActivityName=".ui.activities.AcornActivity"

@@ -3,7 +3,6 @@ package acorn.com.acorn_app.ui.activities;
 import android.app.AlertDialog;
 import android.arch.lifecycle.Observer;
 import android.arch.lifecycle.ViewModelProviders;
-import android.arch.persistence.room.RoomDatabase;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
@@ -41,7 +40,7 @@ import android.widget.ArrayAdapter;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import com.algolia.instantsearch.helpers.Searcher;
+import com.algolia.instantsearch.core.helpers.Searcher;
 import com.crashlytics.android.Crashlytics;
 import com.firebase.ui.auth.AuthUI;
 import com.firebase.ui.auth.ErrorCodes;
@@ -915,43 +914,44 @@ public class AcornActivity extends AppCompatActivity
                                 }
 
                                 // Schedule articles download
-                                boolean isArticlesDownloadScheduled = mSharedPreferences.getBoolean("isArticlesDownloadScheduled", false);
-//                                if (!isArticlesDownloadScheduled) {
-                                    mDataSource.cancelDownloadArticles();
-                                    mDataSource.scheduleArticlesDownload();
-                                    Log.d(TAG, "articlesDownloadScheduled");
-                                    mSharedPreferences.edit().putBoolean("isArticlesDownloadScheduled", true);
-//                                }
+//                                boolean isArticlesDownloadScheduled = mSharedPreferences.getBoolean("isArticlesDownloadScheduled", false);
+////                                if (!isArticlesDownloadScheduled) {
+////                                    mDataSource.cancelDownloadArticles();
+//                                    mDataSource.scheduleArticlesDownload();
+//                                    Log.d(TAG, "articlesDownloadScheduled");
+//                                    mSharedPreferences.edit().putBoolean("isArticlesDownloadScheduled", true);
+////                                }
 
-//                                Long lastDownloadArticlesTime = mSharedPreferences.getLong("lastDownloadArticlesTime", 0L);
-//                                Long now = (new Date()).getTime();
+                                Long lastDownloadArticlesTime = mSharedPreferences.getLong("lastDownloadArticlesTime", 0L);
+                                Long now = (new Date()).getTime();
 //                                lastDownloadArticlesTime = 0L;
-//                                ConnectivityManager cm = (ConnectivityManager) getSystemService(CONNECTIVITY_SERVICE);
-//                                NetworkInfo activeNetwork = cm.getActiveNetworkInfo();
-//                                boolean isConnected = activeNetwork != null && activeNetwork.isConnectedOrConnecting();
-//                                if (isConnected) {
-//                                    if (lastDownloadArticlesTime == 0L || now > lastDownloadArticlesTime + 60L * 60L * 1000L) { // 1 hour
-//                                        mRecyclerView.setVisibility(View.INVISIBLE);
-//                                        mSwipeRefreshLayout.setRefreshing(true);
-//
-//                                        mExecutors.networkIO().execute(
-//                                                () -> mDataSource.getTrendingArticles(() -> {
-//                                                    Long cutOffDate = (new Date()).getTime() - 2L * 24L * 60L * 60L * 1000L; // more than 2 days ago
-//                                                    mExecutors.diskIO().execute(() -> mRoomDb.articleDAO().deleteOld(cutOffDate));
-//                                                    mSharedPreferences.edit().putLong("lastDownloadArticlesTime", now).apply();
-//                                                    mExecutors.mainThread().execute(() -> {
-//                                                        mRecyclerView.setVisibility(View.VISIBLE);
-//                                                        mSwipeRefreshLayout.setRefreshing(false);
-//                                                    });
-//                                                }, () -> {
-//                                                    mExecutors.mainThread().execute(() -> {
-//                                                        mRecyclerView.setVisibility(View.VISIBLE);
-//                                                        mSwipeRefreshLayout.setRefreshing(false);
-//                                                    });
-//                                                })
-//                                        );
-//                                    }
-//                                }
+                                ConnectivityManager cm = (ConnectivityManager) getSystemService(CONNECTIVITY_SERVICE);
+                                NetworkInfo activeNetwork = cm.getActiveNetworkInfo();
+                                boolean isConnected = activeNetwork != null && activeNetwork.isConnectedOrConnecting();
+                                if (isConnected) {
+                                    if (lastDownloadArticlesTime == 0L || now > lastDownloadArticlesTime + 60L * 60L * 1000L) { // 1 hour
+                                        mRecyclerView.setVisibility(View.INVISIBLE);
+                                        mSwipeRefreshLayout.setRefreshing(true);
+
+                                        mSharedPreferences.edit().putLong("lastDownloadArticlesTime", now).apply();
+
+                                        mExecutors.networkIO().execute(
+                                                () -> mDataSource.getTrendingArticles(() -> {
+                                                    Long cutOffDate = (new Date()).getTime() - 2L * 24L * 60L * 60L * 1000L; // more than 2 days ago
+                                                    mExecutors.diskWrite().execute(() -> mRoomDb.articleDAO().deleteOld(cutOffDate));
+                                                    mExecutors.mainThread().execute(() -> {
+                                                        mRecyclerView.setVisibility(View.VISIBLE);
+                                                        mSwipeRefreshLayout.setRefreshing(false);
+                                                    });
+                                                }, () -> {
+                                                    mExecutors.mainThread().execute(() -> {
+                                                        mRecyclerView.setVisibility(View.VISIBLE);
+                                                        mSwipeRefreshLayout.setRefreshing(false);
+                                                    });
+                                                })
+                                        );
+                                    }
+                                }
                             });
                 }
 

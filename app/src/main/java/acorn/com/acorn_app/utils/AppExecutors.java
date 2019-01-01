@@ -34,12 +34,14 @@ public class AppExecutors {
     // For Singleton instantiation
     private static final Object LOCK = new Object();
     private static AppExecutors sInstance;
-    private final Executor diskIO;
+    private final Executor diskWrite;
+    private final Executor diskRead;
     private final Executor mainThread;
     private final Executor networkIO;
 
-    private AppExecutors(Executor diskIO, Executor networkIO, Executor mainThread) {
-        this.diskIO = diskIO;
+    private AppExecutors(Executor diskWrite, Executor diskRead, Executor networkIO, Executor mainThread) {
+        this.diskWrite = diskWrite;
+        this.diskRead = diskRead;
         this.networkIO = networkIO;
         this.mainThread = mainThread;
     }
@@ -48,6 +50,7 @@ public class AppExecutors {
         if (sInstance == null) {
             synchronized (LOCK) {
                 sInstance = new AppExecutors(Executors.newSingleThreadExecutor(),
+                        Executors.newSingleThreadExecutor(),
                         Executors.newFixedThreadPool(3),
                         new MainThreadExecutor());
             }
@@ -55,9 +58,11 @@ public class AppExecutors {
         return sInstance;
     }
 
-    public Executor diskIO() {
-        return diskIO;
+    public Executor diskWrite() {
+        return diskWrite;
     }
+
+    public Executor diskRead() { return diskRead; }
 
     public Executor mainThread() {
         return mainThread;
