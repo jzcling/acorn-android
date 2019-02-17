@@ -1,6 +1,6 @@
 package acorn.com.acorn_app.ui.viewModels;
 
-import android.arch.lifecycle.ViewModel;
+import androidx.lifecycle.ViewModel;
 
 import acorn.com.acorn_app.data.ArticleListLiveData;
 import acorn.com.acorn_app.data.NetworkDataSource;

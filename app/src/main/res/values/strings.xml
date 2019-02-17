@@ -82,14 +82,12 @@
     <string name="theme_3">Food</string>
     <string name="theme_4">Travel</string>
     <string name="theme_5">Deals</string>
-    <string name="theme_6">Credit Cards</string>
+    <string name="theme_6">Personal Finance</string>
     <string name="theme_7">Housing</string>
-    <string name="theme_8">Savings and Loans</string>
-    <string name="theme_9">Insurance</string>
-    <string name="theme_10">Parenting</string>
-    <string name="theme_11">Beauty and Fashion</string>
-    <string name="theme_12">Investing</string>
-    <string name="theme_13">Innovation</string>
+    <string name="theme_8">Parenting</string>
+    <string name="theme_9">Beauty and Fashion</string>
+    <string name="theme_10">Investing</string>
+    <string name="theme_11">Innovation</string>
 
     <array name="theme_array">
         <item>@string/theme_1</item>
@@ -103,8 +101,6 @@
         <item>@string/theme_9</item>
         <item>@string/theme_10</item>
         <item>@string/theme_11</item>
-        <item>@string/theme_12</item>
-        <item>@string/theme_13</item>
     </array>
 
     <array name="post_theme_array">
@@ -120,8 +116,6 @@
         <item>@string/theme_9</item>
         <item>@string/theme_10</item>
         <item>@string/theme_11</item>
-        <item>@string/theme_12</item>
-        <item>@string/theme_13</item>
     </array>
 
     <!-- Notifications -->

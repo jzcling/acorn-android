@@ -3,8 +3,8 @@ package acorn.com.acorn_app.ui.adapters;
 import android.content.Context;
 import android.content.Intent;
 import android.graphics.Typeface;
-import android.support.constraint.ConstraintLayout;
-import android.support.v7.widget.RecyclerView;
+import androidx.constraintlayout.widget.ConstraintLayout;
+import androidx.recyclerview.widget.RecyclerView;
 import android.view.View;
 import android.widget.ImageView;
 import android.widget.TextView;
@@ -78,7 +78,7 @@ public class NotificationViewHolder extends RecyclerView.ViewHolder {
         contributor.setText(notif.source);
         if (!(notif.imageUrl == null || notif.imageUrl.equals(""))) {
             mainImage.setVisibility(View.VISIBLE);
-            Glide.with(mContext)
+            Glide.with(mContext.getApplicationContext())
                     .load(notif.imageUrl)
                     .into(mainImage);
         } else {

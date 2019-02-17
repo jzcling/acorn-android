@@ -1,7 +1,7 @@
 package acorn.com.acorn_app.ui.adapters;
 
 import android.content.Context;
-import android.support.v7.widget.RecyclerView;
+import androidx.recyclerview.widget.RecyclerView;
 import android.view.View;
 import android.widget.CheckBox;
 import android.widget.ImageView;
@@ -106,7 +106,7 @@ public class VideoFeedViewHolder extends RecyclerView.ViewHolder {
 
         if (!(video.youtubeVideoId == null || video.youtubeVideoId.equals(""))) {
             String thumbnailUrl = "https://img.youtube.com/vi/" + video.youtubeVideoId + "/hqdefault.jpg";
-            Glide.with(mContext)
+            Glide.with(mContext.getApplicationContext())
                 .load(thumbnailUrl)
                 .into(videoThumbnail);
 

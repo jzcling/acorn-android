@@ -1,9 +1,9 @@
 package acorn.com.acorn_app.ui.adapters;
 
 import android.content.Context;
-import android.support.annotation.NonNull;
-import android.support.annotation.Nullable;
-import android.support.v7.widget.RecyclerView;
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import androidx.recyclerview.widget.RecyclerView;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -109,11 +109,19 @@ public class ArticleAdapter extends RecyclerView.Adapter<ArticleViewHolder> {
                 DatabaseReference articleRef = FirebaseDatabase.getInstance()
                         .getReference("article/" + article.getObjectID());
                 ValueEventListener searchArticleListener = mRefObservedList.get(articleRef);
-                articleRef.removeEventListener(searchArticleListener);
+                if (searchArticleListener != null) {
+                    articleRef.removeEventListener(searchArticleListener);
+                }
                 mRefObservedList.remove(articleRef);
 
             }
         }
+    }
+
+    public void setList(List<Article> newList, Runnable onComplete) {
+        mArticleList = new ArrayList<>(newList);
+        notifyDataSetChanged();
+        onComplete.run();
     }
 
     public void setList(List<Article> newList) {

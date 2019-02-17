@@ -1,8 +1,8 @@
 package acorn.com.acorn_app.ui.activities;
 
 import android.app.AlertDialog;
-import android.arch.lifecycle.Observer;
-import android.arch.lifecycle.ViewModelProviders;
+import androidx.lifecycle.Observer;
+import androidx.lifecycle.ViewModelProviders;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
@@ -13,24 +13,25 @@ import android.graphics.Color;
 import android.graphics.PorterDuff;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
+import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Parcelable;
 import android.preference.PreferenceManager;
-import android.support.annotation.NonNull;
-import android.support.constraint.ConstraintLayout;
-import android.support.design.widget.FloatingActionButton;
-import android.support.design.widget.NavigationView;
-import android.support.v4.view.GravityCompat;
-import android.support.v4.widget.DrawerLayout;
-import android.support.v4.widget.SwipeRefreshLayout;
-import android.support.v7.app.ActionBarDrawerToggle;
-import android.support.v7.app.AppCompatActivity;
-import android.support.v7.app.AppCompatDelegate;
-import android.support.v7.widget.LinearLayoutManager;
-import android.support.v7.widget.RecyclerView;
-import android.support.v7.widget.SimpleItemAnimator;
-import android.support.v7.widget.Toolbar;
+import androidx.annotation.NonNull;
+import androidx.constraintlayout.widget.ConstraintLayout;
+import com.google.android.material.floatingactionbutton.FloatingActionButton;
+import com.google.android.material.navigation.NavigationView;
+import androidx.core.view.GravityCompat;
+import androidx.drawerlayout.widget.DrawerLayout;
+import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
+import androidx.appcompat.app.ActionBarDrawerToggle;
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.app.AppCompatDelegate;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
+import androidx.recyclerview.widget.SimpleItemAnimator;
+import androidx.appcompat.widget.Toolbar;
 import android.util.Base64;
 import android.util.Log;
 import android.view.Menu;
@@ -53,6 +54,7 @@ import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ValueEventListener;
+import com.google.firebase.dynamiclinks.FirebaseDynamicLinks;
 import com.google.firebase.iid.FirebaseInstanceId;
 import com.google.firebase.messaging.FirebaseMessaging;
 import com.jaredrummler.android.device.DeviceName;
@@ -75,7 +77,6 @@ import acorn.com.acorn_app.data.NetworkDataSource;
 import acorn.com.acorn_app.models.Article;
 import acorn.com.acorn_app.models.FbQuery;
 import acorn.com.acorn_app.models.User;
-import acorn.com.acorn_app.models.dbArticle;
 import acorn.com.acorn_app.ui.adapters.ArticleAdapter;
 import acorn.com.acorn_app.ui.fragments.NotificationsDialogFragment;
 import acorn.com.acorn_app.ui.viewModels.ArticleViewModel;
@@ -201,6 +202,7 @@ public class AcornActivity extends AppCompatActivity
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        Log.d(TAG,"onCreate");
         mSavedInstanceState = savedInstanceState;
         mSharedPreferences = PreferenceManager.getDefaultSharedPreferences(this);
         mNotificationsPref = getSharedPreferences(getString(R.string.notif_pref_id), MODE_PRIVATE);
@@ -226,13 +228,12 @@ public class AcornActivity extends AppCompatActivity
 
             }
         } catch (NoSuchAlgorithmException e) {
-
+            Log.d(TAG, e.getLocalizedMessage());
         } catch (Exception e) {
-
+            Log.d(TAG, e.getLocalizedMessage());
         }
 
         mFirebaseUser = FirebaseAuth.getInstance().getCurrentUser();
-        //
 
         // Set up Firebase Database
         if (mDatabase == null) mDatabase = FirebaseDatabase.getInstance();
@@ -243,8 +244,6 @@ public class AcornActivity extends AppCompatActivity
         mRoomDb = ArticleRoomDatabase.getInstance(this);
         mContext = this;
 
-        setupUser(mFirebaseUser);
-
         // Initiate views
         mRecyclerView = (RecyclerView) findViewById(R.id.card_recycler_view);
         mSwipeRefreshLayout = (SwipeRefreshLayout) findViewById(R.id.swiperefresh);
@@ -254,11 +253,11 @@ public class AcornActivity extends AppCompatActivity
 
         // Set up recycler view
         mLinearLayoutManager = new LinearLayoutManager(this);
-        mLinearLayoutManager.setOrientation(LinearLayoutManager.VERTICAL);
+        mLinearLayoutManager.setOrientation(RecyclerView.VERTICAL);
         mRecyclerView.setLayoutManager(mLinearLayoutManager);
-        ((SimpleItemAnimator) mRecyclerView.getItemAnimator()).setSupportsChangeAnimations(false);
         mAdapter = new ArticleAdapter(this, this);
         mRecyclerView.setAdapter(mAdapter);
+        ((SimpleItemAnimator) mRecyclerView.getItemAnimator()).setSupportsChangeAnimations(false);
         mRecyclerView.addOnScrollListener(new RecyclerView.OnScrollListener() {
             @Override
             public void onScrolled(RecyclerView recyclerView, int dx, int dy) {
@@ -271,6 +270,8 @@ public class AcornActivity extends AppCompatActivity
                 loadMoreArticles();
             }
         });
+
+        setupUser(mFirebaseUser);
 
         // Set up mScrollFab
         mScrollFab.setOnClickListener(view -> {
@@ -491,42 +492,37 @@ public class AcornActivity extends AppCompatActivity
                 if (newDayNightValue != dayNightValue) recreate();
 
                 commentNotifValue = mSharedPreferences.getBoolean(getString(R.string.pref_key_notif_comment), false);
-
+                Log.d(TAG, "commentNotifValue: " + commentNotifValue);
                 mCommentNotifRef = mDatabaseReference.child(PREFERENCES_REF).child(COMMENTS_NOTIFICATION);
-                if (!commentNotifValue) {
-                    mCommentNotifRef.child(mUid).setValue(commentNotifValue);
-                } else {
-                    mCommentNotifRef.child(mUid).removeValue();
-                }
+                mDataSource.ToggleCommentsNotifications(commentNotifValue);
 
                 articleNotifValue = mSharedPreferences.getBoolean(getString(R.string.pref_key_notif_article), false);
-
+                Log.d(TAG, "articleNotifValue: " + articleNotifValue);
                 mRecArticlesNotifRef = mDatabaseReference.child(PREFERENCES_REF).child(REC_ARTICLES_NOTIFICATION);
                 if (articleNotifValue) {
                     if (!mSharedPreferences.getBoolean("isRecArticlesScheduled", false)) {
                         mDataSource.scheduleRecArticlesPush();
                         mSharedPreferences.edit().putBoolean("isRecArticlesScheduled", true).apply();
                     }
-                    mRecArticlesNotifRef.child(mUid).removeValue();
                 } else {
                     mDataSource.cancelRecArticlesPush();
                     mSharedPreferences.edit().putBoolean("isRecArticlesScheduled", false).apply();
-                    mRecArticlesNotifRef.child(mUid).setValue(articleNotifValue);
                 }
+                mDataSource.ToggleRecArticlesNotifications(articleNotifValue);
 
                 dealsNotifValue = mSharedPreferences.getBoolean(getString(R.string.pref_key_notif_deals), false);
+                Log.d(TAG, "dealsNotifValue: " + dealsNotifValue);
                 mRecDealsNotifRef = mDatabaseReference.child(PREFERENCES_REF).child(REC_DEALS_NOTIFICATION);
                 if (dealsNotifValue) {
                     if (!mSharedPreferences.getBoolean("isRecDealsScheduled", false)) {
                         mDataSource.scheduleRecDealsPush();
                         mSharedPreferences.edit().putBoolean("isRecDealsScheduled", true).apply();
                     }
-                    mRecDealsNotifRef.child(mUid).removeValue();
                 } else {
                     mDataSource.cancelRecDealsPush();
                     mSharedPreferences.edit().putBoolean("isRecDealsScheduled", false).apply();
-                    mRecDealsNotifRef.child(mUid).setValue(dealsNotifValue);
                 }
+                mDataSource.ToggleDealsNotifications(dealsNotifValue);
             }
         } else if (requestCode == RC_THEME_PREF) {
             if (resultCode == RESULT_OK) {
@@ -546,6 +542,7 @@ public class AcornActivity extends AppCompatActivity
 
     @Override
     public void onPause() {
+        Log.d(TAG, "onPause");
         super.onPause();
 
     }
@@ -553,12 +550,14 @@ public class AcornActivity extends AppCompatActivity
 
     @Override
     public void onResume() {
+        Log.d(TAG, "onResume");
         super.onResume();
 
     }
 
     @Override
     protected void onStop() {
+        Log.d(TAG, "onStop");
         super.onStop();
         if (mUserStatusRef != null) mUserStatusRef.removeEventListener(mUserStatusListener);
 
@@ -566,6 +565,7 @@ public class AcornActivity extends AppCompatActivity
 
     @Override
     protected void onStart() {
+        Log.d(TAG, "onStart");
         super.onStart();
         if (mUserStatusRef != null) mUserStatusRef.addValueEventListener(mUserStatusListener);
 
@@ -573,8 +573,11 @@ public class AcornActivity extends AppCompatActivity
 
     @Override
     protected void onDestroy() {
+        Log.d(TAG, "onDestroy");
         super.onDestroy();
-        removeAllObservers();
+        if (!isChangingConfigurations()) {
+            removeAllObservers();
+        }
     }
 
     private void removeAllObservers() {
@@ -589,6 +592,7 @@ public class AcornActivity extends AppCompatActivity
 
     @Override
     protected void onSaveInstanceState(Bundle outState) {
+        Log.d(TAG,"onSaveInstanceState");
         super.onSaveInstanceState(outState);
         outState.putParcelable("Query", mQuery);
         mLlmState = mLinearLayoutManager.onSaveInstanceState();
@@ -596,9 +600,11 @@ public class AcornActivity extends AppCompatActivity
 
     @Override
     protected void onRestoreInstanceState(Bundle savedInstanceState) {
+        Log.d(TAG,"onRestoreInstanceState");
         super.onRestoreInstanceState(savedInstanceState);
-
-        mLinearLayoutManager.onRestoreInstanceState(mLlmState);
+        new Handler().postDelayed(() -> {
+            mLinearLayoutManager.onRestoreInstanceState(mLlmState);
+        }, 100);
     }
 
     private void handleIntent(Intent intent) {
@@ -746,8 +752,8 @@ public class AcornActivity extends AppCompatActivity
 
                                     User newUser = new User(uid, displayName, userToken, email, device,
                                             creationTimeStamp, lastSignInTimeStamp);
+                                    if (isUserAuthenticated) newUser.isEmailVerified = true;
                                     userRef.setValue(newUser);
-
 
 
                                     mUid = newUser.getUid();
@@ -805,7 +811,7 @@ public class AcornActivity extends AppCompatActivity
                                     mFirebaseAnalytics.setUserId(mUid);
                                 } else {
 
-                                    if (!user.isEmailVerified()) {
+                                    if (!user.isEmailVerified() && !retrievedUser.isEmailVerified) {
                                         AlertDialog.Builder builder = new AlertDialog.Builder(AcornActivity.this);
                                         builder.setMessage("Please verify your email address")
                                                 .setNeutralButton("Re-send verification email", (dialog, which) -> {
@@ -822,6 +828,7 @@ public class AcornActivity extends AppCompatActivity
                                     retrievedUser.setDevice(DeviceName.getDeviceName());
                                     retrievedUser.setLastSignInTimeStamp(user.getMetadata().getLastSignInTimestamp());
                                     retrievedUser.setToken(userToken);
+                                    if (isUserAuthenticated) retrievedUser.isEmailVerified = true;
 
                                     userRef.updateChildren(retrievedUser.toMap());
 
@@ -1145,14 +1152,20 @@ public class AcornActivity extends AppCompatActivity
                         currentList.set(i, articles.get(i));
                     }
                 }
-                mAdapter.setList(currentList);
+                mAdapter.setList(currentList, () -> {
+                    if (mLlmState != null) {
+                        mLinearLayoutManager.onRestoreInstanceState(mLlmState);
+                    }
+                });
             }
         };
         articleListLD.observeForever(articleListObserver);
         mObservedList.put(articleListLD, articleListObserver);
-        if (mLlmState != null) {
-            mLinearLayoutManager.onRestoreInstanceState(mLlmState);
-        }
+//        if (mLlmState != null) {
+//            new Handler().postDelayed(() -> {
+//                mLinearLayoutManager.onRestoreInstanceState(mLlmState);
+//            },100);
+//        }
 
     }
 }

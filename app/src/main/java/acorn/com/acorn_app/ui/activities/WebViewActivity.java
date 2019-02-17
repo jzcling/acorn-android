@@ -4,19 +4,25 @@ import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.Intent;
 import android.net.Uri;
+import android.net.http.SslError;
 import android.os.Bundle;
 import android.os.Handler;
-import android.support.annotation.NonNull;
-import android.support.annotation.Nullable;
-import android.support.design.widget.FloatingActionButton;
-import android.support.v7.app.AppCompatActivity;
-import android.support.v7.widget.SearchView;
-import android.support.v7.widget.Toolbar;
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import com.google.android.material.floatingactionbutton.FloatingActionButton;
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.widget.SearchView;
+import androidx.appcompat.widget.Toolbar;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
+import android.view.animation.AccelerateInterpolator;
+import android.view.animation.AlphaAnimation;
+import android.view.animation.Animation;
 import android.view.inputmethod.InputMethodManager;
+import android.webkit.SslErrorHandler;
+import android.webkit.WebChromeClient;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.CheckBox;
@@ -24,8 +30,6 @@ import android.widget.EditText;
 import android.widget.ProgressBar;
 import android.widget.Toast;
 
-import com.google.android.gms.tasks.OnFailureListener;
-import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.firebase.database.ChildEventListener;
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
@@ -35,9 +39,6 @@ import com.google.firebase.database.MutableData;
 import com.google.firebase.database.Transaction;
 import com.google.firebase.database.ValueEventListener;
 import com.google.firebase.dynamiclinks.FirebaseDynamicLinks;
-import com.google.firebase.dynamiclinks.PendingDynamicLinkData;
-
-import java.util.function.Consumer;
 
 import acorn.com.acorn_app.R;
 import acorn.com.acorn_app.data.ArticleRoomDatabase;
@@ -49,6 +50,7 @@ import acorn.com.acorn_app.ui.views.ObservableWebView;
 import acorn.com.acorn_app.utils.AppExecutors;
 import acorn.com.acorn_app.utils.DateUtils;
 import acorn.com.acorn_app.utils.HtmlUtils;
+import androidx.cardview.widget.CardView;
 
 import static acorn.com.acorn_app.data.NetworkDataSource.ARTICLE_REF;
 import static acorn.com.acorn_app.data.NetworkDataSource.NOTIFICATION_TOKENS;
@@ -62,7 +64,9 @@ public class WebViewActivity extends AppCompatActivity {
 
     private ObservableWebView webView;
     private ProgressBar progressBar;
+    private CardView messageOverlayCard;
     private Intent intent;
+    private boolean isNewIntent = false;
 
     private String articleId;
 
@@ -97,11 +101,12 @@ public class WebViewActivity extends AppCompatActivity {
     private final AppExecutors mExecutors = AppExecutors.getInstance();
 
     private static float lastScrollPercent = 0f;
+    private static boolean hasDisplayedMessageOverlay = false;
 
     @SuppressLint("SetJavaScriptEnabled")
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
-
+        Log.d(TAG, "onCreate");
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_webview);
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
@@ -113,20 +118,49 @@ public class WebViewActivity extends AppCompatActivity {
 
         // Set up Firebase Database
         if (mDatabase == null) mDatabase = FirebaseDatabase.getInstance();
-        DatabaseReference databaseReference = mDatabase.getReference();
 
         // Set up data source
         mDataSource = NetworkDataSource.getInstance(this, mExecutors);
 
         progressBar = (ProgressBar) findViewById(R.id.webview_progress_bar);
+        messageOverlayCard = (CardView) findViewById(R.id.message_overlay_card);
+
+        // Remove message overlay card if shown before
+        if (hasDisplayedMessageOverlay) {
+            messageOverlayCard.setVisibility(View.INVISIBLE);
+        } else {
+            messageOverlayCard.setVisibility(View.VISIBLE);
+            Animation fadeOut = new AlphaAnimation(1, 0);
+            fadeOut.setInterpolator(new AccelerateInterpolator());
+            fadeOut.setStartOffset(2000);
+            fadeOut.setDuration(500);
+
+            messageOverlayCard.setAnimation(fadeOut);
+            messageOverlayCard.setVisibility(View.INVISIBLE);
+            hasDisplayedMessageOverlay = true;
+        }
 
         // Set up web view
         webView = (ObservableWebView) findViewById(R.id.webview);
         webView.getSettings().setJavaScriptEnabled(true);
         webView.getSettings().setLoadsImagesAutomatically(true);
+        webView.getSettings().setSupportZoom(true);
         webView.setWebViewClient(new MyWebViewClient());
+        webView.setWebChromeClient(new WebChromeClient() {
+            @Override
+            public void onProgressChanged(WebView view, int newProgress) {
+                progressBar.setProgress(newProgress);
+                if (newProgress == 100) {
+                    progressBar.setVisibility(View.INVISIBLE);
+                } else {
+                    progressBar.setVisibility(View.VISIBLE);
+                }
+            }
+        });
         webView.setOnScrollChangeListener(
-                (ObservableWebView.OnScrollChangeListener) (v, scrollX, scrollY, oldScrollX, oldScrollY) -> lastScrollPercent = getScrollPercent(webView));
+                (ObservableWebView.OnScrollChangeListener) (v, scrollX, scrollY, oldScrollX, oldScrollY) -> {
+                    lastScrollPercent = getScrollPercent(webView);
+                });
 
         // Set up action buttons
         upVoteView = (CheckBox) findViewById(R.id.button_upvote);
@@ -141,177 +175,37 @@ public class WebViewActivity extends AppCompatActivity {
         increaseTouchArea(favView);
         increaseTouchArea(shareView);
 
-        webView.setVisibility(View.INVISIBLE);
-        progressBar.setVisibility(View.VISIBLE);
-
         intent = getIntent();
-        handleIntent(intent, () -> {
-            mArticleRef = databaseReference.child(ARTICLE_REF).child(articleId);
-
-            // Get article
-            // Check room database if article is present, otherwise fetch from network
-            mExecutors.diskRead().execute(() -> {
-                mDbArticle = mRoomDb.articleDAO().getDbArticle(articleId);
-                mExecutors.mainThread().execute(() -> {
-                    if (mDbArticle != null) {
-                        link = mDbArticle.link;
-                        title = mDbArticle.title;
-                        author = mDbArticle.author;
-                        source = mDbArticle.source;
-                        date = DateUtils.parseDate(mDbArticle.pubDate);
-                        String generatedHtml = HtmlUtils.generateHtmlContent(this, title, link,
-                                mDbArticle.htmlContent, author, source, date);
-
-                        webView.loadData(generatedHtml, null, null);
-
-                        double wordCount = generatedHtml.split("\\s+").length;
-                        int readTime = (int) Math.ceil(wordCount / 200D);
-
-                        mArticleRef.runTransaction(new Transaction.Handler() {
-                            @NonNull
-                            @Override
-                            public Transaction.Result doTransaction(@NonNull MutableData mutableData) {
-                                Article article = mutableData.getValue(Article.class);
-                                if (article == null) {
-                                    return Transaction.success(mutableData);
-                                }
-
-                                article.setReadTime(readTime);
-                                mutableData.setValue(article);
-                                return Transaction.success(mutableData);
-                            }
-
-                            @Override
-                            public void onComplete(@Nullable DatabaseError databaseError, boolean b, @Nullable DataSnapshot dataSnapshot) {
-                            }
-                        });
-
-                        mExecutors.networkIO().execute(() -> {
-                            mArticleListener = mArticleRef.addValueEventListener(new ValueEventListener() {
-                                @Override
-                                public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
-                                    // set up bottom toolbar
-                                    if (dataSnapshot.exists()) {
-                                        mArticle = dataSnapshot.getValue(Article.class);
-
-                                        if (mArticle != null) {
-                                            if (mArticle.upvoters.containsKey(mUid)) {
-                                                upVoteView.setChecked(true);
-                                            } else {
-                                                upVoteView.setChecked(false);
-                                            }
-                                            if (mArticle.downvoters.containsKey(mUid)) {
-                                                downVoteView.setChecked(true);
-                                            } else {
-                                                downVoteView.setChecked(false);
-                                            }
-                                            if (mArticle.commenters.containsKey(mUid)) {
-                                                commentView.setChecked(true);
-                                            } else {
-                                                commentView.setChecked(false);
-                                            }
-                                            if (mArticle.savers.containsKey(mUid)) {
-                                                favView.setChecked(true);
-                                            } else {
-                                                favView.setChecked(false);
-                                            }
-
-                                            upVoteView.setOnClickListener(onClickListener(mArticle, "upvote"));
-                                            downVoteView.setOnClickListener(onClickListener(mArticle, "downvote"));
-                                            commentView.setOnClickListener(onClickListener(mArticle, "comment"));
-                                            favView.setOnClickListener(onClickListener(mArticle, "favourite"));
-                                            shareView.setOnClickListener(onClickListener(mArticle, "share"));
-                                        }
-                                    }
-                                }
-
-                                @Override
-                                public void onCancelled(@NonNull DatabaseError databaseError) {
-                                    createToast(WebViewActivity.this, databaseError.toString(), Toast.LENGTH_SHORT);
-                                }
-                            });
-                        });
-                    } else {
-                        mExecutors.networkIO().execute(() -> {
-                            mArticleListener = mArticleRef.addValueEventListener(new ValueEventListener() {
-                                @Override
-                                public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
-                                    if (dataSnapshot.exists()) {
-                                        mArticle = dataSnapshot.getValue(Article.class);
-
-                                        // get data to set up card
-                                        if (mArticle != null) {
-                                            link = mArticle.getLink();
-                                            title = mArticle.getTitle();
-                                            author = mArticle.getAuthor();
-                                            source = mArticle.getSource();
-                                            date = DateUtils.parseDate(mArticle.getPubDate());
-                                            if (!isArticleLoaded) {
-                                                if (mArticle.getType() != null && mArticle.getType().equals("article")) {
-                                                    mExecutors.mainThread().execute(() -> genHtml());
-                                                } else {
-                                                    mExecutors.mainThread().execute(() -> webView.loadUrl(link));
-                                                }
-                                                isArticleLoaded = true;
-                                            }
-
-                                            // set up bottom toolbar
-                                            if (mArticle.upvoters.containsKey(mUid)) {
-                                                upVoteView.setChecked(true);
-                                            } else {
-                                                upVoteView.setChecked(false);
-                                            }
-                                            if (mArticle.downvoters.containsKey(mUid)) {
-                                                downVoteView.setChecked(true);
-                                            } else {
-                                                downVoteView.setChecked(false);
-                                            }
-                                            if (mArticle.commenters.containsKey(mUid)) {
-                                                commentView.setChecked(true);
-                                            } else {
-                                                commentView.setChecked(false);
-                                            }
-                                            if (mArticle.savers.containsKey(mUid)) {
-                                                favView.setChecked(true);
-                                            } else {
-                                                favView.setChecked(false);
-                                            }
-
-                                            upVoteView.setOnClickListener(onClickListener(mArticle, "upvote"));
-                                            downVoteView.setOnClickListener(onClickListener(mArticle, "downvote"));
-                                            commentView.setOnClickListener(onClickListener(mArticle, "comment"));
-                                            favView.setOnClickListener(onClickListener(mArticle, "favourite"));
-                                            shareView.setOnClickListener(onClickListener(mArticle, "share"));
-                                        }
-                                    }
-                                }
-
-                                @Override
-                                public void onCancelled(@NonNull DatabaseError databaseError) {
-                                    createToast(WebViewActivity.this, databaseError.toString(), Toast.LENGTH_SHORT);
-                                }
-                            });
-                        });
-                    }
-                });
-            });
-        });
+        handleIntent(intent);
     }
 
-    private void handleIntent(Intent intent, Runnable onComplete) {
+    @Override
+    protected void onNewIntent(Intent intent) {
+        Log.d(TAG, "onNewIntent");
+        isNewIntent = true;
+        isArticleLoaded = false;
+        hasDisplayedMessageOverlay = false;
+        messageOverlayCard.setVisibility(View.VISIBLE);
+
+        webView.loadUrl("about:blank");
+
+        handleIntent(intent);
+    }
+
+    private void handleIntent(Intent intent) {
         String appLinkAction = intent.getAction();
         Uri appLinkData = intent.getData();
         if (Intent.ACTION_VIEW.equals(appLinkAction) && appLinkData != null) {
             FirebaseDynamicLinks.getInstance().getDynamicLink(intent)
                     .addOnSuccessListener(this, pendingDynamicLinkData -> {
-                        Uri deepLink = null;
+                        Uri deepLink;
                         if (pendingDynamicLinkData != null) {
                             deepLink = pendingDynamicLinkData.getLink();
                             Log.d(TAG, deepLink.toString());
                             articleId = deepLink.getQueryParameter("id");
                             Log.d(TAG, "articleId: " + articleId);
                             String sharerId = deepLink.getQueryParameter("sharerId");
-                            onComplete.run();
+                            loadArticle();
                         }
                     })
                     .addOnFailureListener(this, e -> {
@@ -319,8 +213,164 @@ public class WebViewActivity extends AppCompatActivity {
                     });
         } else {
             articleId = intent.getStringExtra("id");
-            onComplete.run();
+            loadArticle();
         }
+    }
+
+    private void loadArticle() {
+        Log.d(TAG, "loadArticle");
+        DatabaseReference databaseReference = mDatabase.getReference();
+        mArticleRef = databaseReference.child(ARTICLE_REF).child(articleId);
+
+        // Get article
+        // Check room database if article is present, otherwise fetch from network
+        mExecutors.diskRead().execute(() -> {
+            mDbArticle = mRoomDb.articleDAO().getDbArticle(articleId);
+            mExecutors.mainThread().execute(() -> {
+                if (mDbArticle != null) {
+                    Log.d(TAG, "loaded from roomDb");
+                    link = mDbArticle.link;
+                    title = mDbArticle.title;
+                    author = mDbArticle.author;
+                    source = mDbArticle.source;
+                    date = DateUtils.parseDate(mDbArticle.pubDate);
+                    String generatedHtml = HtmlUtils.generateHtmlContent(this, title, link,
+                            mDbArticle.htmlContent, author, source, date);
+
+                    webView.loadDataWithBaseURL(null, generatedHtml, "text/html", "utf-8", null);
+
+                    double wordCount = generatedHtml.split("\\s+").length;
+                    int readTime = (int) Math.ceil(wordCount / 200D);
+
+                    mArticleRef.runTransaction(new Transaction.Handler() {
+                        @NonNull
+                        @Override
+                        public Transaction.Result doTransaction(@NonNull MutableData mutableData) {
+                            Article article = mutableData.getValue(Article.class);
+                            if (article == null) {
+                                return Transaction.success(mutableData);
+                            }
+
+                            article.setReadTime(readTime);
+                            mutableData.setValue(article);
+                            return Transaction.success(mutableData);
+                        }
+
+                        @Override
+                        public void onComplete(@Nullable DatabaseError databaseError, boolean b, @Nullable DataSnapshot dataSnapshot) {
+                        }
+                    });
+
+                    mExecutors.networkIO().execute(() -> {
+                        mArticleListener = mArticleRef.addValueEventListener(new ValueEventListener() {
+                            @Override
+                            public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+                                // set up bottom toolbar
+                                if (dataSnapshot.exists()) {
+                                    mArticle = dataSnapshot.getValue(Article.class);
+
+                                    if (mArticle != null) {
+                                        if (mArticle.upvoters.containsKey(mUid)) {
+                                            upVoteView.setChecked(true);
+                                        } else {
+                                            upVoteView.setChecked(false);
+                                        }
+                                        if (mArticle.downvoters.containsKey(mUid)) {
+                                            downVoteView.setChecked(true);
+                                        } else {
+                                            downVoteView.setChecked(false);
+                                        }
+                                        if (mArticle.commenters.containsKey(mUid)) {
+                                            commentView.setChecked(true);
+                                        } else {
+                                            commentView.setChecked(false);
+                                        }
+                                        if (mArticle.savers.containsKey(mUid)) {
+                                            favView.setChecked(true);
+                                        } else {
+                                            favView.setChecked(false);
+                                        }
+
+                                        upVoteView.setOnClickListener(onClickListener(mArticle, "upvote"));
+                                        downVoteView.setOnClickListener(onClickListener(mArticle, "downvote"));
+                                        commentView.setOnClickListener(onClickListener(mArticle, "comment"));
+                                        favView.setOnClickListener(onClickListener(mArticle, "favourite"));
+                                        shareView.setOnClickListener(onClickListener(mArticle, "share"));
+                                    }
+                                }
+                            }
+
+                            @Override
+                            public void onCancelled(@NonNull DatabaseError databaseError) {
+                                createToast(WebViewActivity.this, databaseError.toString(), Toast.LENGTH_SHORT);
+                            }
+                        });
+                    });
+                } else {
+                    mExecutors.networkIO().execute(() -> {
+                        mArticleListener = mArticleRef.addValueEventListener(new ValueEventListener() {
+                            @Override
+                            public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+                                if (dataSnapshot.exists()) {
+                                    mArticle = dataSnapshot.getValue(Article.class);
+
+                                    // get data to set up card
+                                    if (mArticle != null) {
+                                        Log.d(TAG, "loaded from firebaseDb");
+                                        link = mArticle.getLink();
+                                        title = mArticle.getTitle();
+                                        author = mArticle.getAuthor();
+                                        source = mArticle.getSource();
+                                        date = DateUtils.parseDate(mArticle.getPubDate());
+                                        if (!isArticleLoaded) {
+                                            if (mArticle.getType() != null && mArticle.getType().equals("article")) {
+                                                mExecutors.mainThread().execute(() -> genHtml());
+                                            } else {
+                                                mExecutors.mainThread().execute(() -> webView.loadUrl(link));
+                                            }
+                                            isArticleLoaded = true;
+                                        }
+
+                                        // set up bottom toolbar
+                                        if (mArticle.upvoters.containsKey(mUid)) {
+                                            upVoteView.setChecked(true);
+                                        } else {
+                                            upVoteView.setChecked(false);
+                                        }
+                                        if (mArticle.downvoters.containsKey(mUid)) {
+                                            downVoteView.setChecked(true);
+                                        } else {
+                                            downVoteView.setChecked(false);
+                                        }
+                                        if (mArticle.commenters.containsKey(mUid)) {
+                                            commentView.setChecked(true);
+                                        } else {
+                                            commentView.setChecked(false);
+                                        }
+                                        if (mArticle.savers.containsKey(mUid)) {
+                                            favView.setChecked(true);
+                                        } else {
+                                            favView.setChecked(false);
+                                        }
+
+                                        upVoteView.setOnClickListener(onClickListener(mArticle, "upvote"));
+                                        downVoteView.setOnClickListener(onClickListener(mArticle, "downvote"));
+                                        commentView.setOnClickListener(onClickListener(mArticle, "comment"));
+                                        favView.setOnClickListener(onClickListener(mArticle, "favourite"));
+                                        shareView.setOnClickListener(onClickListener(mArticle, "share"));
+                                    }
+                                }
+                            }
+
+                            @Override
+                            public void onCancelled(@NonNull DatabaseError databaseError) {
+                                createToast(WebViewActivity.this, databaseError.toString(), Toast.LENGTH_SHORT);
+                            }
+                        });
+                    });
+                }
+            });
+        });
     }
 
     @Override
@@ -438,52 +488,48 @@ public class WebViewActivity extends AppCompatActivity {
 
     @Override
     protected void onResume() {
-
+        Log.d(TAG, "onResume");
         super.onResume();
     }
 
     @Override
     protected void onPause() {
-
+        Log.d(TAG, "onPause");
         super.onPause();
     }
 
     @Override
     protected void onStart() {
-
+        Log.d(TAG, "onStart");
         super.onStart();
     }
 
     @Override
     protected void onStop() {
         super.onStop();
-
-        if (mArticleRef != null) {
+        Log.d(TAG, "onStop");
+        if (mArticleRef != null && mArticleListener != null) {
             mArticleRef.removeEventListener(mArticleListener);
-//
             if (mFollowListener != null) {
                 mArticleRef.child(NOTIFICATION_TOKENS).removeEventListener(mFollowListener);
-//
             }
         }
     }
 
     @Override
     protected void onDestroy() {
+        Log.d(TAG, "onDestroy");
         super.onDestroy();
 
-        lastScrollPercent = 0f;
-
-        if (mArticle != null) mExecutors.networkIO().execute(() -> {
-            mDataSource.recordArticleOpenDetails(mArticle);
-        });
+        if (!isChangingConfigurations()) {
+            lastScrollPercent = 0f;
+            if (mArticle != null) mExecutors.networkIO().execute(() -> {
+                mDataSource.recordArticleOpenDetails(mArticle);
+            });
+        }
     }
 
     public void genHtml() {
-//        webView.setVisibility(View.INVISIBLE);
-//        progressBar.setVisibility(View.VISIBLE);
-
-//
         mExecutors.networkIO().execute(() -> {
             String generatedHtml = HtmlUtils.regenArticleHtml(webView.getContext(),
                         link, title, author, source, date);
@@ -491,7 +537,9 @@ public class WebViewActivity extends AppCompatActivity {
             boolean isSuccessful = generatedHtml != null && !generatedHtml.equals("");
 
             if (isSuccessful) {
-                mExecutors.mainThread().execute(() -> webView.loadData(generatedHtml, null, null));
+                mExecutors.mainThread().execute(() -> {
+                    webView.loadDataWithBaseURL(null, generatedHtml, "text/html", "utf-8", null);
+                });
 
                 double wordCount = generatedHtml.split("\\s+").length;
                 int readTime = (int) Math.ceil(wordCount / 200D);
@@ -551,11 +599,12 @@ public class WebViewActivity extends AppCompatActivity {
         float contentHeight = content.computeVerticalScrollRange() - content.getHeight();
         float currentScrollPosition = content.getScrollY();
         float scrollPercent = contentHeight == 0f ? 0 : currentScrollPosition / contentHeight;
-
+        Log.d(TAG, "getScrollPercent: " + scrollPercent);
         return scrollPercent;
     }
 
     private void restoreScrollPosition(ObservableWebView content, float scrollPercent) {
+        Log.d(TAG, "restoreScrollPosition: " + scrollPercent);
         float contentHeight = content.computeVerticalScrollRange() - content.getHeight();
         float scrollPosition = contentHeight * scrollPercent;
         int positionY = (int) Math.round(scrollPosition);
@@ -566,14 +615,12 @@ public class WebViewActivity extends AppCompatActivity {
     private class MyWebViewClient extends WebViewClient {
         @Override
         public void onPageFinished(WebView view, String url) {
-            Handler handler = new Handler();
-            handler.postDelayed(() -> {
-                restoreScrollPosition(webView, lastScrollPercent);
-                webView.setVisibility(View.VISIBLE);
-                progressBar.setVisibility(View.INVISIBLE);
-                super.onPageFinished(view, url);
-            }, 300);
+            super.onPageFinished(view, url);
+            restoreScrollPosition(webView, lastScrollPercent);
 
+            if (isNewIntent) {
+                view.clearHistory();
+            }
         }
     }
 }

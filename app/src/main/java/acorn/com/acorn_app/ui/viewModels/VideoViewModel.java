@@ -1,7 +1,7 @@
 package acorn.com.acorn_app.ui.viewModels;
 
-import android.arch.lifecycle.ViewModel;
-import android.support.annotation.Nullable;
+import androidx.lifecycle.ViewModel;
+import androidx.annotation.Nullable;
 
 import acorn.com.acorn_app.data.NetworkDataSource;
 import acorn.com.acorn_app.data.VideoListLiveData;

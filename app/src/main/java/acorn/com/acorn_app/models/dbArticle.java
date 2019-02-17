@@ -1,17 +1,13 @@
 package acorn.com.acorn_app.models;
 
-import android.arch.persistence.room.Entity;
-import android.arch.persistence.room.PrimaryKey;
+import androidx.room.Entity;
+import androidx.room.PrimaryKey;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.preference.PreferenceManager;
-import android.support.annotation.NonNull;
-import android.util.Log;
+import androidx.annotation.NonNull;
 
 import java.util.Date;
-
-import acorn.com.acorn_app.utils.DateUtils;
-import acorn.com.acorn_app.utils.HtmlUtils;
 
 @Entity(tableName = "article_table")
 public class dbArticle {

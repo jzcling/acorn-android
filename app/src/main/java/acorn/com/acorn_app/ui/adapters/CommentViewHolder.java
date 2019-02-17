@@ -7,8 +7,8 @@ import android.content.Intent;
 import android.graphics.Bitmap;
 import android.net.ConnectivityManager;
 import android.net.Uri;
-import android.support.constraint.ConstraintLayout;
-import android.support.v7.widget.RecyclerView;
+import androidx.constraintlayout.widget.ConstraintLayout;
+import androidx.recyclerview.widget.RecyclerView;
 import android.text.Html;
 import android.text.method.LinkMovementMethod;
 import android.util.DisplayMetrics;
@@ -120,7 +120,7 @@ public class CommentViewHolder extends RecyclerView.ViewHolder {
                     urlSourceView.setVisibility(View.GONE);
                 }
                 if (comment.getImageUrl() != null) {
-                    Glide.with(mContext)
+                    Glide.with(mContext.getApplicationContext())
                             .load(comment.getImageUrl())
                             .apply(new RequestOptions()
                                     .placeholder(R.drawable.loading_spinner))
@@ -228,7 +228,7 @@ public class CommentViewHolder extends RecyclerView.ViewHolder {
                 commentImageView.getLayoutParams().width = maxWidth;
                 commentTextView.getLayoutParams().width = maxWidth;
 
-                Glide.with(mContext)
+                Glide.with(mContext.getApplicationContext())
                         .load(localUri)
                         .apply(new RequestOptions()
                                 .placeholder(R.drawable.loading_spinner))

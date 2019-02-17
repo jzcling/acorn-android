@@ -6,8 +6,8 @@ import android.os.Bundle;
 import android.preference.PreferenceActivity;
 import android.preference.PreferenceFragment;
 import android.preference.PreferenceManager;
-import android.support.v7.app.AppCompatDelegate;
-import android.util.Log;
+import androidx.appcompat.app.AppCompatDelegate;
+
 import android.view.MenuItem;
 
 import acorn.com.acorn_app.R;

@@ -1,7 +1,7 @@
 package acorn.com.acorn_app.ui.views;
 
 import android.content.Context;
-import android.support.v7.widget.AppCompatTextView;
+import androidx.appcompat.widget.AppCompatTextView;
 import android.util.AttributeSet;
 
 import com.algolia.instantsearch.ui.views.AlgoliaHitView;

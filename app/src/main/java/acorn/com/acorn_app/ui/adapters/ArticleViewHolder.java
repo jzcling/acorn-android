@@ -3,9 +3,9 @@ package acorn.com.acorn_app.ui.adapters;
 import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.Context;
-import android.support.constraint.ConstraintLayout;
-import android.support.v7.widget.CardView;
-import android.support.v7.widget.RecyclerView;
+import androidx.constraintlayout.widget.ConstraintLayout;
+import androidx.cardview.widget.CardView;
+import androidx.recyclerview.widget.RecyclerView;
 import android.text.Html;
 import android.view.HapticFeedbackConstants;
 import android.view.View;
@@ -172,7 +172,7 @@ public class ArticleViewHolder extends RecyclerView.ViewHolder {
                     imageUrl = article.getImageUrl();
                 }
                 mainImage.setVisibility(View.VISIBLE);
-                Glide.with(mContext)
+                Glide.with(mContext.getApplicationContext())
                         .load(imageUrl)
                         .into(mainImage);
 
@@ -189,7 +189,7 @@ public class ArticleViewHolder extends RecyclerView.ViewHolder {
                 mainImage.setVisibility(View.GONE);
                 cardArticle.setVisibility(View.GONE);
                 postImage.setVisibility(View.VISIBLE);
-                Glide.with(mContext)
+                Glide.with(mContext.getApplicationContext())
                         .load(storageReference)
                         .apply(new RequestOptions()
                                 .placeholder(R.drawable.loading_spinner))

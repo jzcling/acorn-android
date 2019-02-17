@@ -1,8 +1,8 @@
 package acorn.com.acorn_app.ui.adapters;
 
 import android.content.Context;
-import android.support.constraint.ConstraintLayout;
-import android.support.v7.widget.RecyclerView;
+import androidx.constraintlayout.widget.ConstraintLayout;
+import androidx.recyclerview.widget.RecyclerView;
 import android.view.View;
 import android.widget.ImageView;
 import android.widget.TextView;
@@ -89,7 +89,7 @@ public class SavedArticleViewHolder extends RecyclerView.ViewHolder {
                 imageUrl = article.getImageUrl();
             }
             mainImage.setVisibility(View.VISIBLE);
-            Glide.with(mContext)
+            Glide.with(mContext.getApplicationContext())
                     .load(imageUrl)
                     .into(mainImage);
 
@@ -109,7 +109,7 @@ public class SavedArticleViewHolder extends RecyclerView.ViewHolder {
                     .getReferenceFromUrl(article.getPostImageUrl());
             title.setText(article.getPostText());
             contributor.setText(article.getPostAuthor());
-            Glide.with(mContext)
+            Glide.with(mContext.getApplicationContext())
                     .load(storageReference)
                     .apply(new RequestOptions()
                             .placeholder(R.drawable.loading_spinner))

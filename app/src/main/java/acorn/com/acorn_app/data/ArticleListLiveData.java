@@ -1,8 +1,8 @@
 package acorn.com.acorn_app.data;
 
-import android.arch.lifecycle.LiveData;
+import androidx.lifecycle.LiveData;
 import android.os.Handler;
-import android.support.annotation.NonNull;
+import androidx.annotation.NonNull;
 import android.util.Log;
 
 import com.google.firebase.database.ChildEventListener;

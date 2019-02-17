@@ -11,6 +11,7 @@ public class User {
     private String displayName;
     private String token;
     private String email;
+    public boolean isEmailVerified;
     private String device;
     private int status = 0;
     private int points = 0;
@@ -150,6 +151,7 @@ public class User {
         result.put("displayName", displayName);
         result.put("token", token);
         result.put("email", email);
+        result.put("isEmailVerified", isEmailVerified);
         result.put("device", device);
         result.put("creationTimeStamp", creationTimeStamp);
         result.put("lastSignInTimeStamp", lastSignInTimeStamp);

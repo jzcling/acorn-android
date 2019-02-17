@@ -18,8 +18,8 @@ package acorn.com.acorn_app.data;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.preference.PreferenceManager;
-import android.support.annotation.NonNull;
-import android.support.annotation.Nullable;
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import android.util.Log;
 
 import com.algolia.search.saas.Client;
@@ -85,7 +85,7 @@ public class NetworkDataSource {
     public static final String REC_DEALS_NOTIFICATION = "recDealsNotificationValue";
     public static final String ALGOLIA_API_KEY_REF = "algoliaApiKey";
     public static final String YOUTUBE_API_KEY_REF = "youtubeApiKey";
-    public static final String REPORT_REF = "report";
+    public static final String REPORT_REF = "reported";
 
     // Recommended articles
     public static List<Article> mRecArticleList;
@@ -317,8 +317,6 @@ public class NetworkDataSource {
     // Trending Articles
     public void getTrendingArticles(Runnable onComplete, Runnable onError) {
         int limit = 50;
-        List<dbArticle> localArticles = new ArrayList<>();
-        List<String> localArticlesId = new ArrayList<>();
         ArticleRoomDatabase roomDb = ArticleRoomDatabase.getInstance(mContext);
         mExecutors.networkIO().execute(() -> {
             Query query = mDatabaseReference.child(ARTICLE_REF).orderByKey()
@@ -827,5 +825,58 @@ public class NetworkDataSource {
             public void onComplete(@Nullable DatabaseError databaseError, boolean b, @Nullable DataSnapshot dataSnapshot) {
             }
         });
+    }
+
+
+    // Set user email verified
+    public void setUserEmailVerified() {
+        DatabaseReference userRef = FirebaseDatabase.getInstance()
+                .getReference("user/"+mUid);
+
+        userRef.runTransaction(new Transaction.Handler() {
+            @NonNull
+            @Override
+            public Transaction.Result doTransaction(@NonNull MutableData mutableData) {
+                User user = mutableData.getValue(User.class);
+                if (user == null) {
+                    return Transaction.success(mutableData);
+                }
+
+                user.isEmailVerified = true;
+
+                mutableData.setValue(user);
+                return Transaction.success(mutableData);
+            }
+
+            @Override
+            public void onComplete(@Nullable DatabaseError databaseError, boolean b, @Nullable DataSnapshot dataSnapshot) {
+            }
+        });
+    }
+
+
+    // Update notifications preference values
+    public void ToggleCommentsNotifications(boolean toReceive) {
+        if (!toReceive) {
+            mDatabaseReference.child(PREFERENCES_REF).child(COMMENTS_NOTIFICATION).child(mUid).setValue(toReceive);
+        } else {
+            mDatabaseReference.child(PREFERENCES_REF).child(COMMENTS_NOTIFICATION).child(mUid).removeValue();
+        }
+    }
+
+    public void ToggleRecArticlesNotifications(boolean toReceive) {
+        if (!toReceive) {
+            mDatabaseReference.child(PREFERENCES_REF).child(REC_ARTICLES_NOTIFICATION).child(mUid).setValue(toReceive);
+        } else {
+            mDatabaseReference.child(PREFERENCES_REF).child(REC_ARTICLES_NOTIFICATION).child(mUid).removeValue();
+        }
+    }
+
+    public void ToggleDealsNotifications(boolean toReceive) {
+        if (!toReceive) {
+            mDatabaseReference.child(PREFERENCES_REF).child(REC_DEALS_NOTIFICATION).child(mUid).setValue(toReceive);
+        } else {
+            mDatabaseReference.child(PREFERENCES_REF).child(REC_DEALS_NOTIFICATION).child(mUid).removeValue();
+        }
     }
 }

@@ -1,7 +1,7 @@
 package acorn.com.acorn_app.utils;
 
-import android.databinding.BindingAdapter;
-import android.support.annotation.Nullable;
+import androidx.databinding.BindingAdapter;
+import androidx.annotation.Nullable;
 import android.view.View;
 import android.widget.ImageView;
 

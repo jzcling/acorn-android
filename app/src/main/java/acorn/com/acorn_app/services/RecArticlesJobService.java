@@ -10,8 +10,8 @@ import android.graphics.Bitmap;
 import android.graphics.Color;
 import android.os.Build;
 import android.preference.PreferenceManager;
-import android.support.v4.app.NotificationCompat;
-import android.support.v4.app.TaskStackBuilder;
+import androidx.core.app.NotificationCompat;
+import androidx.core.app.TaskStackBuilder;
 
 import com.firebase.jobdispatcher.JobParameters;
 import com.firebase.jobdispatcher.JobService;
@@ -29,12 +29,12 @@ import acorn.com.acorn_app.ui.viewModels.NotificationViewModel;
 import acorn.com.acorn_app.utils.AppExecutors;
 import acorn.com.acorn_app.utils.IOUtils;
 
-import static android.support.v4.app.NotificationCompat.CATEGORY_RECOMMENDATION;
-import static android.support.v4.app.NotificationCompat.DEFAULT_SOUND;
-import static android.support.v4.app.NotificationCompat.DEFAULT_VIBRATE;
-import static android.support.v4.app.NotificationCompat.GROUP_ALERT_SUMMARY;
-import static android.support.v4.app.NotificationCompat.PRIORITY_HIGH;
-import static android.support.v4.app.NotificationCompat.VISIBILITY_PUBLIC;
+import static androidx.core.app.NotificationCompat.CATEGORY_RECOMMENDATION;
+import static androidx.core.app.NotificationCompat.DEFAULT_SOUND;
+import static androidx.core.app.NotificationCompat.DEFAULT_VIBRATE;
+import static androidx.core.app.NotificationCompat.GROUP_ALERT_SUMMARY;
+import static androidx.core.app.NotificationCompat.PRIORITY_HIGH;
+import static androidx.core.app.NotificationCompat.VISIBILITY_PUBLIC;
 
 public class RecArticlesJobService extends JobService {
     private static final String TAG = "RecArticlesService";

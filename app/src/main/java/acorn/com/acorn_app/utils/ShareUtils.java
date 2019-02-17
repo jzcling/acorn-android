@@ -1,16 +1,10 @@
 package acorn.com.acorn_app.utils;
 
-import android.app.Activity;
-import android.content.Context;
 import android.net.Uri;
-import android.support.annotation.NonNull;
 import android.util.Log;
 
-import com.google.android.gms.tasks.OnCompleteListener;
-import com.google.android.gms.tasks.Task;
 import com.google.firebase.dynamiclinks.DynamicLink;
 import com.google.firebase.dynamiclinks.FirebaseDynamicLinks;
-import com.google.firebase.dynamiclinks.ShortDynamicLink;
 
 import java.util.function.Consumer;
 
@@ -48,7 +42,7 @@ public class ShareUtils {
                 .setIosParameters(
                         new DynamicLink.IosParameters.Builder("sg.acorncommunity.acorn")
                                 .setAppStoreId("1435141923")
-                                .setMinimumVersion("1.2.3")
+                                .setMinimumVersion("1.2.5")
                                 .build())
                 .buildShortDynamicLink()
                 .addOnCompleteListener(task -> {

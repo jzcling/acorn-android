@@ -6,9 +6,9 @@ import android.content.Context;
 import android.content.SharedPreferences;
 import android.graphics.Rect;
 import android.os.Handler;
-import android.support.v7.widget.LinearLayoutManager;
-import android.support.v7.widget.RecyclerView;
-import android.support.v7.widget.helper.ItemTouchHelper;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
+import androidx.recyclerview.widget.ItemTouchHelper;
 import android.util.DisplayMetrics;
 import android.view.LayoutInflater;
 import android.view.TouchDelegate;
@@ -100,7 +100,7 @@ public class UiUtils implements NotificationItemTouchHelper.RecyclerItemTouchHel
 
         PhotoView imageView = view.findViewById(R.id.dialog_inflated_image);
         imageView.getLayoutParams().width = width;
-        Glide.with(context)
+        Glide.with(context.getApplicationContext())
                 .load(imageUri)
                 .apply(new RequestOptions()
                         .placeholder(R.drawable.loading_spinner))
@@ -124,7 +124,7 @@ public class UiUtils implements NotificationItemTouchHelper.RecyclerItemTouchHel
         // Set up recycler view
         RecyclerView mRecyclerView = (RecyclerView) view.findViewById(R.id.notification_rv);
         LinearLayoutManager mLinearLayoutManager = new LinearLayoutManager(context);
-        mLinearLayoutManager.setOrientation(LinearLayoutManager.VERTICAL);
+        mLinearLayoutManager.setOrientation(RecyclerView.VERTICAL);
         mRecyclerView.setLayoutManager(mLinearLayoutManager);
         mAdapter = new NotificationAdapter(context);
         mRecyclerView.setAdapter(mAdapter);
@@ -165,7 +165,7 @@ public class UiUtils implements NotificationItemTouchHelper.RecyclerItemTouchHel
             }
         }
 
-        Collections.sort(mNotifList, (o1, o2) -> o1.timestamp.compareTo(o2.timestamp));
+        mNotifList.sort((o1, o2) -> o1.timestamp.compareTo(o2.timestamp));
         Collections.reverse(mNotifList);
         return mNotifList;
     }

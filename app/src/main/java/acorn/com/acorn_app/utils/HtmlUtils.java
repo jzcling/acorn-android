@@ -104,10 +104,16 @@ public class HtmlUtils {
 
     public static String generateHtmlContent(Context context, String title, String link,
                                               String contentText, String author, String source, String date) {
-        String BACKGROUND_COLOR = String.format("#%06X", (0xFFFFFF & context.getColor(R.color.webview_background)));
-        String TEXT_COLOR = String.format("#%06X", (0xFFFFFF & context.getColor(R.color.webview_text_color)));
-        String SUBTITLE_COLOR = String.format("#%06X", (0xFFFFFF & context.getColor(R.color.webview_subtitle_color)));
-        String QUOTE_BACKGROUND_COLOR = String.format("#%06X", (0xFFFFFF & context.getColor(R.color.webview_quote_background_color)));
+//        String BACKGROUND_COLOR = String.format("#%06X", (0xFFFFFF & context.getApplicationContext().getColor(R.color.webview_background)));
+//        String TEXT_COLOR = String.format("#%06X", (0xFFFFFF & context.getApplicationContext().getColor(R.color.webview_text_color)));
+//        String SUBTITLE_COLOR = String.format("#%06X", (0xFFFFFF & context.getApplicationContext().getColor(R.color.webview_subtitle_color)));
+//        String QUOTE_BACKGROUND_COLOR = String.format("#%06X", (0xFFFFFF & context.getApplicationContext().getColor(R.color.webview_quote_background_color)));
+
+
+        String BACKGROUND_COLOR = "#f6f6f6";
+        String TEXT_COLOR = "#231f20";
+        String SUBTITLE_COLOR = "#666666";
+        String QUOTE_BACKGROUND_COLOR = "#e6e6e6";
 
         String CSS = "<head><style type='text/css'> "
                 + "body {max-width: 100%; margin: 0.3cm; font-family: sans-serif-light; font-size: " + TEXT_SIZE + "; text-align: justify; color: " + TEXT_COLOR + "; background-color:" + BACKGROUND_COLOR + "; line-height: 150%} "

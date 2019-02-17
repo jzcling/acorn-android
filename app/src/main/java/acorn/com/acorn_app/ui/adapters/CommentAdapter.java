@@ -1,7 +1,7 @@
 package acorn.com.acorn_app.ui.adapters;
 
 import android.content.Context;
-import android.support.annotation.NonNull;
+import androidx.annotation.NonNull;
 import android.text.SpannableString;
 import android.text.style.BackgroundColorSpan;
 import android.view.LayoutInflater;
@@ -16,7 +16,6 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import acorn.com.acorn_app.R;
-import acorn.com.acorn_app.models.Article;
 import acorn.com.acorn_app.models.Comment;
 
 import static acorn.com.acorn_app.ui.activities.AcornActivity.mUid;

@@ -1,8 +1,8 @@
 package acorn.com.acorn_app.ui.viewModels;
 
-import android.arch.lifecycle.ViewModel;
-import android.arch.lifecycle.ViewModelProvider;
-import android.support.annotation.NonNull;
+import androidx.lifecycle.ViewModel;
+import androidx.lifecycle.ViewModelProvider;
+import androidx.annotation.NonNull;
 
 import acorn.com.acorn_app.data.NetworkDataSource;
 
