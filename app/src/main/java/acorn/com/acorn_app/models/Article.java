@@ -40,6 +40,8 @@ public class Article {
     public boolean changedSinceLastJob = true;
     public boolean isReported = false;
     public String htmlContent;
+    public String selector;
+    public Long reminderDate;
 
     public Article() {}
 

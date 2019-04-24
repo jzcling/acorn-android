@@ -135,15 +135,15 @@ public class VideoFeedActivity extends AppCompatActivity {
                         Log.d(TAG, "set: " + currentList.size());
                     }
                 }
-                mAdapter.setList(currentList);
+                mAdapter.setList(currentList, () -> {
+                    if (mLlmState != null) {
+                        mLinearLayoutManager.onRestoreInstanceState(mLlmState);
+                    }
+                });
             }
         };
         mVideoListLD.observeForever(VideoListObserver);
         mObservedList.put(mVideoListLD, VideoListObserver);
-        if (mLlmState != null) {
-            mLinearLayoutManager.onRestoreInstanceState(mLlmState);
-        }
-
     }
 
     private void loadMoreVideos() {

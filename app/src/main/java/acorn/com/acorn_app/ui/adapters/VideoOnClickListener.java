@@ -3,6 +3,7 @@ package acorn.com.acorn_app.ui.adapters;
 import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
+import android.os.Bundle;
 import android.os.Handler;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -12,6 +13,7 @@ import android.view.animation.AnimationUtils;
 import android.widget.Toast;
 
 import com.google.android.youtube.player.YouTubeStandalonePlayer;
+import com.google.firebase.analytics.FirebaseAnalytics;
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
@@ -28,6 +30,7 @@ import acorn.com.acorn_app.models.Video;
 import acorn.com.acorn_app.utils.AppExecutors;
 import acorn.com.acorn_app.utils.UiUtils;
 
+import static acorn.com.acorn_app.ui.AcornApplication.mFirebaseAnalytics;
 import static acorn.com.acorn_app.ui.activities.AcornActivity.LEVEL_0;
 import static acorn.com.acorn_app.ui.activities.AcornActivity.LEVEL_1;
 import static acorn.com.acorn_app.ui.activities.AcornActivity.LEVEL_2;
@@ -92,8 +95,16 @@ public class VideoOnClickListener implements View.OnClickListener {
         switch (mCardAttribute) {
             case "title":
             case "videoThumbnail":
+                Bundle bundle = new Bundle();
+                bundle.putString(FirebaseAnalytics.Param.ITEM_ID, mVideo.getObjectID());
+                bundle.putString(FirebaseAnalytics.Param.ITEM_NAME, mVideo.getTitle());
+                bundle.putString("item_source", mVideo.getSource());
+                bundle.putString(FirebaseAnalytics.Param.CONTENT_TYPE, mVideo.getType());
+                mFirebaseAnalytics.logEvent(FirebaseAnalytics.Event.SELECT_CONTENT, bundle);
+
                 Intent intent = YouTubeStandalonePlayer
                         .createVideoIntent((Activity) mContext, mYoutubeApiKey, mVideo.youtubeVideoId);
+                mExecutors.networkIO().execute(() -> mDataSource.recordVideoOpenDetails(mVideo));
                 mContext.startActivity(intent);
                 break;
             case "upvote":
@@ -159,10 +170,26 @@ public class VideoOnClickListener implements View.OnClickListener {
                     video.downvoters.remove(mUid);
                     video.upvoters.put(mUid, clickTime);
                     video.setVoteCount(currentVoteCount + 2);
+
+                    Bundle bundle = new Bundle();
+                    bundle.putString(FirebaseAnalytics.Param.ITEM_ID, videoId);
+                    bundle.putString(FirebaseAnalytics.Param.ITEM_NAME, mVideo.getTitle());
+                    bundle.putString("item_source", mVideo.getSource());
+                    bundle.putString(FirebaseAnalytics.Param.CONTENT_TYPE, mVideo.getType());
+                    mFirebaseAnalytics.logEvent("upvote_video", bundle);
+
                     mExecutors.mainThread().execute(()->mUpvoteView.startAnimation(upvoteAnim));
                 } else {
                     video.upvoters.put(mUid, clickTime);
                     video.setVoteCount(currentVoteCount + 1);
+
+                    Bundle bundle = new Bundle();
+                    bundle.putString(FirebaseAnalytics.Param.ITEM_ID, videoId);
+                    bundle.putString(FirebaseAnalytics.Param.ITEM_NAME, mVideo.getTitle());
+                    bundle.putString("item_source", mVideo.getSource());
+                    bundle.putString(FirebaseAnalytics.Param.CONTENT_TYPE, mVideo.getType());
+                    mFirebaseAnalytics.logEvent("upvote_video", bundle);
+
                     mExecutors.mainThread().execute(()->mUpvoteView.startAnimation(upvoteAnim));
                 }
 
@@ -283,10 +310,26 @@ public class VideoOnClickListener implements View.OnClickListener {
                     video.upvoters.remove(mUid);
                     video.downvoters.put(mUid, clickTime);
                     video.setVoteCount(currentVoteCount - 2);
+
+                    Bundle bundle = new Bundle();
+                    bundle.putString(FirebaseAnalytics.Param.ITEM_ID, videoId);
+                    bundle.putString(FirebaseAnalytics.Param.ITEM_NAME, mVideo.getTitle());
+                    bundle.putString("item_source", mVideo.getSource());
+                    bundle.putString(FirebaseAnalytics.Param.CONTENT_TYPE, mVideo.getType());
+                    mFirebaseAnalytics.logEvent("downvote_video", bundle);
+
                     mExecutors.mainThread().execute(()->mDownvoteView.startAnimation(downvoteAnim));
                 } else {
                     video.downvoters.put(mUid, clickTime);
                     video.setVoteCount(currentVoteCount - 1);
+
+                    Bundle bundle = new Bundle();
+                    bundle.putString(FirebaseAnalytics.Param.ITEM_ID, videoId);
+                    bundle.putString(FirebaseAnalytics.Param.ITEM_NAME, mVideo.getTitle());
+                    bundle.putString("item_source", mVideo.getSource());
+                    bundle.putString(FirebaseAnalytics.Param.CONTENT_TYPE, mVideo.getType());
+                    mFirebaseAnalytics.logEvent("downvote_video", bundle);
+
                     mExecutors.mainThread().execute(()->mDownvoteView.startAnimation(downvoteAnim));
                 }
 
@@ -452,6 +495,13 @@ public class VideoOnClickListener implements View.OnClickListener {
         if (mVideo.youtubeVideoId != null && !mVideo.youtubeVideoId.equals("")) {
             Long clickTime = new Date().getTime();
             String videoId = mVideo.getObjectID();
+
+            Bundle bundle = new Bundle();
+            bundle.putString(FirebaseAnalytics.Param.ITEM_ID, videoId);
+            bundle.putString(FirebaseAnalytics.Param.ITEM_NAME, mVideo.getTitle());
+            bundle.putString("item_source", mVideo.getSource());
+            bundle.putString(FirebaseAnalytics.Param.CONTENT_TYPE, mVideo.getType());
+            mFirebaseAnalytics.logEvent(FirebaseAnalytics.Event.SHARE, bundle);
 
             // Update video with share data
             DatabaseReference videoRef = FirebaseDatabase.getInstance()

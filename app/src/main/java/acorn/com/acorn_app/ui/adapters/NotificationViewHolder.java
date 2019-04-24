@@ -85,7 +85,7 @@ public class NotificationViewHolder extends RecyclerView.ViewHolder {
             mainImage.setVisibility(View.GONE);
         }
         String extraText;
-        if (notif.type.equals("article") || notif.type.equals("deal")) {
+        if (notif.type.equals("article") || notif.type.equals("deal") || notif.type.equals("savedArticleReminder")) {
             extraText = DateUtils.parseDate(Long.parseLong(notif.extra));
         } else {
             extraText = notif.extra;

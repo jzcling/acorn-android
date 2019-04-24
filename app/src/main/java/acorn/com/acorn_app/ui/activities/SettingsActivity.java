@@ -6,6 +6,8 @@ import android.os.Bundle;
 import android.preference.PreferenceActivity;
 import android.preference.PreferenceFragment;
 import android.preference.PreferenceManager;
+
+import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.app.AppCompatDelegate;
 
 import android.view.MenuItem;
@@ -24,26 +26,22 @@ import acorn.com.acorn_app.ui.fragments.SettingsFragment;
  * href="http://developer.android.com/guide/topics/ui/settings.html">Settings
  * API Guide</a> for more information on developing a Settings UI.
  */
-public class SettingsActivity extends AppCompatPreferenceActivity {
+public class SettingsActivity extends AppCompatActivity {
     private static final String TAG = "SettingsActivity";
-    private static int dayNightValue;
-    private static SharedPreferences prefs;
+    private int dayNightValue;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
-        prefs = PreferenceManager.getDefaultSharedPreferences(this);
-        dayNightValue = Integer.parseInt(prefs.getString(getString(R.string.pref_key_night_mode), "1"));
+        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
+        dayNightValue = Integer.parseInt(prefs.getString(getString(R.string.pref_key_night_mode), "0"));
 
         AppCompatDelegate.setDefaultNightMode(dayNightValue);
         super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_settings);
         getSupportActionBar().setDisplayHomeAsUpEnabled(true);
 
-        Intent intent = getIntent();
-
-        if (getFragmentManager().findFragmentById(android.R.id.content) == null) {
-            getFragmentManager().beginTransaction()
-                    .add(android.R.id.content, new SettingsFragment()).commit();
-        }
+        getSupportFragmentManager().beginTransaction()
+                .replace(R.id.settings, new SettingsFragment()).commit();
     }
 
     /**

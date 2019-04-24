@@ -10,9 +10,7 @@ public class DateUtils {
         try {
             SimpleDateFormat rawFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
             rawFormat.setTimeZone(TimeZone.getTimeZone("GMT"));
-//            Date pubDate = rawFormat.parse(date);
             Date pubDate = new Date(-1L * date);
-//
             Date now = new Date();
 
             double diff = now.getTime() - pubDate.getTime();
@@ -53,7 +51,6 @@ public class DateUtils {
             Date pubDate = new Date(-1L * date);
             Date now = new Date();
             Date cutoff = newFormat.parse(rawFormat.format(now));
-//
 
             if (pubDate.getTime() < cutoff.getTime()) {
                 return dateFormat.format(pubDate);
@@ -61,6 +58,32 @@ public class DateUtils {
             return timeFormat.format(pubDate);
         } catch (Exception e) {
             e.printStackTrace();
+        }
+        return null;
+    }
+
+    public static Long getThisMidnight() {
+        SimpleDateFormat midnight = new SimpleDateFormat("yyyy-MM-dd 00:00:00");
+        midnight.setTimeZone(TimeZone.getTimeZone("GMT+8"));
+        Date now = new Date();
+        try {
+            return midnight.parse(midnight.format(now)).getTime();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+    public static Long getNextMidnight() {
+        if (getThisMidnight() != null) {
+            return (getThisMidnight() + (24 * 60 * 60 * 1000));
+        }
+        return null;
+    }
+
+    public static Long getFollowingMidnight() {
+        if (getNextMidnight() != null) {
+            return (getNextMidnight() + (24 * 60 * 60 * 1000));
         }
         return null;
     }

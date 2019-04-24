@@ -55,34 +55,43 @@ public class NotificationAdapter extends RecyclerView.Adapter<NotificationViewHo
         Notif notif = mNotifList.get(position);
         SharedPreferences sharedPrefs = mContext.getSharedPreferences(
                 mContext.getString(R.string.notif_pref_id), MODE_PRIVATE);
-        String key;
-        if (notif.type.equals("comment")) {
-            key = "c_" + notif.articleId;
-        } else if (notif.type.equals("article")) {
-            key = "a_" + notif.articleId;
-        } else {
-            key = "d_" + notif.articleId;
+        String key = null;
+        switch (notif.type) {
+            case "comment":
+                key = "c_" + notif.articleId;
+                break;
+            case "article":
+                key = "a_" + notif.articleId;
+                break;
+            case "deal":
+                key = "d_" + notif.articleId;
+                break;
+            case "savedArticleReminder":
+                key = "s_" + notif.articleId;
+                break;
         }
 
         String keys = sharedPrefs.getString(mContext.getString(R.string.notif_pref_key), "");
 
         List<String> keyList = new ArrayList<>(Arrays.asList(keys.split("·")));
 
-        keyList.remove(key);
-        String newKeys = null;
-        for (String k : keyList) {
-            if (newKeys == null) {
-                newKeys = k;
-            } else {
-                newKeys += "·" + k;
+        if (key != null) {
+            keyList.remove(key);
+            String newKeys = null;
+            for (String k : keyList) {
+                if (newKeys == null) {
+                    newKeys = k;
+                } else {
+                    newKeys += "·" + k;
+                }
             }
+
+            sharedPrefs.edit().putString(mContext.getString(R.string.notif_pref_key), newKeys)
+                    .remove(key)
+                    .apply();
+
+            mNotifList.remove(position);
+            notifyItemRemoved(position);
         }
-
-        sharedPrefs.edit().putString(mContext.getString(R.string.notif_pref_key), newKeys)
-                .remove(key)
-                .apply();
-
-        mNotifList.remove(position);
-        notifyItemRemoved(position);
     }
 }

@@ -20,6 +20,9 @@ import android.os.Parcelable;
 import android.preference.PreferenceManager;
 import androidx.annotation.NonNull;
 import androidx.constraintlayout.widget.ConstraintLayout;
+
+import com.google.android.gms.tasks.OnCompleteListener;
+import com.google.android.gms.tasks.Task;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.android.material.navigation.NavigationView;
 import androidx.core.view.GravityCompat;
@@ -86,11 +89,8 @@ import acorn.com.acorn_app.utils.AppExecutors;
 import acorn.com.acorn_app.utils.InjectorUtils;
 
 import static acorn.com.acorn_app.data.NetworkDataSource.ALGOLIA_API_KEY;
-import static acorn.com.acorn_app.data.NetworkDataSource.COMMENTS_NOTIFICATION;
-import static acorn.com.acorn_app.data.NetworkDataSource.PREFERENCES_REF;
-import static acorn.com.acorn_app.data.NetworkDataSource.REC_ARTICLES_NOTIFICATION;
-import static acorn.com.acorn_app.data.NetworkDataSource.REC_DEALS_NOTIFICATION;
 import static acorn.com.acorn_app.data.NetworkDataSource.SEARCH_REF;
+import static acorn.com.acorn_app.ui.AcornApplication.mFirebaseAnalytics;
 import static acorn.com.acorn_app.utils.UiUtils.createToast;
 
 public class AcornActivity extends AppCompatActivity
@@ -137,9 +137,6 @@ public class AcornActivity extends AppCompatActivity
     //Room database
     private ArticleRoomDatabase mRoomDb;
     private Context mContext;
-
-    //Firebase analytics
-    private FirebaseAnalytics mFirebaseAnalytics;
     
     //Data source
     private NetworkDataSource mDataSource;
@@ -179,12 +176,11 @@ public class AcornActivity extends AppCompatActivity
     private static Boolean commentNotifValue;
     private static Boolean articleNotifValue;
     private static Boolean dealsNotifValue;
-    private DatabaseReference mCommentNotifRef;
-    private ValueEventListener mCommentNotifListener;
-    private DatabaseReference mRecArticlesNotifRef;
-    private ValueEventListener mRecArticlesNotifListener;
-    private DatabaseReference mRecDealsNotifRef;
-    private ValueEventListener mRecDealsNotifListener;
+    private static Boolean savedArticlesReminderNotifValue;
+    public final String COMMENTS_NOTIFICATION = "commentsNotificationValue";
+    public final String REC_ARTICLES_NOTIFICATION = "recArticlesNotificationValue";
+    public final String REC_DEALS_NOTIFICATION = "recDealsNotificationValue";
+    public final String SAVED_ARTICLES_REMINDER_NOTIFICATION = "savedArticlesReminderNotificationValue";
 
     //Notifications
     private NotificationBadge notificationBadge;
@@ -211,13 +207,15 @@ public class AcornActivity extends AppCompatActivity
         commentNotifValue = mSharedPreferences.getBoolean(getString(R.string.pref_key_notif_comment), true);
         articleNotifValue = mSharedPreferences.getBoolean(getString(R.string.pref_key_notif_article), true);
         dealsNotifValue = mSharedPreferences.getBoolean(getString(R.string.pref_key_notif_deals), true);
+        savedArticlesReminderNotifValue = mSharedPreferences.getBoolean(
+                getString(R.string.pref_key_notif_saved_articles_reminder), true);
         AppCompatDelegate.setDefaultNightMode(dayNightValue);
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_acorn);
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
 
-        mFirebaseAnalytics = FirebaseAnalytics.getInstance(this);
+        mFirebaseAnalytics.logEvent(FirebaseAnalytics.Event.APP_OPEN, null);
 
         try {
             PackageInfo info = getPackageManager().getPackageInfo(getPackageName(), PackageManager.GET_SIGNATURES);
@@ -225,7 +223,6 @@ public class AcornActivity extends AppCompatActivity
                 MessageDigest md = MessageDigest.getInstance("SHA");
                 md.update(signature.toByteArray());
                 String hashKey = new String(Base64.encode(md.digest(), 0));
-
             }
         } catch (NoSuchAlgorithmException e) {
             Log.d(TAG, e.getLocalizedMessage());
@@ -442,6 +439,7 @@ public class AcornActivity extends AppCompatActivity
 
     @Override
     protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
         handleIntent(intent);
     }
 
@@ -493,12 +491,10 @@ public class AcornActivity extends AppCompatActivity
 
                 commentNotifValue = mSharedPreferences.getBoolean(getString(R.string.pref_key_notif_comment), false);
                 Log.d(TAG, "commentNotifValue: " + commentNotifValue);
-                mCommentNotifRef = mDatabaseReference.child(PREFERENCES_REF).child(COMMENTS_NOTIFICATION);
-                mDataSource.ToggleCommentsNotifications(commentNotifValue);
+                mDataSource.ToggleNotifications(COMMENTS_NOTIFICATION, commentNotifValue);
 
                 articleNotifValue = mSharedPreferences.getBoolean(getString(R.string.pref_key_notif_article), false);
                 Log.d(TAG, "articleNotifValue: " + articleNotifValue);
-                mRecArticlesNotifRef = mDatabaseReference.child(PREFERENCES_REF).child(REC_ARTICLES_NOTIFICATION);
                 if (articleNotifValue) {
                     if (!mSharedPreferences.getBoolean("isRecArticlesScheduled", false)) {
                         mDataSource.scheduleRecArticlesPush();
@@ -508,11 +504,10 @@ public class AcornActivity extends AppCompatActivity
                     mDataSource.cancelRecArticlesPush();
                     mSharedPreferences.edit().putBoolean("isRecArticlesScheduled", false).apply();
                 }
-                mDataSource.ToggleRecArticlesNotifications(articleNotifValue);
+                mDataSource.ToggleNotifications(REC_ARTICLES_NOTIFICATION, articleNotifValue);
 
                 dealsNotifValue = mSharedPreferences.getBoolean(getString(R.string.pref_key_notif_deals), false);
                 Log.d(TAG, "dealsNotifValue: " + dealsNotifValue);
-                mRecDealsNotifRef = mDatabaseReference.child(PREFERENCES_REF).child(REC_DEALS_NOTIFICATION);
                 if (dealsNotifValue) {
                     if (!mSharedPreferences.getBoolean("isRecDealsScheduled", false)) {
                         mDataSource.scheduleRecDealsPush();
@@ -522,7 +517,12 @@ public class AcornActivity extends AppCompatActivity
                     mDataSource.cancelRecDealsPush();
                     mSharedPreferences.edit().putBoolean("isRecDealsScheduled", false).apply();
                 }
-                mDataSource.ToggleDealsNotifications(dealsNotifValue);
+                mDataSource.ToggleNotifications(REC_DEALS_NOTIFICATION, dealsNotifValue);
+
+                savedArticlesReminderNotifValue = mSharedPreferences.getBoolean(
+                        getString(R.string.pref_key_notif_saved_articles_reminder), false);
+                Log.d(TAG, "savedArticlesReminderNotifValue: " + savedArticlesReminderNotifValue);
+                mDataSource.ToggleNotifications(SAVED_ARTICLES_REMINDER_NOTIFICATION, savedArticlesReminderNotifValue);
             }
         } else if (requestCode == RC_THEME_PREF) {
             if (resultCode == RESULT_OK) {
@@ -753,8 +753,8 @@ public class AcornActivity extends AppCompatActivity
                                     User newUser = new User(uid, displayName, userToken, email, device,
                                             creationTimeStamp, lastSignInTimeStamp);
                                     if (isUserAuthenticated) newUser.isEmailVerified = true;
+                                    newUser.openedSinceLastReport = true;
                                     userRef.setValue(newUser);
-
 
                                     mUid = newUser.getUid();
                                     mUsername = newUser.getDisplayName();
@@ -780,7 +780,6 @@ public class AcornActivity extends AppCompatActivity
                                     startActivityForResult(editThemeIntent, RC_THEME_PREF);
                                     buildThemeKeyAndFilter(mUserThemePrefs);
 
-
                                     if (mSavedInstanceState != null) {
                                         mQuery = mSavedInstanceState.getParcelable("Query");
                                         if (mQuery == null) {
@@ -799,9 +798,6 @@ public class AcornActivity extends AppCompatActivity
                                         mSearchButton.setEnabled(true);
                                     });
 
-                                    // subscribe to app topic for manual articles push
-                                    FirebaseMessaging.getInstance().subscribeToTopic("acorn");
-
                                     // Set up Crashlytics identifier
                                     Crashlytics.setUserIdentifier(mUid);
                                     Crashlytics.setUserName(mUsername);
@@ -809,6 +805,7 @@ public class AcornActivity extends AppCompatActivity
 
                                     // Set up Firebase Analytics identifier
                                     mFirebaseAnalytics.setUserId(mUid);
+
                                 } else {
 
                                     if (!user.isEmailVerified() && !retrievedUser.isEmailVerified) {
@@ -828,11 +825,10 @@ public class AcornActivity extends AppCompatActivity
                                     retrievedUser.setDevice(DeviceName.getDeviceName());
                                     retrievedUser.setLastSignInTimeStamp(user.getMetadata().getLastSignInTimestamp());
                                     retrievedUser.setToken(userToken);
+                                    retrievedUser.openedSinceLastReport = true;
                                     if (isUserAuthenticated) retrievedUser.isEmailVerified = true;
 
                                     userRef.updateChildren(retrievedUser.toMap());
-
-
 
                                     mUid = retrievedUser.getUid();
                                     mUsername = retrievedUser.getDisplayName();
@@ -843,6 +839,7 @@ public class AcornActivity extends AppCompatActivity
                                         String[] themeArray = getResources().getStringArray(R.array.theme_array);
                                         Collections.addAll(mUserThemePrefs, themeArray);
                                     }
+                                    Log.d(TAG, "themesPrefs: " + mUserThemePrefs.toString());
                                     mUserStatus = setUserStatus(retrievedUser.getStatus());
                                     lastRecArticlesPushTime = retrievedUser.getLastRecArticlesPushTime();
                                     lastRecArticlesScheduleTime = retrievedUser.getLastRecArticlesScheduleTime();
@@ -850,7 +847,6 @@ public class AcornActivity extends AppCompatActivity
                                     lastRecDealsScheduleTime = retrievedUser.getLastRecDealsScheduleTime();
 
                                     buildThemeKeyAndFilter(mUserThemePrefs);
-
 
                                     if (mSavedInstanceState != null) {
                                         mQuery = mSavedInstanceState.getParcelable("Query");
@@ -869,9 +865,6 @@ public class AcornActivity extends AppCompatActivity
                                         mSearcher = Searcher.create(ALGOLIA_APP_ID, ALGOLIA_API_KEY, ALGOLIA_INDEX_NAME);
                                         mSearchButton.setEnabled(true);
                                     });
-
-                                    // subscribe to app topic for manual articles push
-                                    FirebaseMessaging.getInstance().subscribeToTopic("acorn");
 
                                     // Set up Crashlytics identifier
                                     Crashlytics.setUserIdentifier(mUid);
@@ -893,6 +886,14 @@ public class AcornActivity extends AppCompatActivity
 
                                 // put uid in sharedPrefs
                                 mSharedPreferences.edit().putString("uid", mUid).apply();
+
+                                // subscribe to app topic for manual articles push
+                                FirebaseMessaging.getInstance().subscribeToTopic("acorn");
+
+                                if (savedArticlesReminderNotifValue) {
+                                    // subscribe to saved articles reminder push
+                                    FirebaseMessaging.getInstance().subscribeToTopic("savedArticlesReminderPush");
+                                }
 
                                 // Schedule recommended articles push service unless explicitly disabled by user
                                 if (articleNotifValue) {
@@ -943,12 +944,15 @@ public class AcornActivity extends AppCompatActivity
                                         mSharedPreferences.edit().putLong("lastDownloadArticlesTime", now).apply();
 
                                         mExecutors.networkIO().execute(
-                                                () -> mDataSource.getTrendingArticles(() -> {
-                                                    Long cutOffDate = (new Date()).getTime() - 2L * 24L * 60L * 60L * 1000L; // more than 2 days ago
-                                                    mExecutors.diskWrite().execute(() -> mRoomDb.articleDAO().deleteOld(cutOffDate));
+                                                () -> mDataSource.getTrendingArticles((articleList) -> {
                                                     mExecutors.mainThread().execute(() -> {
                                                         mRecyclerView.setVisibility(View.VISIBLE);
                                                         mSwipeRefreshLayout.setRefreshing(false);
+                                                    });
+                                                    Long cutOffDate = (new Date()).getTime() - 2L * 24L * 60L * 60L * 1000L; // more than 2 days ago
+                                                    mExecutors.diskWrite().execute(() -> {
+                                                        mRoomDb.articleDAO().deleteOld(cutOffDate);
+                                                        mRoomDb.articleDAO().insert(articleList);
                                                     });
                                                 }, () -> {
                                                     mExecutors.mainThread().execute(() -> {
@@ -1025,14 +1029,14 @@ public class AcornActivity extends AppCompatActivity
                 switch  (screen) {
                     default:
                     case "Subscriptions":
-                        if (mQuery != null && mQuery.state == 3) break;
+                        if (mQuery != null && mQuery.state == 3 && subscriptionsMenuItem.isChecked()) break;
                         getThemeData();
                         subscriptionsMenuItem.setChecked(true);
                         break;
                     case "Trending":
-                        if (mQuery != null && mQuery.state == 1) break;
+                        if (mQuery != null && mQuery.state == 3 && subscriptionsMenuItem.isChecked()) break;
                         getTrendingData();
-                        trendingMenuItem.setChecked(true);
+                        subscriptionsMenuItem.setChecked(true);
                         break;
                     case "Deals":
                         if (mQuery != null && mQuery.state == 4) break;

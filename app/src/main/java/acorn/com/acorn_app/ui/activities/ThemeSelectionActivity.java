@@ -105,7 +105,9 @@ public class ThemeSelectionActivity extends AppCompatActivity {
         // Get user theme data
         mUserThemeList = new ArrayList<>();
         mLastSavedState = new ArrayList<>();
-        mLastSavedState.addAll(intent.getStringArrayListExtra("themePrefs"));
+        if (intent.getStringArrayListExtra("themePrefs") != null) {
+            mLastSavedState.addAll(intent.getStringArrayListExtra("themePrefs"));
+        }
         if (mLastSavedState.size() > 0) {
             mUserThemeList.addAll(mLastSavedState);
         } else {

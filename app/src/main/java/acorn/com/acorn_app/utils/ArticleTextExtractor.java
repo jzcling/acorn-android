@@ -13,6 +13,8 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.regex.Pattern;
 
+import androidx.annotation.Nullable;
+
 /**
  * This class is thread safe.
  *
@@ -52,29 +54,28 @@ public class ArticleTextExtractor {
      *                         with improper HTML, although jSoup should be able to handle minor stuff.
      * @return extracted article, all HTML tags stripped
      */
-    public static String extractContent(String input) {
-        return extractContent(Jsoup.parse(input));
+    public static String extractContent(String input, @Nullable String selector) {
+        return extractContent(Jsoup.parse(input), selector);
     }
 
-    public static String extractContent(Document doc) {
+    public static String extractContent(Document doc, @Nullable String selector) {
         if (doc == null)
             throw new NullPointerException("missing document");
 
         // now remove the clutter
         prepareDocument(doc);
 
-
         // init elements
-        Collection<Element> nodes = getNodes(doc);
+        Collection<Element> nodes = getNodes(doc, selector);
         int maxWeight = 0;
         Element bestMatchElement = null;
 
         for (Element entry : nodes) {
             String htmlText = entry.outerHtml();
-            String startText = htmlText.substring(0,Math.min(htmlText.length(),20));
-            String endText = htmlText.substring(Math.max(0,htmlText.length()-20), htmlText.length());
             int currentWeight = getWeight(entry, false);
-            //Log.d(TAG, String.valueOf(currentWeight) + ": " + startText + "..." + endText);
+//            String startText = htmlText.substring(0,Math.min(htmlText.length(),20));
+//            String endText = htmlText.substring(Math.max(0,htmlText.length()-20), htmlText.length());
+//            Log.d(TAG, String.valueOf(currentWeight) + ": " + startText + "..." + endText);
 
             if (currentWeight > maxWeight) {
                 maxWeight = currentWeight;
@@ -85,7 +86,6 @@ public class ArticleTextExtractor {
                 }
             }
         }
-//
 
         Collection<Element> metas = getMetas(doc);
         String ogImage = null;
@@ -105,6 +105,23 @@ public class ArticleTextExtractor {
         }
 
         return null;
+    }
+
+    /**
+     * @param input            cleans article text from given html string.
+     * @return cleaned article, all unwanted HTML tags stripped
+     */
+    public static String cleanContent(String input) {
+        return cleanContent(Jsoup.parse(input));
+    }
+
+    public static String cleanContent(Document doc) {
+        if (doc == null) {
+            throw new NullPointerException("missing document");
+        }
+
+        prepareDocument(doc);
+        return doc.toString();
     }
 
     /**
@@ -450,10 +467,12 @@ public class ArticleTextExtractor {
     /**
      * @return a set of all important nodes
      */
-    private static Collection<Element> getNodes(Document doc) {
+    private static Collection<Element> getNodes(Document doc, @Nullable String selector) {
+        if (selector == null) { selector = "body"; }
         Collection<Element> nodes = new HashSet<>(64);
-        for (Element el : doc.select("body").select("*")) {
-            if (NODES.matcher(el.tagName()).matches()) {
+        for (Element el : doc.select(selector).select("*")) {
+//        for (Element el : doc.children()) {
+                if (NODES.matcher(el.tagName()).matches()) {
                 nodes.add(el);
             }
         }

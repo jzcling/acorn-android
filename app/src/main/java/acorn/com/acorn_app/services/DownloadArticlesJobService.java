@@ -26,9 +26,12 @@ public class DownloadArticlesJobService extends JobService {
         mRoomDb = ArticleRoomDatabase.getInstance(this);
 
         mExecutors.networkIO().execute(
-                () -> mDataSource.getTrendingArticles(() -> {
+                () -> mDataSource.getTrendingArticles((articleList) -> {
                     Long cutOffDate = (new Date()).getTime() - 2L * 24L* 60L * 60L * 1000L; // more than 2 days ago
-                    mExecutors.diskWrite().execute(() -> mRoomDb.articleDAO().deleteOld(cutOffDate));
+                    mExecutors.diskWrite().execute(() -> {
+                        mRoomDb.articleDAO().deleteOld(cutOffDate);
+                        mRoomDb.articleDAO().insert(articleList);
+                    });
                     jobFinished(params, true);
                 }, () -> {}));
         return false;

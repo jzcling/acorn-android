@@ -49,6 +49,7 @@ import com.bumptech.glide.Glide;
 import com.firebase.ui.database.FirebaseRecyclerAdapter;
 import com.firebase.ui.database.FirebaseRecyclerOptions;
 import com.firebase.ui.database.SnapshotParser;
+import com.google.firebase.analytics.FirebaseAnalytics;
 import com.google.firebase.database.ChildEventListener;
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
@@ -89,6 +90,7 @@ import static acorn.com.acorn_app.data.NetworkDataSource.ARTICLE_REF;
 import static acorn.com.acorn_app.data.NetworkDataSource.COMMENT_REF;
 import static acorn.com.acorn_app.data.NetworkDataSource.NOTIFICATION_TOKENS;
 import static acorn.com.acorn_app.data.NetworkDataSource.USER_REF;
+import static acorn.com.acorn_app.ui.AcornApplication.mFirebaseAnalytics;
 import static acorn.com.acorn_app.ui.activities.AcornActivity.LEVEL_0;
 import static acorn.com.acorn_app.ui.activities.AcornActivity.LEVEL_1;
 import static acorn.com.acorn_app.ui.activities.AcornActivity.LEVEL_2;
@@ -934,7 +936,11 @@ public class CommentActivity extends AppCompatActivity implements View.OnTouchLi
         mCommentEditText.setText("");
         mCommentRecyclerView.scrollToPosition(mAdapter.getItemCount()-1);
         mPreviewCardView.setVisibility(View.GONE);
-//                mFirebaseAnalytics.logEvent(COMMENT_SENT_EVENT, null);
+
+        Bundle bundle = new Bundle();
+        bundle.putString("commenter", mUid);
+        bundle.putString("article", mArticle.getObjectID());
+        mFirebaseAnalytics.logEvent("send_comment", bundle);
     }
 
     @Override

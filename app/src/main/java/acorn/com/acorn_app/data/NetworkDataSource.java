@@ -18,6 +18,9 @@ package acorn.com.acorn_app.data;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.preference.PreferenceManager;
+
+import acorn.com.acorn_app.models.Video;
+import acorn.com.acorn_app.utils.DateUtils;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import android.util.Log;
@@ -80,9 +83,6 @@ public class NetworkDataSource {
     public static final String SEARCH_REF = "search";
     public static final String PREFERENCES_REF = "preference";
     public static final String NOTIFICATION_TOKENS = "notificationTokens";
-    public static final String COMMENTS_NOTIFICATION = "commentsNotificationValue";
-    public static final String REC_ARTICLES_NOTIFICATION = "recArticlesNotificationValue";
-    public static final String REC_DEALS_NOTIFICATION = "recDealsNotificationValue";
     public static final String ALGOLIA_API_KEY_REF = "algoliaApiKey";
     public static final String YOUTUBE_API_KEY_REF = "youtubeApiKey";
     public static final String REPORT_REF = "reported";
@@ -314,37 +314,89 @@ public class NetworkDataSource {
         });
     }
 
-    // Trending Articles
-    public void getTrendingArticles(Runnable onComplete, Runnable onError) {
-        int limit = 50;
-        ArticleRoomDatabase roomDb = ArticleRoomDatabase.getInstance(mContext);
+    // get saved articles reminders
+    public void getSavedArticlesReminderData(Consumer<List<Article>> bindToUi) {
         mExecutors.networkIO().execute(() -> {
-            Query query = mDatabaseReference.child(ARTICLE_REF).orderByKey()
-                    .limitToFirst(limit);
-            query.keepSynced(true);
-            ValueEventListener listener = new ValueEventListener() {
+            Log.d(TAG, "getSavedArticlesReminderData");
+            List<Article> reminderList = new ArrayList<>();
+            DatabaseReference userRef = mDatabaseReference.child(USER_REF).child(mUid).child("savedItems");
+            userRef.addListenerForSingleValueEvent(new ValueEventListener() {
                 @Override
                 public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
-                    for (DataSnapshot snap : dataSnapshot.getChildren()) {
-                        Article article = snap.getValue(Article.class);
-                        if (article == null) return;
+                    Map<String, Long> savedItems = (Map<String, Long>) dataSnapshot.getValue();
+                    if (savedItems == null || savedItems.size() == 0) {
+                        return;
+                    }
 
-                        mExecutors.diskWrite().execute(() -> {
-                            Log.d(TAG, "article: " + article.getTitle());
-                            article.htmlContent = HtmlUtils.getCleanedHtml(mContext, article.getLink());
-                            dbArticle localArticle = new dbArticle(mContext, article);
-                            roomDb.articleDAO().insert(localArticle);
+                    List<String> savedIdList = new ArrayList<>(savedItems.keySet());
+                    List<String> doneList = new ArrayList<>();
+                    for (String id : savedIdList) {
+                        DatabaseReference articleRef = mDatabaseReference.child(ARTICLE_REF).child(id);
+                        articleRef.addListenerForSingleValueEvent(new ValueEventListener() {
+                            @Override
+                            public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+                                doneList.add(id);
+                                Article article = dataSnapshot.getValue(Article.class);
+                                if (article != null && article.reminderDate != null) {
+                                    Log.d(TAG, "reminderDate: " + article.reminderDate);
+                                    if (DateUtils.getThisMidnight() != null) {
+                                        if (article.reminderDate > DateUtils.getThisMidnight() &&
+                                                article.reminderDate < DateUtils.getNextMidnight()) {
+                                            reminderList.add(article);
+                                        }
+                                    }
+                                }
+
+                                if (doneList.size() >= savedIdList.size()) {
+                                    bindToUi.accept(reminderList);
+                                }
+                            }
+
+                            @Override
+                            public void onCancelled(@NonNull DatabaseError databaseError) { }
                         });
                     }
-                    onComplete.run();
+                }
+
+                @Override
+                public void onCancelled(@NonNull DatabaseError databaseError) {
+                }
+            });
+        });
+    }
+
+    // Trending Articles
+    public void getTrendingArticles(Consumer<List<dbArticle>> onComplete, Runnable onError) {
+        Log.d(TAG, "getTrendingArticles started");
+        int limit = 50;
+        List<dbArticle> articleList = new ArrayList<>();
+        mExecutors.networkIO().execute(() -> {
+            Query query = mDatabaseReference.child(ARTICLE_REF).orderByChild("trendingIndex")
+                    .limitToFirst(limit);
+//            query.keepSynced(true);
+            query.addListenerForSingleValueEvent(new ValueEventListener() {
+                @Override
+                public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+                    Log.d(TAG, "articles fetched");
+                    for (DataSnapshot snap : dataSnapshot.getChildren()) {
+                        Article article = snap.getValue(Article.class);
+                        if (article == null) continue;
+
+                        if (article.htmlContent != null && !article.htmlContent.equals("")) {
+                            article.htmlContent = HtmlUtils.cleanHtmlContent(article.htmlContent, article.getLink(), article.selector);
+                            dbArticle localArticle = new dbArticle(mContext, article);
+                            articleList.add(localArticle);
+                            Log.d(TAG, "article: " + article.getTitle() + ", html: " + article.htmlContent.substring(0, 20));
+                        }
+                    }
+                    onComplete.accept(articleList);
                 }
 
                 @Override
                 public void onCancelled(@NonNull DatabaseError databaseError) {
                     onError.run();
                 }
-            };
-            query.addValueEventListener(listener);
+            });
         });
     }
 
@@ -828,6 +880,61 @@ public class NetworkDataSource {
     }
 
 
+    // Record open video
+    public void recordVideoOpenDetails(Video video) {
+        Long timeNow = new Date().getTime();
+        DatabaseReference videoRef = FirebaseDatabase.getInstance()
+                .getReference("video/"+video.getObjectID());
+
+        videoRef.runTransaction(new Transaction.Handler() {
+            @NonNull
+            @Override
+            public Transaction.Result doTransaction(@NonNull MutableData mutableData) {
+                Video video = mutableData.getValue(Video.class);
+                if (video == null) {
+                    return Transaction.success(mutableData);
+                }
+
+                int currentViewCount = video.getViewCount() == null ? 0 : video.getViewCount();
+
+                video.viewedBy.put(mUid, timeNow);
+                video.setViewCount(currentViewCount + 1);
+
+                video.changedSinceLastJob = true;
+                mutableData.setValue(video);
+                return Transaction.success(mutableData);
+            }
+
+            @Override
+            public void onComplete(@Nullable DatabaseError databaseError, boolean b, @Nullable DataSnapshot dataSnapshot) {
+            }
+        });
+
+        // Update user with open video data
+        DatabaseReference userRef = FirebaseDatabase.getInstance()
+                .getReference("user/"+mUid);
+
+        userRef.runTransaction(new Transaction.Handler() {
+            @NonNull
+            @Override
+            public Transaction.Result doTransaction(@NonNull MutableData mutableData) {
+                User user = mutableData.getValue(User.class);
+                if (user == null) {
+                    return Transaction.success(mutableData);
+                }
+                user.viewedVideos.put(video.getObjectID(), timeNow);
+
+                mutableData.setValue(user);
+                return Transaction.success(mutableData);
+            }
+
+            @Override
+            public void onComplete(@Nullable DatabaseError databaseError, boolean b, @Nullable DataSnapshot dataSnapshot) {
+            }
+        });
+    }
+
+
     // Set user email verified
     public void setUserEmailVerified() {
         DatabaseReference userRef = FirebaseDatabase.getInstance()
@@ -856,27 +963,11 @@ public class NetworkDataSource {
 
 
     // Update notifications preference values
-    public void ToggleCommentsNotifications(boolean toReceive) {
+    public void ToggleNotifications(String type, boolean toReceive) {
         if (!toReceive) {
-            mDatabaseReference.child(PREFERENCES_REF).child(COMMENTS_NOTIFICATION).child(mUid).setValue(toReceive);
+            mDatabaseReference.child(PREFERENCES_REF).child(type).child(mUid).setValue(toReceive);
         } else {
-            mDatabaseReference.child(PREFERENCES_REF).child(COMMENTS_NOTIFICATION).child(mUid).removeValue();
-        }
-    }
-
-    public void ToggleRecArticlesNotifications(boolean toReceive) {
-        if (!toReceive) {
-            mDatabaseReference.child(PREFERENCES_REF).child(REC_ARTICLES_NOTIFICATION).child(mUid).setValue(toReceive);
-        } else {
-            mDatabaseReference.child(PREFERENCES_REF).child(REC_ARTICLES_NOTIFICATION).child(mUid).removeValue();
-        }
-    }
-
-    public void ToggleDealsNotifications(boolean toReceive) {
-        if (!toReceive) {
-            mDatabaseReference.child(PREFERENCES_REF).child(REC_DEALS_NOTIFICATION).child(mUid).setValue(toReceive);
-        } else {
-            mDatabaseReference.child(PREFERENCES_REF).child(REC_DEALS_NOTIFICATION).child(mUid).removeValue();
+            mDatabaseReference.child(PREFERENCES_REF).child(type).child(mUid).removeValue();
         }
     }
 }

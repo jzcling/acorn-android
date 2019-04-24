@@ -1,12 +1,14 @@
 package acorn.com.acorn_app.ui.fragments;
 
+
 import android.content.Intent;
 import android.os.Bundle;
-import android.preference.ListPreference;
-import android.preference.Preference;
-import android.preference.PreferenceFragment;
-import android.preference.PreferenceManager;
 import android.view.MenuItem;
+
+import androidx.preference.ListPreference;
+import androidx.preference.Preference;
+import androidx.preference.PreferenceFragmentCompat;
+import androidx.preference.PreferenceManager;
 
 import java.util.ArrayList;
 
@@ -18,19 +20,19 @@ import static acorn.com.acorn_app.ui.activities.AcornActivity.RC_THEME_PREF;
 import static acorn.com.acorn_app.ui.activities.AcornActivity.mUserThemePrefs;
 import static android.app.Activity.RESULT_OK;
 
-public class SettingsFragment extends PreferenceFragment {
+public class SettingsFragment extends PreferenceFragmentCompat {
     private static final String TAG = "SettingsFragment";
 
     @Override
-    public void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-        addPreferencesFromResource(R.xml.preferences);
+    public void onCreatePreferences(Bundle savedInstanceState, String rootKey) {
+        setPreferencesFromResource(R.xml.preferences, rootKey);
         setHasOptionsMenu(true);
 
         bindPreferenceSummaryToValue(findPreference(getString(R.string.pref_key_night_mode)));
         bindSwitchPreferenceSummaryToValue(findPreference(getString(R.string.pref_key_notif_comment)));
         bindSwitchPreferenceSummaryToValue(findPreference(getString(R.string.pref_key_notif_article)));
         bindSwitchPreferenceSummaryToValue(findPreference(getString(R.string.pref_key_notif_deals)));
+        bindSwitchPreferenceSummaryToValue(findPreference(getString(R.string.pref_key_notif_saved_articles_reminder)));
 
         // Set up night mode
         ListPreference dayNightPref = (ListPreference) findPreference(getString(R.string.pref_key_night_mode));
@@ -59,6 +61,10 @@ public class SettingsFragment extends PreferenceFragment {
         // Set up deals notification pref
         Preference dealsNotif = (Preference) findPreference(getString(R.string.pref_key_notif_deals));
         dealsNotif.setOnPreferenceChangeListener(((preference, newValue) -> true));
+
+        // Set up saved articles reminder notification pref
+        Preference savedArticlesReminderNotif = (Preference) findPreference(getString(R.string.pref_key_notif_saved_articles_reminder));
+        savedArticlesReminderNotif.setOnPreferenceChangeListener(((preference, newValue) -> true));
     }
 
     @Override
@@ -85,18 +91,7 @@ public class SettingsFragment extends PreferenceFragment {
     private final Preference.OnPreferenceChangeListener sBindPreferenceSummaryToValueListener = (preference, value) -> {
         String stringValue = value.toString();
 
-        if (preference instanceof ListPreference) {
-            // For list preferences, look up the correct display value in
-            // the preference's 'entries' list.
-            ListPreference listPreference = (ListPreference) preference;
-            int index = listPreference.findIndexOfValue(stringValue);
-
-            // Set the summary to reflect the new value.
-            preference.setSummary(
-                    index >= 0
-                            ? listPreference.getEntries()[index]
-                            : null);
-        } else {
+        if (!(preference instanceof ListPreference)) {
             // For all other preferences, set the summary to the value's
             // simple string representation.
             preference.setSummary(stringValue);
@@ -131,7 +126,7 @@ public class SettingsFragment extends PreferenceFragment {
 
         // Trigger the listener immediately with the preference's
         // current value.
-        Boolean value = PreferenceManager
+        boolean value = PreferenceManager
                 .getDefaultSharedPreferences(preference.getContext())
                 .getBoolean(preference.getKey(), true);
         String stringValue;

@@ -16,12 +16,15 @@ import com.algolia.instantsearch.core.helpers.Searcher;
 import com.algolia.instantsearch.ui.helpers.InstantSearch;
 import com.algolia.instantsearch.ui.views.Hits;
 import com.algolia.instantsearch.ui.views.SearchBox;
+import com.google.firebase.analytics.FirebaseAnalytics;
 
 import org.greenrobot.eventbus.EventBus;
 import org.greenrobot.eventbus.Subscribe;
 import org.json.JSONObject;
 
 import acorn.com.acorn_app.R;
+
+import static acorn.com.acorn_app.ui.AcornApplication.mFirebaseAnalytics;
 
 
 public class SearchActivity extends AppCompatActivity {

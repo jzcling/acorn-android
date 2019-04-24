@@ -71,7 +71,7 @@ public class Video {
 
     public Integer getShareCount() { return shareCount; }
 
-    public Integer getOpenCount() { return viewCount; }
+    public Integer getViewCount() { return viewCount; }
 
     public String getTrendingIndex() { return trendingIndex; }
 
@@ -111,7 +111,7 @@ public class Video {
 
     public void setShareCount(Integer shareCount) { this.shareCount = shareCount; }
 
-    public void setOpenCount(Integer viewCount) { this.viewCount = viewCount; }
+    public void setViewCount(Integer viewCount) { this.viewCount = viewCount; }
 
     public void setTrendingIndex(String trendingIndex) { this.trendingIndex = trendingIndex; }
 

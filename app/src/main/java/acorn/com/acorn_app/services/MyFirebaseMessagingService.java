@@ -6,8 +6,15 @@ import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.graphics.Bitmap;
 import android.graphics.Color;
 import android.os.Build;
+
+import acorn.com.acorn_app.data.NetworkDataSource;
+import acorn.com.acorn_app.models.Article;
+import acorn.com.acorn_app.utils.AppExecutors;
+import acorn.com.acorn_app.utils.DateUtils;
+import acorn.com.acorn_app.utils.IOUtils;
 import androidx.core.app.NotificationCompat;
 import androidx.core.app.TaskStackBuilder;
 import android.util.Log;
@@ -18,6 +25,7 @@ import com.google.firebase.messaging.FirebaseMessagingService;
 import com.google.firebase.messaging.RemoteMessage;
 
 import java.util.Arrays;
+import java.util.Date;
 import java.util.List;
 import java.util.Map;
 
@@ -29,6 +37,7 @@ import acorn.com.acorn_app.ui.viewModels.NotificationViewModel;
 
 import static acorn.com.acorn_app.ui.activities.AcornActivity.mUid;
 import static acorn.com.acorn_app.ui.activities.CommentActivity.mCommentOpenObjectID;
+import static androidx.core.app.NotificationCompat.CATEGORY_RECOMMENDATION;
 import static androidx.core.app.NotificationCompat.CATEGORY_SOCIAL;
 import static androidx.core.app.NotificationCompat.DEFAULT_SOUND;
 import static androidx.core.app.NotificationCompat.DEFAULT_VIBRATE;
@@ -39,19 +48,28 @@ import static androidx.core.app.NotificationCompat.VISIBILITY_PUBLIC;
 public class MyFirebaseMessagingService extends FirebaseMessagingService {
     private static final String TAG = "FirebaseMsgService";
 
+    private final AppExecutors mExecutors = AppExecutors.getInstance();
+    private NetworkDataSource mDataSource;
+    private SharedPreferences sharedPrefs;
+
     private static NotificationManager mNotificationManager;
     
     private final int COMMENT_NOTIFICATION_ID = 9001;
     private final String COMMENT_GROUP_NAME = "comments";
     private final int COMMENT_SUMMARY_PENDINGINTENT_RC = 501;
-    private static NotificationCompat.Builder commentNotificationBuilder;
-    private static NotificationCompat.Builder commentSummaryNotificationBuilder;
+    private NotificationCompat.Builder commentNotificationBuilder;
+    private NotificationCompat.Builder commentSummaryNotificationBuilder;
     
     private final int MANUAL_ARTICLE_NOTIFICATION_ID = 9003;
     private final String MANUAL_ARTICLE_GROUP_NAME = "manualArticle";
     private final int MANUAL_ARTICLE_PENDINGINTENT_RC = 503;
-    private static NotificationCompat.Builder manualArticleNotificationBuilder;
-    
+    private NotificationCompat.Builder manualArticleNotificationBuilder;
+
+    private final int SAVED_REMINDER_NOTIFICATION_ID = 9004;
+    private final String SAVED_REMINDER_GROUP_NAME = "savedArticlesReminder";
+    private final int SAVED_REMINDER_PENDINGINTENT_RC = 504;
+    private NotificationCompat.Builder savedReminderSummaryNotificationBuilder;
+    private NotificationCompat.Builder savedReminderNotificationBuilder;
 
     private void sendRegistrationToServer(String token) {
         DatabaseReference user = FirebaseDatabase.getInstance()
@@ -68,6 +86,9 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
     @Override
     public void onCreate() {
         super.onCreate();
+
+        mDataSource = NetworkDataSource.getInstance(this, mExecutors);
+        sharedPrefs = getSharedPreferences(getString(R.string.notif_pref_id), MODE_PRIVATE);
 
         mNotificationManager =
                 (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
@@ -131,6 +152,45 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
             channel.enableVibration(true);
             mNotificationManager.createNotificationChannel(channel);
         }
+
+        String SAVED_REMINDER_CHANNEL_ID = getString(R.string.saved_reminder_notification_channel_id);
+        String SAVED_REMINDER_CHANNEL_NAME = getString(R.string.saved_reminder_notification_channel_name);
+
+        savedReminderSummaryNotificationBuilder =
+                new NotificationCompat.Builder(this, SAVED_REMINDER_CHANNEL_ID)
+                        .setOnlyAlertOnce(true)
+                        .setGroup(SAVED_REMINDER_GROUP_NAME)
+                        .setGroupSummary(true)
+                        .setDefaults(DEFAULT_SOUND|DEFAULT_VIBRATE)
+                        .setLights(Color.YELLOW, 700, 300)
+                        .setPriority(PRIORITY_HIGH)
+                        .setCategory(CATEGORY_RECOMMENDATION)
+                        .setVisibility(VISIBILITY_PUBLIC)
+                        .setSmallIcon(R.drawable.ic_launcher)
+                        .setAutoCancel(true);
+
+        savedReminderNotificationBuilder =
+                new NotificationCompat.Builder(this, SAVED_REMINDER_CHANNEL_ID)
+                        .setSmallIcon(R.drawable.ic_launcher)
+                        .setAutoCancel(true)
+                        .setGroup(SAVED_REMINDER_GROUP_NAME)
+                        .setGroupAlertBehavior(GROUP_ALERT_SUMMARY)
+                        .setDefaults(DEFAULT_SOUND|DEFAULT_VIBRATE)
+                        .setLights(Color.YELLOW, 700, 300)
+                        .setPriority(PRIORITY_HIGH)
+                        .setVisibility(VISIBILITY_PUBLIC);
+
+        // Since android Oreo notification channel is needed.
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            NotificationChannel channel = new NotificationChannel(SAVED_REMINDER_CHANNEL_ID,
+                    SAVED_REMINDER_CHANNEL_NAME,
+                    NotificationManager.IMPORTANCE_HIGH);
+            channel.setShowBadge(true);
+            channel.enableLights(true);
+            channel.setLightColor(Color.YELLOW);
+            channel.enableVibration(true);
+            mNotificationManager.createNotificationChannel(channel);
+        }
     }
 
     /**
@@ -142,10 +202,16 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
     public void onMessageReceived(RemoteMessage remoteMessage) {
         Log.d(TAG, "onMessageReceived");
         Map<String, String> data = remoteMessage.getData();
-        if (data.get("type").equals("comment")) {
-            sendCommentNotification(data);
-        } else if (data.get("type").equals("manualArticle")) {
-            pushManualArticleNotification(data);
+        switch (data.get("type")) {
+            case "comment":
+                sendCommentNotification(data);
+                break;
+            case "manualArticle":
+                pushManualArticleNotification(data);
+                break;
+            case "savedArticlesReminder":
+                pushSavedReminderNotification();
+                break;
         }
     }
 
@@ -158,8 +224,7 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
         PendingIntent pendingIntent = PendingIntent.getActivity(this, COMMENT_SUMMARY_PENDINGINTENT_RC, intent,
                 PendingIntent.FLAG_ONE_SHOT);
 
-        SharedPreferences sharedPrefs = getSharedPreferences(getString(R.string.notif_pref_id), MODE_PRIVATE);
-        updateSharedPrefs(sharedPrefs, data);
+        updateSharedPrefsForComments(sharedPrefs, data);
 
         String commentsText = sharedPrefs.getString(getString(R.string.notif_pref_c_text), "");
         if (commentsText.equals("")) {
@@ -186,7 +251,7 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
         }
 
         NotificationCompat.InboxStyle inboxStyle = new NotificationCompat.InboxStyle();
-        int pendingIntentRC = 0;
+        int pendingIntentRC = 20;
         for (int i = 0; i < comments.size(); i++) {
             inboxStyle.addLine(comments.get(i));
             pendingIntentRC++;
@@ -216,7 +281,7 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
         mNotificationManager.notify(COMMENT_NOTIFICATION_ID, commentSummaryNotificationBuilder.build());
     }
 
-    private void updateSharedPrefs(SharedPreferences sharedPrefs, Map<String, String> data) {
+    private void updateSharedPrefsForComments(SharedPreferences sharedPrefs, Map<String, String> data) {
         String keys = sharedPrefs.getString(getString(R.string.notif_pref_key), "");
 
         List<String> keyList = Arrays.asList(keys.split("·"));
@@ -289,5 +354,95 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
                 .setContentIntent(individualPendingIntent);
 
         mNotificationManager.notify(MANUAL_ARTICLE_NOTIFICATION_ID, manualArticleNotificationBuilder.build());
+    }
+
+    private void pushSavedReminderNotification() {
+        Log.d(TAG, "pushSavedReminderNotification started");
+        mDataSource.getSavedArticlesReminderData((reminderList) -> {
+            mExecutors.networkIO().execute(() -> {
+                if (reminderList.size() == 0) {
+                    Log.d(TAG, "no reminder for today");
+                    return;
+                }
+                NotificationCompat.InboxStyle inboxStyle = new NotificationCompat.InboxStyle();
+                inboxStyle.setSummaryText("Your saved articles have events tomorrow!");
+
+                Intent intent = new Intent(this, AcornActivity.class);
+                intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
+                PendingIntent summaryPendingIntent = PendingIntent.getActivity(this, SAVED_REMINDER_PENDINGINTENT_RC, intent,
+                        PendingIntent.FLAG_ONE_SHOT);
+
+                String keys = sharedPrefs.getString(getString(R.string.notif_pref_key), "");
+                String value;
+                for (int i = 0; i < reminderList.size(); i++) {
+                    Article article = reminderList.get(i);
+                    String contentTitle = article.getTitle();
+                    String source = null;
+                    if (article.getSource() != null && !article.getSource().equals("")) {
+                        source = article.getSource();
+                    }
+
+                    String imageUrl = null;
+                    if (article.getImageUrl() != null && !article.getImageUrl().equals("")) {
+                        imageUrl = article.getImageUrl();
+                    } else if (article.getPostImageUrl() != null && !article.getPostImageUrl().equals("")) {
+                        imageUrl = article.getPostImageUrl();
+                    }
+
+                    Bitmap bitmap = IOUtils.getBitmapFromUrl(imageUrl);
+                    String contentText = (source != null && !source.equals("")) ?
+                            source + " · " + article.getMainTheme() : article.getMainTheme();
+                    Log.d(TAG, contentTitle + ", " + contentText);
+                    String key = "s_" + article.getObjectID();
+
+                    //Save in shared prefs
+                    if (keys.equals("")) {
+                        keys = key;
+                    } else {
+                        if (!keys.contains(key)) keys += "·" + key;
+                    }
+
+                    // type, articleId, text, title, source, imageUrl, theme, extra, timestamp
+                    value = "savedArticleReminder" + "·" + // type
+                            article.getObjectID() + "·" + // articleId
+                            "Don't forget this saved article!·" + // text
+                            contentTitle + "·" + // title
+                            source + "·" + // source
+                            imageUrl + "·" + // imageUrl
+                            article.getMainTheme() + "·" + // theme
+                            String.valueOf(article.getPubDate()) + "·" + // extra
+                            String.valueOf((new Date()).getTime()) + "·" + // timestamp
+                            article.getLink(); // link
+                    sharedPrefs.edit().putString(key, value).apply();
+
+                    inboxStyle.addLine(contentTitle);
+                    Intent individualIntent = new Intent(this, WebViewActivity.class);
+                    individualIntent.putExtra("id", article.getObjectID());
+                    individualIntent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
+                    PendingIntent individualPendingIntent = TaskStackBuilder.create(this)
+                            .addNextIntentWithParentStack(individualIntent)
+                            .getPendingIntent(30+i, PendingIntent.FLAG_UPDATE_CURRENT);
+
+                    savedReminderNotificationBuilder
+                            .setLargeIcon(bitmap)
+                            .setContentTitle(contentTitle)
+                            .setContentText(contentText)
+                            .setContentIntent(individualPendingIntent);
+                    mNotificationManager.notify(30+i, savedReminderNotificationBuilder.build());
+                }
+
+                savedReminderSummaryNotificationBuilder
+                        .setStyle(inboxStyle)
+                        .setContentIntent(summaryPendingIntent)
+                        .setNumber(reminderList.size());
+
+                sharedPrefs.edit().putString(getString(R.string.notif_pref_key), keys).apply();
+
+                NotificationViewModel.sharedPrefs.postValue(sharedPrefs);
+
+                mNotificationManager.notify(SAVED_REMINDER_NOTIFICATION_ID, savedReminderSummaryNotificationBuilder.build());
+            });
+
+        });
     }
 }

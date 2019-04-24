@@ -3,6 +3,8 @@ package acorn.com.acorn_app.ui.adapters;
 import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.Context;
+
+import acorn.com.acorn_app.utils.ShareUtils;
 import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.cardview.widget.CardView;
 import androidx.recyclerview.widget.RecyclerView;
@@ -209,10 +211,13 @@ public class ArticleViewHolder extends RecyclerView.ViewHolder {
             if (mArticleType.equals("article")) {
                 title.setOnClickListener(onClickListener(article, "title"));
                 title.setOnLongClickListener(v -> {
-                    ClipboardManager clipboard = (ClipboardManager) mContext.getSystemService(CLIPBOARD_SERVICE);
-                    ClipData clip = ClipData.newPlainText("simple text", article.getLink());
-                    clipboard.setPrimaryClip(clip);
-                    createToast(mContext, "Link copied", 1000);
+                    String shareUri = ShareUtils.createShareUri(article.getObjectID(), article.getLink(), mUid);
+                    ShareUtils.createShortDynamicLink(shareUri, (dynamicLink) -> {
+                        ClipboardManager clipboard = (ClipboardManager) mContext.getSystemService(CLIPBOARD_SERVICE);
+                        ClipData clip = ClipData.newPlainText("simple text", dynamicLink);
+                        clipboard.setPrimaryClip(clip);
+                        createToast(mContext, "Link copied", 1000);
+                    });
                     return true;
                 });
                 contributor.setOnClickListener(v -> {
@@ -225,10 +230,13 @@ public class ArticleViewHolder extends RecyclerView.ViewHolder {
                 if (article.getLink() != null) {
                     cardArticle.setOnClickListener(onClickListener(article, "title"));
                     cardArticle.setOnLongClickListener(v -> {
-                        ClipboardManager clipboard = (ClipboardManager) mContext.getSystemService(CLIPBOARD_SERVICE);
-                        ClipData clip = ClipData.newPlainText("simple text", article.getLink());
-                        clipboard.setPrimaryClip(clip);
-                        createToast(mContext, "Link copied", 1000);
+                        String shareUri = ShareUtils.createShareUri(article.getObjectID(), article.getLink(), mUid);
+                        ShareUtils.createShortDynamicLink(shareUri, (dynamicLink) -> {
+                            ClipboardManager clipboard = (ClipboardManager) mContext.getSystemService(CLIPBOARD_SERVICE);
+                            ClipData clip = ClipData.newPlainText("simple text", dynamicLink);
+                            clipboard.setPrimaryClip(clip);
+                            createToast(mContext, "Link copied", 1000);
+                        });
                         return true;
                     });
                 } else {

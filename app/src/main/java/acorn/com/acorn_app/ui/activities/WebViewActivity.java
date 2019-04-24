@@ -3,8 +3,9 @@ package acorn.com.acorn_app.ui.activities;
 import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.Intent;
+import android.net.ConnectivityManager;
+import android.net.NetworkInfo;
 import android.net.Uri;
-import android.net.http.SslError;
 import android.os.Bundle;
 import android.os.Handler;
 import androidx.annotation.NonNull;
@@ -30,6 +31,7 @@ import android.widget.EditText;
 import android.widget.ProgressBar;
 import android.widget.Toast;
 
+import com.google.firebase.analytics.FirebaseAnalytics;
 import com.google.firebase.database.ChildEventListener;
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
@@ -54,6 +56,7 @@ import androidx.cardview.widget.CardView;
 
 import static acorn.com.acorn_app.data.NetworkDataSource.ARTICLE_REF;
 import static acorn.com.acorn_app.data.NetworkDataSource.NOTIFICATION_TOKENS;
+import static acorn.com.acorn_app.ui.AcornApplication.mFirebaseAnalytics;
 import static acorn.com.acorn_app.ui.activities.AcornActivity.mUid;
 import static acorn.com.acorn_app.ui.activities.AcornActivity.mUserToken;
 import static acorn.com.acorn_app.utils.UiUtils.createToast;
@@ -65,7 +68,6 @@ public class WebViewActivity extends AppCompatActivity {
     private ObservableWebView webView;
     private ProgressBar progressBar;
     private CardView messageOverlayCard;
-    private Intent intent;
     private boolean isNewIntent = false;
 
     private String articleId;
@@ -77,6 +79,8 @@ public class WebViewActivity extends AppCompatActivity {
     private String author;
     private String source;
     private String date;
+    private String htmlContent;
+    private String selector;
     private boolean isArticleLoaded = false;
 
     // Room Database;
@@ -97,11 +101,11 @@ public class WebViewActivity extends AppCompatActivity {
 
     // Data Source
     private NetworkDataSource mDataSource;
-
     private final AppExecutors mExecutors = AppExecutors.getInstance();
 
     private static float lastScrollPercent = 0f;
     private static boolean hasDisplayedMessageOverlay = false;
+    private boolean hasLoggedSelectContent = false;
 
     @SuppressLint("SetJavaScriptEnabled")
     @Override
@@ -130,14 +134,6 @@ public class WebViewActivity extends AppCompatActivity {
             messageOverlayCard.setVisibility(View.INVISIBLE);
         } else {
             messageOverlayCard.setVisibility(View.VISIBLE);
-            Animation fadeOut = new AlphaAnimation(1, 0);
-            fadeOut.setInterpolator(new AccelerateInterpolator());
-            fadeOut.setStartOffset(2000);
-            fadeOut.setDuration(500);
-
-            messageOverlayCard.setAnimation(fadeOut);
-            messageOverlayCard.setVisibility(View.INVISIBLE);
-            hasDisplayedMessageOverlay = true;
         }
 
         // Set up web view
@@ -152,6 +148,17 @@ public class WebViewActivity extends AppCompatActivity {
                 progressBar.setProgress(newProgress);
                 if (newProgress == 100) {
                     progressBar.setVisibility(View.INVISIBLE);
+
+                    if (!hasDisplayedMessageOverlay) {
+                        Animation fadeOut = new AlphaAnimation(1, 0);
+                        fadeOut.setInterpolator(new AccelerateInterpolator());
+                        fadeOut.setStartOffset(0);
+                        fadeOut.setDuration(500);
+
+                        messageOverlayCard.setAnimation(fadeOut);
+                        messageOverlayCard.setVisibility(View.INVISIBLE);
+                        hasDisplayedMessageOverlay = true;
+                    }
                 } else {
                     progressBar.setVisibility(View.VISIBLE);
                 }
@@ -175,12 +182,13 @@ public class WebViewActivity extends AppCompatActivity {
         increaseTouchArea(favView);
         increaseTouchArea(shareView);
 
-        intent = getIntent();
+        Intent intent = getIntent();
         handleIntent(intent);
     }
 
     @Override
     protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
         Log.d(TAG, "onNewIntent");
         isNewIntent = true;
         isArticleLoaded = false;
@@ -234,8 +242,9 @@ public class WebViewActivity extends AppCompatActivity {
                     author = mDbArticle.author;
                     source = mDbArticle.source;
                     date = DateUtils.parseDate(mDbArticle.pubDate);
+                    htmlContent = mDbArticle.htmlContent;
                     String generatedHtml = HtmlUtils.generateHtmlContent(this, title, link,
-                            mDbArticle.htmlContent, author, source, date);
+                            htmlContent, author, source, date);
 
                     webView.loadDataWithBaseURL(null, generatedHtml, "text/html", "utf-8", null);
 
@@ -296,6 +305,17 @@ public class WebViewActivity extends AppCompatActivity {
                                         commentView.setOnClickListener(onClickListener(mArticle, "comment"));
                                         favView.setOnClickListener(onClickListener(mArticle, "favourite"));
                                         shareView.setOnClickListener(onClickListener(mArticle, "share"));
+
+                                        if (!hasLoggedSelectContent) {
+                                            Bundle bundle = new Bundle();
+                                            bundle.putString(FirebaseAnalytics.Param.ITEM_ID, mArticle.getObjectID());
+                                            bundle.putString(FirebaseAnalytics.Param.ITEM_NAME, mArticle.getTitle());
+                                            bundle.putString(FirebaseAnalytics.Param.ITEM_CATEGORY, mArticle.getMainTheme());
+                                            bundle.putString("item_source", mArticle.getSource());
+                                            bundle.putString(FirebaseAnalytics.Param.CONTENT_TYPE, mArticle.getType());
+                                            mFirebaseAnalytics.logEvent(FirebaseAnalytics.Event.SELECT_CONTENT, bundle);
+                                            hasLoggedSelectContent = true;
+                                        }
                                     }
                                 }
                             }
@@ -322,6 +342,8 @@ public class WebViewActivity extends AppCompatActivity {
                                         author = mArticle.getAuthor();
                                         source = mArticle.getSource();
                                         date = DateUtils.parseDate(mArticle.getPubDate());
+                                        selector = mArticle.selector;
+//                                        htmlContent = mArticle.htmlContent;
                                         if (!isArticleLoaded) {
                                             if (mArticle.getType() != null && mArticle.getType().equals("article")) {
                                                 mExecutors.mainThread().execute(() -> genHtml());
@@ -358,6 +380,17 @@ public class WebViewActivity extends AppCompatActivity {
                                         commentView.setOnClickListener(onClickListener(mArticle, "comment"));
                                         favView.setOnClickListener(onClickListener(mArticle, "favourite"));
                                         shareView.setOnClickListener(onClickListener(mArticle, "share"));
+
+                                        if (!hasLoggedSelectContent) {
+                                            Bundle bundle = new Bundle();
+                                            bundle.putString(FirebaseAnalytics.Param.ITEM_ID, mArticle.getObjectID());
+                                            bundle.putString(FirebaseAnalytics.Param.ITEM_NAME, mArticle.getTitle());
+                                            bundle.putString(FirebaseAnalytics.Param.ITEM_CATEGORY, mArticle.getMainTheme());
+                                            bundle.putString("item_source", mArticle.getSource());
+                                            bundle.putString(FirebaseAnalytics.Param.CONTENT_TYPE, mArticle.getType());
+                                            mFirebaseAnalytics.logEvent(FirebaseAnalytics.Event.SELECT_CONTENT, bundle);
+                                            hasLoggedSelectContent = true;
+                                        }
                                     }
                                 }
                             }
@@ -418,7 +451,6 @@ public class WebViewActivity extends AppCompatActivity {
                         if (dataSnapshot.getKey().equals(mUid)) {
                             followOption.setVisible(false);
                             unfollowOption.setVisible(true);
-//
                         }
                     }
                 }
@@ -482,7 +514,7 @@ public class WebViewActivity extends AppCompatActivity {
 
     @Override
     public boolean onSupportNavigateUp() {
-        onBackPressed();
+        super.onBackPressed();
         return true;
     }
 
@@ -530,9 +562,10 @@ public class WebViewActivity extends AppCompatActivity {
     }
 
     public void genHtml() {
+//        Log.d(TAG, "htmlContent: " + htmlContent.substring(0, 20));
         mExecutors.networkIO().execute(() -> {
-            String generatedHtml = HtmlUtils.regenArticleHtml(webView.getContext(),
-                        link, title, author, source, date);
+            String generatedHtml = HtmlUtils.regenArticleHtml(this, link, title, author, source, date, //htmlContent,
+                    selector);
 
             boolean isSuccessful = generatedHtml != null && !generatedHtml.equals("");
 
@@ -565,7 +598,7 @@ public class WebViewActivity extends AppCompatActivity {
                     }
                 });
             } else {
-                if (link != null && link != "") {
+                if (link != null && !link.equals("")) {
                     mExecutors.mainThread().execute(() -> { webView.loadUrl(link); });
                     return;
                 }
@@ -577,7 +610,7 @@ public class WebViewActivity extends AppCompatActivity {
     }
 
     @Override
-    public void onSaveInstanceState(Bundle outState) {
+    public void onSaveInstanceState(@NonNull Bundle outState) {
 
         super.onSaveInstanceState(outState);
 //        outState.putFloat("scrollPercent", lastScrollPercent);

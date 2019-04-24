@@ -4,6 +4,7 @@ import android.app.Activity;
 import android.app.Dialog;
 import android.content.Context;
 import android.content.Intent;
+import android.os.Bundle;
 import android.os.Handler;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -13,6 +14,7 @@ import android.view.animation.Animation;
 import android.view.animation.AnimationUtils;
 import android.widget.Toast;
 
+import com.google.firebase.analytics.FirebaseAnalytics;
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
@@ -34,6 +36,7 @@ import acorn.com.acorn_app.utils.AppExecutors;
 import acorn.com.acorn_app.utils.ShareUtils;
 import acorn.com.acorn_app.utils.UiUtils;
 
+import static acorn.com.acorn_app.ui.AcornApplication.mFirebaseAnalytics;
 import static acorn.com.acorn_app.ui.activities.AcornActivity.LEVEL_0;
 import static acorn.com.acorn_app.ui.activities.AcornActivity.LEVEL_1;
 import static acorn.com.acorn_app.ui.activities.AcornActivity.LEVEL_2;
@@ -155,14 +158,9 @@ public class ArticleOnClickListener implements View.OnClickListener {
     }
 
     private void startWebViewActivity() {
-//        if (mArticle.getType().equals("article")) {
-            Intent intent = new Intent(mContext, WebViewActivity.class);
-            intent.putExtra("id", mArticle.getObjectID());
-            mContext.startActivity(intent);
-//        } else {
-//            Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(mArticle.getLink()));
-//            mContext.startActivity(intent);
-//        }
+        Intent intent = new Intent(mContext, WebViewActivity.class);
+        intent.putExtra("id", mArticle.getObjectID());
+        mContext.startActivity(intent);
     }
 
     private void onUpvoteClicked() {
@@ -202,10 +200,28 @@ public class ArticleOnClickListener implements View.OnClickListener {
                     article.downvoters.remove(mUid);
                     article.upvoters.put(mUid, clickTime);
                     article.setVoteCount(currentVoteCount + 2);
+
+                    Bundle bundle = new Bundle();
+                    bundle.putString(FirebaseAnalytics.Param.ITEM_ID, articleId);
+                    bundle.putString(FirebaseAnalytics.Param.ITEM_NAME, mArticle.getTitle());
+                    bundle.putString(FirebaseAnalytics.Param.ITEM_CATEGORY, mArticle.getMainTheme());
+                    bundle.putString("item_source", mArticle.getSource());
+                    bundle.putString(FirebaseAnalytics.Param.CONTENT_TYPE, mArticle.getType());
+                    mFirebaseAnalytics.logEvent("upvote_article", bundle);
+
                     mExecutors.mainThread().execute(()->mUpvoteView.startAnimation(upvoteAnim));
                 } else {
                     article.upvoters.put(mUid, clickTime);
                     article.setVoteCount(currentVoteCount + 1);
+
+                    Bundle bundle = new Bundle();
+                    bundle.putString(FirebaseAnalytics.Param.ITEM_ID, articleId);
+                    bundle.putString(FirebaseAnalytics.Param.ITEM_NAME, mArticle.getTitle());
+                    bundle.putString(FirebaseAnalytics.Param.ITEM_CATEGORY, mArticle.getMainTheme());
+                    bundle.putString("item_source", mArticle.getSource());
+                    bundle.putString(FirebaseAnalytics.Param.CONTENT_TYPE, mArticle.getType());
+                    mFirebaseAnalytics.logEvent("upvote_article", bundle);
+
                     mExecutors.mainThread().execute(()->mUpvoteView.startAnimation(upvoteAnim));
                 }
 
@@ -326,10 +342,28 @@ public class ArticleOnClickListener implements View.OnClickListener {
                     article.upvoters.remove(mUid);
                     article.downvoters.put(mUid, clickTime);
                     article.setVoteCount(currentVoteCount - 2);
+
+                    Bundle bundle = new Bundle();
+                    bundle.putString(FirebaseAnalytics.Param.ITEM_ID, articleId);
+                    bundle.putString(FirebaseAnalytics.Param.ITEM_NAME, mArticle.getTitle());
+                    bundle.putString(FirebaseAnalytics.Param.ITEM_CATEGORY, mArticle.getMainTheme());
+                    bundle.putString("item_source", mArticle.getSource());
+                    bundle.putString(FirebaseAnalytics.Param.CONTENT_TYPE, mArticle.getType());
+                    mFirebaseAnalytics.logEvent("downvote_article", bundle);
+
                     mExecutors.mainThread().execute(()->mDownvoteView.startAnimation(downvoteAnim));
                 } else {
                     article.downvoters.put(mUid, clickTime);
                     article.setVoteCount(currentVoteCount - 1);
+
+                    Bundle bundle = new Bundle();
+                    bundle.putString(FirebaseAnalytics.Param.ITEM_ID, articleId);
+                    bundle.putString(FirebaseAnalytics.Param.ITEM_NAME, mArticle.getTitle());
+                    bundle.putString(FirebaseAnalytics.Param.ITEM_CATEGORY, mArticle.getMainTheme());
+                    bundle.putString("item_source", mArticle.getSource());
+                    bundle.putString(FirebaseAnalytics.Param.CONTENT_TYPE, mArticle.getType());
+                    mFirebaseAnalytics.logEvent("downvote_article", bundle);
+
                     mExecutors.mainThread().execute(()->mDownvoteView.startAnimation(downvoteAnim));
                 }
 
@@ -440,6 +474,14 @@ public class ArticleOnClickListener implements View.OnClickListener {
                 } else {
                     article.savers.put(mUid, clickTime);
                     article.setSaveCount(currentSaveCount + 1);
+
+                    Bundle bundle = new Bundle();
+                    bundle.putString(FirebaseAnalytics.Param.ITEM_ID, articleId);
+                    bundle.putString(FirebaseAnalytics.Param.ITEM_NAME, mArticle.getTitle());
+                    bundle.putString(FirebaseAnalytics.Param.ITEM_CATEGORY, mArticle.getMainTheme());
+                    bundle.putString("item_source", mArticle.getSource());
+                    bundle.putString(FirebaseAnalytics.Param.CONTENT_TYPE, mArticle.getType());
+                    mFirebaseAnalytics.logEvent("save_article", bundle);
                 }
                 mExecutors.mainThread().execute(()->{
                     bounceAnim.setAnimationListener(null);
@@ -495,6 +537,14 @@ public class ArticleOnClickListener implements View.OnClickListener {
         if (mArticle.getLink() != null && !mArticle.getLink().equals("")) {
             Long clickTime = new Date().getTime();
             String articleId = mArticle.getObjectID();
+
+            Bundle bundle = new Bundle();
+            bundle.putString(FirebaseAnalytics.Param.ITEM_ID, articleId);
+            bundle.putString(FirebaseAnalytics.Param.ITEM_NAME, mArticle.getTitle());
+            bundle.putString(FirebaseAnalytics.Param.ITEM_CATEGORY, mArticle.getMainTheme());
+            bundle.putString("item_source", mArticle.getSource());
+            bundle.putString(FirebaseAnalytics.Param.CONTENT_TYPE, mArticle.getType());
+            mFirebaseAnalytics.logEvent(FirebaseAnalytics.Event.SHARE, bundle);
 
             // Update article with share data
             DatabaseReference articleRef = FirebaseDatabase.getInstance()

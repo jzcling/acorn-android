@@ -48,6 +48,7 @@
     <string name="pref_key_notif_comment">commentNotifPref</string>
     <string name="pref_key_notif_article">articleNotifPref</string>
     <string name="pref_key_notif_deals">dealsNotifPref</string>
+    <string name="pref_key_notif_saved_articles_reminder">savedArticlesReminderNotifPref</string>
     <string name="pref_cat_general_settings">GENERAL</string>
     <string name="pref_cat_notif_settings">NOTIFICATIONS</string>
     <string name="pref_cat_user_account_settings">MANAGE ACCOUNT</string>
@@ -56,6 +57,7 @@
     <string name="pref_title_notif_comment">Comment notifications</string>
     <string name="pref_title_notif_article">Recommended articles</string>
     <string name="pref_title_notif_deals">Recommended deals</string>
+    <string name="pref_title_notif_saved_articles_reminder">Saved articles reminder</string>
     <string name="pref_title_change_password">Change password</string>
     <string name="pref_title_change_email">Change email address</string>
     <string name="pref_title_delete_account">Delete account</string>
@@ -123,6 +125,8 @@
     <string name="comment_notification_channel_name" translatable="true">Comments</string>
     <string name="manual_article_notification_channel_id" translatable="false">fcm_manual_article_channel</string>
     <string name="manual_article_notification_channel_name" translatable="true">Manual Article</string>
+    <string name="saved_reminder_notification_channel_id" translatable="false">fcm_saved_reminder_channel</string>
+    <string name="saved_reminder_notification_channel_name" translatable="true">Saved Article Reminder</string>
     <string name="article_notification_channel_id" translatable="false">fcm_article_channel</string>
     <string name="article_notification_channel_name" translatable="true">Recommended Articles</string>
     <string name="deals_notification_channel_id" translatable="false">fcm_deals_channel</string>

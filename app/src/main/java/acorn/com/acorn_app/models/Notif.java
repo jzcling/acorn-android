@@ -2,7 +2,6 @@ package acorn.com.acorn_app.models;
 
 public class Notif {
     public final String type;
-//    public List<Integer> index;
     public final String articleId;
     public final String text;
     public final String title;
@@ -17,7 +16,6 @@ public class Notif {
                  String source, String imageUrl, String theme, String extra,
                  Long timestamp, String link) {
         this.type = type;
-//        this.index = index;
         this.articleId = articleId;
         this.text = text;
         this.title = title;

@@ -148,7 +148,7 @@ public class RecDealsJobService extends JobService {
             individualIntent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
             PendingIntent individualPendingIntent = TaskStackBuilder.create(this)
                     .addNextIntentWithParentStack(individualIntent)
-                    .getPendingIntent(i, PendingIntent.FLAG_UPDATE_CURRENT);
+                    .getPendingIntent(10+i, PendingIntent.FLAG_UPDATE_CURRENT);
 
             Bitmap bitmap = IOUtils.getBitmapFromUrl(imageUrl);
             contentText = (source != null && !source.equals("")) ?
@@ -164,7 +164,7 @@ public class RecDealsJobService extends JobService {
                             .setAutoCancel(true)
                             .setGroup(GROUP_NAME)
                             .setGroupAlertBehavior(GROUP_ALERT_SUMMARY);
-            notificationManager.notify(i, notificationBuilder.build());
+            notificationManager.notify(10+i, notificationBuilder.build());
         }
 
         NotificationCompat.Builder summaryNotificationBuilder =

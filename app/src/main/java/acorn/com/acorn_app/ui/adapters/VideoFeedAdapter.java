@@ -57,6 +57,12 @@ public class VideoFeedAdapter extends RecyclerView.Adapter<VideoFeedViewHolder> 
         return mVideoList.size();
     }
 
+    public void setList(List<Video> newList, Runnable onComplete) {
+        mVideoList = new ArrayList<>(newList);
+        notifyDataSetChanged();
+        onComplete.run();
+    }
+
     public void setList(List<Video> newList) {
         mVideoList = new ArrayList<>(newList);
         notifyDataSetChanged();

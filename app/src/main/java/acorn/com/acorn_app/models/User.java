@@ -31,6 +31,7 @@ public class User {
     public final Map<String, Long> sharedItems = new HashMap<>();
     public final Map<String, Long> openedArticles = new HashMap<>();
     public final Map<String, Integer> openedThemes = new HashMap<>();
+    public final Map<String, Long> viewedVideos = new HashMap<>();
     private Integer subscriptionsCount = 0;
     private Integer createdPostsCount = 0;
     private Integer upvotedItemsCount = 0;
@@ -38,6 +39,7 @@ public class User {
     private Integer commentedItemsCount = 0;
     private Integer savedItemsCount = 0;
     private Integer sharedItemsCount = 0;
+    public boolean openedSinceLastReport;
 
     public User() {}
 
@@ -155,6 +157,7 @@ public class User {
         result.put("device", device);
         result.put("creationTimeStamp", creationTimeStamp);
         result.put("lastSignInTimeStamp", lastSignInTimeStamp);
+        result.put("openedSinceLastReport", openedSinceLastReport);
 
         return result;
     }

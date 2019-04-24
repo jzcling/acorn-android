@@ -53,6 +53,7 @@ import acorn.com.acorn_app.models.Article;
 import acorn.com.acorn_app.models.User;
 import acorn.com.acorn_app.utils.AppExecutors;
 
+import static acorn.com.acorn_app.ui.AcornApplication.mFirebaseAnalytics;
 import static acorn.com.acorn_app.ui.activities.AcornActivity.ID_OFFSET;
 import static acorn.com.acorn_app.ui.activities.AcornActivity.mUid;
 import static acorn.com.acorn_app.ui.activities.AcornActivity.mUserToken;
@@ -186,6 +187,11 @@ public class CreatePostActivity extends AppCompatActivity {
 //                                FirebaseMessaging.getInstance().subscribeToTopic(objectID);
                             });
                             mExecutors.mainThread().execute(() -> {
+                                Bundle bundle = new Bundle();
+                                bundle.putString("commenter", mUid);
+                                bundle.putString("post", article.getObjectID());
+                                mFirebaseAnalytics.logEvent("create_post", bundle);
+
                                 createToast(this, "Post created!", Toast.LENGTH_SHORT);
                                 finish();
                             });

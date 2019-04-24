@@ -3,6 +3,7 @@ package acorn.com.acorn_app.utils;
 import android.content.Context;
 import android.util.Log;
 
+import androidx.annotation.Nullable;
 import org.jsoup.Jsoup;
 import org.jsoup.safety.Whitelist;
 
@@ -102,18 +103,12 @@ public class HtmlUtils {
         return content;
     }
 
-    public static String generateHtmlContent(Context context, String title, String link,
-                                              String contentText, String author, String source, String date) {
-//        String BACKGROUND_COLOR = String.format("#%06X", (0xFFFFFF & context.getApplicationContext().getColor(R.color.webview_background)));
-//        String TEXT_COLOR = String.format("#%06X", (0xFFFFFF & context.getApplicationContext().getColor(R.color.webview_text_color)));
-//        String SUBTITLE_COLOR = String.format("#%06X", (0xFFFFFF & context.getApplicationContext().getColor(R.color.webview_subtitle_color)));
-//        String QUOTE_BACKGROUND_COLOR = String.format("#%06X", (0xFFFFFF & context.getApplicationContext().getColor(R.color.webview_quote_background_color)));
-
-
-        String BACKGROUND_COLOR = "#f6f6f6";
-        String TEXT_COLOR = "#231f20";
-        String SUBTITLE_COLOR = "#666666";
-        String QUOTE_BACKGROUND_COLOR = "#e6e6e6";
+    public static String generateHtmlContent(Context context, String title, String link, String contentText,
+                                             String author, String source, String date) {
+        String BACKGROUND_COLOR = String.format("#%06X", (0xFFFFFF & context.getColor(R.color.webview_background)));
+        String TEXT_COLOR = String.format("#%06X", (0xFFFFFF & context.getColor(R.color.webview_text_color)));
+        String SUBTITLE_COLOR = String.format("#%06X", (0xFFFFFF & context.getColor(R.color.webview_subtitle_color)));
+        String QUOTE_BACKGROUND_COLOR = String.format("#%06X", (0xFFFFFF & context.getColor(R.color.webview_quote_background_color)));
 
         String CSS = "<head><style type='text/css'> "
                 + "body {max-width: 100%; margin: 0.3cm; font-family: sans-serif-light; font-size: " + TEXT_SIZE + "; text-align: justify; color: " + TEXT_COLOR + "; background-color:" + BACKGROUND_COLOR + "; line-height: 150%} "
@@ -176,16 +171,23 @@ public class HtmlUtils {
         return content.toString();
     }
 
-    public static String regenArticleHtml(Context context, String url, String title,
-                                          String author, String source, String date) {
+    @Nullable
+    public static String regenArticleHtml(Context context, String url, String title, String author,
+                                          String source, String date, //@Nullable String htmlContent,
+                                          @Nullable String selector) {
         Pattern baseUrlPattern = Pattern.compile("(https?://.*?/).*", Pattern.CASE_INSENSITIVE);
         String baseUrl = baseUrlPattern.matcher(url).replaceAll("$1");
         String parsedHtml;
+        String extractedHtml;
         try {
-            String extractedHtml = ArticleTextExtractor.extractContent(getInputStream(context, url));
-            if (extractedHtml != null) {
+//            if (htmlContent != null && !htmlContent.equals("")) {
+//                extractedHtml = ArticleTextExtractor.extractContent(htmlContent, selector);
+//            } else {
+                extractedHtml = ArticleTextExtractor.extractContent(getInputStream(context, url), selector);
+//            }
+            if (extractedHtml != null && !extractedHtml.equals("")) {
                 parsedHtml = improveHtmlContent(extractedHtml, baseUrl);
-                return generateHtmlContent(context,title,url,parsedHtml,author,source,date);
+                return generateHtmlContent(context, title, url, parsedHtml, author, source, date);
             } else {
                 return null;
             }
@@ -195,20 +197,42 @@ public class HtmlUtils {
         return null;
     }
 
-    public static String getCleanedHtml(Context context, String url) {
-        Pattern baseUrlPattern = Pattern.compile("(https?://.*?/).*", Pattern.CASE_INSENSITIVE);
-        String baseUrl = baseUrlPattern.matcher(url).replaceAll("$1");
-        String parsedHtml;
-        try {
-            String extractedHtml = ArticleTextExtractor.extractContent(getInputStream(context, url));
-            if (extractedHtml != null) {
-                parsedHtml = improveHtmlContent(extractedHtml, baseUrl);
-                return parsedHtml;
-            } else {
-                return null;
+    public static String getCleanedHtml(Context context, String url, @Nullable String selector) {
+        if (url != null) {
+            Pattern baseUrlPattern = Pattern.compile("(https?://.*?/).*", Pattern.CASE_INSENSITIVE);
+            String baseUrl = baseUrlPattern.matcher(url).replaceAll("$1");
+            String parsedHtml;
+            try {
+                String extractedHtml = ArticleTextExtractor.extractContent(getInputStream(context, url), selector);
+                if (extractedHtml != null && !extractedHtml.equals("")) {
+                    parsedHtml = improveHtmlContent(extractedHtml, baseUrl);
+                    return parsedHtml;
+                } else {
+                    return null;
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
             }
-        } catch (Exception e) {
-            e.printStackTrace();
+        }
+        return null;
+    }
+
+    public static String cleanHtmlContent(String html, String url, @Nullable String selector) {
+        if (url != null) {
+            Pattern baseUrlPattern = Pattern.compile("(https?://.*?/).*", Pattern.CASE_INSENSITIVE);
+            String baseUrl = baseUrlPattern.matcher(url).replaceAll("$1");
+            String parsedHtml;
+            try {
+                String extractedHtml = ArticleTextExtractor.extractContent(html, selector);
+                if (!extractedHtml.equals("")) {
+                    parsedHtml = improveHtmlContent(extractedHtml, baseUrl);
+                    return parsedHtml;
+                } else {
+                    return null;
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
         }
         return null;
     }
