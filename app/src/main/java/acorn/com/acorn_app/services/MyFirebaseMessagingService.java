@@ -17,6 +17,8 @@ import acorn.com.acorn_app.utils.DateUtils;
 import acorn.com.acorn_app.utils.IOUtils;
 import androidx.core.app.NotificationCompat;
 import androidx.core.app.TaskStackBuilder;
+
+import android.os.Handler;
 import android.util.Log;
 
 import com.google.firebase.database.DatabaseReference;
@@ -28,6 +30,7 @@ import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 
 import acorn.com.acorn_app.R;
 import acorn.com.acorn_app.ui.activities.AcornActivity;
@@ -210,6 +213,11 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
                 pushManualArticleNotification(data);
                 break;
             case "savedArticlesReminder":
+                try {
+                    Thread.sleep((long) (new Random().nextDouble()) * 10L * 1000L);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
                 pushSavedReminderNotification();
                 break;
         }
@@ -365,7 +373,7 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
                     return;
                 }
                 NotificationCompat.InboxStyle inboxStyle = new NotificationCompat.InboxStyle();
-                inboxStyle.setSummaryText("Your saved articles have events tomorrow!");
+                inboxStyle.setSummaryText("Don't forget these saved articles!");
 
                 Intent intent = new Intent(this, AcornActivity.class);
                 intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
