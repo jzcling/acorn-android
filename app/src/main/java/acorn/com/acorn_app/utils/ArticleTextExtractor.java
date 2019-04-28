@@ -412,6 +412,12 @@ public class ArticleTextExtractor {
             item.remove();
         }
 
+        // Seth Lui
+        misc = doc.select("div.article__meta");
+        for (Element item: misc) {
+            item.remove();
+        }
+
         //forms
         misc = doc.select("form");
         for (Element item : misc) {
@@ -470,7 +476,7 @@ public class ArticleTextExtractor {
     private static Collection<Element> getNodes(Document doc, @Nullable String selector) {
         if (selector == null) { selector = "body"; }
         Collection<Element> nodes = new HashSet<>(64);
-        for (Element el : doc.select(selector).select("*")) {
+        for (Element el : doc.select(selector)) {
 //        for (Element el : doc.children()) {
                 if (NODES.matcher(el.tagName()).matches()) {
                 nodes.add(el);

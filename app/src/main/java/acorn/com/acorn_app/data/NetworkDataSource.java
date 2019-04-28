@@ -365,37 +365,65 @@ public class NetworkDataSource {
         });
     }
 
-    // Trending Articles
-    public void getTrendingArticles(Consumer<List<dbArticle>> onComplete, Runnable onError) {
-        Log.d(TAG, "getTrendingArticles started");
-        int limit = 50;
+    // Download subscribed articles
+    public void downloadSubscribedArticles(Consumer<List<dbArticle>> onComplete, Runnable onError) {
+        Log.d(TAG, "downloadSubscribedArticles started");
         List<dbArticle> articleList = new ArrayList<>();
         mExecutors.networkIO().execute(() -> {
-            Query query = mDatabaseReference.child(ARTICLE_REF).orderByChild("trendingIndex")
-                    .limitToFirst(limit);
-//            query.keepSynced(true);
-            query.addListenerForSingleValueEvent(new ValueEventListener() {
-                @Override
-                public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
-                    Log.d(TAG, "articles fetched");
-                    for (DataSnapshot snap : dataSnapshot.getChildren()) {
-                        Article article = snap.getValue(Article.class);
-                        if (article == null) continue;
+            getTrendingData(() -> {
+                mExecutors.networkIO().execute(() -> {
+                    String themeSearchKey = mSharedPrefs.getString("themeSearchKey", "");
+                    Log.d(TAG, themeSearchKey);
+                    if (themeSearchKey.equals("")) { return; }
+                    Query query = mDatabaseReference.child("search")
+                            .child(themeSearchKey).child("hits").orderByChild("trendingIndex");
+                    query.addListenerForSingleValueEvent(new ValueEventListener() {
+                        @Override
+                        public void onDataChange(@NonNull DataSnapshot articlesSnap) {
+                            Log.d(TAG, "articles fetched");
+                            List<String> doneList = new ArrayList<>();
+                            for (DataSnapshot snap : articlesSnap.getChildren()) {
+                                Article algArticle = snap.getValue(Article.class);
+                                if (algArticle == null) continue;
 
-                        if (article.htmlContent != null && !article.htmlContent.equals("")) {
-                            article.htmlContent = HtmlUtils.cleanHtmlContent(article.htmlContent, article.getLink(), article.selector);
-                            dbArticle localArticle = new dbArticle(mContext, article);
-                            articleList.add(localArticle);
-                            Log.d(TAG, "article: " + article.getTitle() + ", html: " + article.htmlContent.substring(0, 20));
+                                String articleId = algArticle.getObjectID();
+                                mDatabaseReference.child(ARTICLE_REF).child(articleId).addListenerForSingleValueEvent(new ValueEventListener() {
+                                    @Override
+                                    public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+                                        doneList.add(snap.getKey());
+                                        Article article = dataSnapshot.getValue(Article.class);
+                                        if (article != null) {
+                                            if (article.htmlContent != null && !article.htmlContent.equals("")) {
+                                                article.htmlContent = HtmlUtils.cleanHtmlContent(article.htmlContent, article.getLink(), article.selector);
+                                                dbArticle localArticle = new dbArticle(mContext, article);
+                                                articleList.add(localArticle);
+//                                                mExecutors.diskWrite().execute(() -> {
+//                                                    ArticleRoomDatabase roomDb = ArticleRoomDatabase.getInstance(mContext);
+//                                                    roomDb.articleDAO().insert(localArticle);
+//                                                    Log.d(TAG, "article: " + article.getTitle());
+//                                                });
+                                            }
+                                        }
+
+                                        if (doneList.size() >= articlesSnap.getChildrenCount()) {
+                                            onComplete.accept(articleList);
+                                        }
+                                    }
+
+                                    @Override
+                                    public void onCancelled(@NonNull DatabaseError databaseError) {
+
+                                    }
+                                });
+                            }
                         }
-                    }
-                    onComplete.accept(articleList);
-                }
 
-                @Override
-                public void onCancelled(@NonNull DatabaseError databaseError) {
-                    onError.run();
-                }
+                        @Override
+                        public void onCancelled(@NonNull DatabaseError databaseError) {
+                            onError.run();
+                        }
+                    });
+                });
             });
         });
     }

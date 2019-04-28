@@ -209,9 +209,9 @@ public class WebViewActivity extends AppCompatActivity {
                         Uri deepLink;
                         if (pendingDynamicLinkData != null) {
                             deepLink = pendingDynamicLinkData.getLink();
-                            Log.d(TAG, deepLink.toString());
+//                            Log.d(TAG, deepLink.toString());
                             articleId = deepLink.getQueryParameter("id");
-                            Log.d(TAG, "articleId: " + articleId);
+//                            Log.d(TAG, "articleId: " + articleId);
                             String sharerId = deepLink.getQueryParameter("sharerId");
                             loadArticle();
                         }
@@ -562,6 +562,7 @@ public class WebViewActivity extends AppCompatActivity {
     }
 
     public void genHtml() {
+        Log.d(TAG, "genHtml");
 //        Log.d(TAG, "htmlContent: " + htmlContent.substring(0, 20));
         mExecutors.networkIO().execute(() -> {
             String generatedHtml = HtmlUtils.regenArticleHtml(this, link, title, author, source, date, //htmlContent,

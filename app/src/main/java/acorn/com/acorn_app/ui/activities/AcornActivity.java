@@ -80,6 +80,7 @@ import acorn.com.acorn_app.data.NetworkDataSource;
 import acorn.com.acorn_app.models.Article;
 import acorn.com.acorn_app.models.FbQuery;
 import acorn.com.acorn_app.models.User;
+import acorn.com.acorn_app.models.dbArticle;
 import acorn.com.acorn_app.ui.adapters.ArticleAdapter;
 import acorn.com.acorn_app.ui.fragments.NotificationsDialogFragment;
 import acorn.com.acorn_app.ui.viewModels.ArticleViewModel;
@@ -944,15 +945,15 @@ public class AcornActivity extends AppCompatActivity
                                         mSharedPreferences.edit().putLong("lastDownloadArticlesTime", now).apply();
 
                                         mExecutors.networkIO().execute(
-                                                () -> mDataSource.getTrendingArticles((articleList) -> {
+                                                () -> mDataSource.downloadSubscribedArticles((articleList) -> {
+                                                    Long cutOffDate = (new Date()).getTime() - 2L * 24L * 60L * 60L * 1000L; // more than 2 days ago
+                                                    mExecutors.diskWrite().execute(() -> {
+                                                        mRoomDb.articleDAO().insert(articleList);
+                                                        mRoomDb.articleDAO().deleteOld(cutOffDate);
+                                                    });
                                                     mExecutors.mainThread().execute(() -> {
                                                         mRecyclerView.setVisibility(View.VISIBLE);
                                                         mSwipeRefreshLayout.setRefreshing(false);
-                                                    });
-                                                    Long cutOffDate = (new Date()).getTime() - 2L * 24L * 60L * 60L * 1000L; // more than 2 days ago
-                                                    mExecutors.diskWrite().execute(() -> {
-                                                        mRoomDb.articleDAO().deleteOld(cutOffDate);
-                                                        mRoomDb.articleDAO().insert(articleList);
                                                     });
                                                 }, () -> {
                                                     mExecutors.mainThread().execute(() -> {

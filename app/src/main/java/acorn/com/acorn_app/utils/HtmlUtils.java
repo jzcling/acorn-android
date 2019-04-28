@@ -111,7 +111,7 @@ public class HtmlUtils {
         String QUOTE_BACKGROUND_COLOR = String.format("#%06X", (0xFFFFFF & context.getColor(R.color.webview_quote_background_color)));
 
         String CSS = "<head><style type='text/css'> "
-                + "body {max-width: 100%; margin: 0.3cm; font-family: sans-serif-light; font-size: " + TEXT_SIZE + "; text-align: justify; color: " + TEXT_COLOR + "; background-color:" + BACKGROUND_COLOR + "; line-height: 150%} "
+                + "body {max-width: 100%; margin: 0.3cm; font-family: sans-serif-light; font-size: " + TEXT_SIZE + "; text-align: left; color: " + TEXT_COLOR + "; background-color:" + BACKGROUND_COLOR + "; line-height: 150%} "
                 + "* {max-width: 100%} "
                 + "h1, h2 {font-weight: normal; line-height: 130%} "
                 + "h1 {font-size: 110%; margin-bottom: 0.1em} "
@@ -175,16 +175,16 @@ public class HtmlUtils {
     public static String regenArticleHtml(Context context, String url, String title, String author,
                                           String source, String date, //@Nullable String htmlContent,
                                           @Nullable String selector) {
+        Log.d(TAG, "regenArticleHtml");
         Pattern baseUrlPattern = Pattern.compile("(https?://.*?/).*", Pattern.CASE_INSENSITIVE);
         String baseUrl = baseUrlPattern.matcher(url).replaceAll("$1");
         String parsedHtml;
         String extractedHtml;
         try {
-//            if (htmlContent != null && !htmlContent.equals("")) {
-//                extractedHtml = ArticleTextExtractor.extractContent(htmlContent, selector);
-//            } else {
-                extractedHtml = ArticleTextExtractor.extractContent(getInputStream(context, url), selector);
-//            }
+            String input = getInputStream(context, url);
+            extractedHtml = ArticleTextExtractor.extractContent(input, selector);
+
+//            Log.d(TAG, "extractedHtml: " + extractedHtml);
             if (extractedHtml != null && !extractedHtml.equals("")) {
                 parsedHtml = improveHtmlContent(extractedHtml, baseUrl);
                 return generateHtmlContent(context, title, url, parsedHtml, author, source, date);
@@ -192,7 +192,7 @@ public class HtmlUtils {
                 return null;
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            Log.d(TAG, "error: " + e.getLocalizedMessage());
         }
         return null;
     }

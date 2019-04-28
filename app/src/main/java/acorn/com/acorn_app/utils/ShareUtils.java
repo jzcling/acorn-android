@@ -37,7 +37,7 @@ public class ShareUtils {
     public static void createShortDynamicLink(String url, Consumer<String> onComplete) {
         FirebaseDynamicLinks.getInstance().createDynamicLink()
                 .setLink(Uri.parse(url))
-                .setDomainUriPrefix("https://acorncommunity.page.link")
+                .setDomainUriPrefix("https://acorncommunity.sg/share")
                 .setAndroidParameters(
                         new DynamicLink.AndroidParameters.Builder("acorn.com.acorn_app")
                                 .setMinimumVersion(46)

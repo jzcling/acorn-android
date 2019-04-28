@@ -15,18 +15,21 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.net.HttpURLConnection;
 import java.net.URL;
-import java.net.URLConnection;
 
 import static acorn.com.acorn_app.utils.UiUtils.createToast;
 
 public class IOUtils {
+    private static final String TAG = "IOUtils";
+
     public static String getInputStream(Context context, String urlString) throws IOException {
         URL url = new URL(urlString);
-        URLConnection connection = url.openConnection();
+        HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+        connection.setRequestProperty("User-Agent", "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/51.0.2704.103 Safari/537.36");
         String redirect = connection.getHeaderField("Location");
         if (redirect != null) {
-            connection = new URL(redirect).openConnection();
+            connection = (HttpURLConnection) new URL(redirect).openConnection();
         }
         try {
             InputStream inputStream = new BufferedInputStream(connection.getInputStream());
@@ -43,7 +46,7 @@ public class IOUtils {
             }
             return response.toString();
         } catch (Exception e) {
-            e.printStackTrace();
+            Log.d(TAG, "error: " + e.getLocalizedMessage());
             createToast(context, "Connection failed. " +
                     "Please check that you are connected to the internet.", Toast.LENGTH_SHORT);
         }
