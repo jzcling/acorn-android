@@ -796,7 +796,7 @@ public class AcornActivity extends AppCompatActivity
                                     // set up search button
                                     mDataSource.setupAlgoliaClient(() -> {
                                         mSearcher = Searcher.create(ALGOLIA_APP_ID, ALGOLIA_API_KEY, ALGOLIA_INDEX_NAME);
-                                        mSearchButton.setEnabled(true);
+                                        if (mSearchButton != null) mSearchButton.setEnabled(true);
                                     });
 
                                     // Set up Crashlytics identifier
@@ -864,7 +864,7 @@ public class AcornActivity extends AppCompatActivity
                                     // set up search button
                                     mDataSource.setupAlgoliaClient(() -> {
                                         mSearcher = Searcher.create(ALGOLIA_APP_ID, ALGOLIA_API_KEY, ALGOLIA_INDEX_NAME);
-                                        mSearchButton.setEnabled(true);
+                                        if (mSearchButton != null) mSearchButton.setEnabled(true);
                                     });
 
                                     // Set up Crashlytics identifier
@@ -1035,9 +1035,9 @@ public class AcornActivity extends AppCompatActivity
                         subscriptionsMenuItem.setChecked(true);
                         break;
                     case "Trending":
-                        if (mQuery != null && mQuery.state == 3 && subscriptionsMenuItem.isChecked()) break;
+                        if (mQuery != null && mQuery.state == 3 && trendingMenuItem.isChecked()) break;
                         getTrendingData();
-                        subscriptionsMenuItem.setChecked(true);
+                        trendingMenuItem.setChecked(true);
                         break;
                     case "Deals":
                         if (mQuery != null && mQuery.state == 4) break;

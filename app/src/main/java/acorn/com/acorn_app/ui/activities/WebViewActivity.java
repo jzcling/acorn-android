@@ -236,171 +236,19 @@ public class WebViewActivity extends AppCompatActivity {
             mDbArticle = mRoomDb.articleDAO().getDbArticle(articleId);
             mExecutors.mainThread().execute(() -> {
                 if (mDbArticle != null) {
-                    Log.d(TAG, "loaded from roomDb");
                     link = mDbArticle.link;
                     title = mDbArticle.title;
                     author = mDbArticle.author;
                     source = mDbArticle.source;
                     date = DateUtils.parseDate(mDbArticle.pubDate);
                     htmlContent = mDbArticle.htmlContent;
-                    String generatedHtml = HtmlUtils.generateHtmlContent(this, title, link,
-                            htmlContent, author, source, date);
-
-                    webView.loadDataWithBaseURL(null, generatedHtml, "text/html", "utf-8", null);
-
-                    double wordCount = generatedHtml.split("\\s+").length;
-                    int readTime = (int) Math.ceil(wordCount / 200D);
-
-                    mArticleRef.runTransaction(new Transaction.Handler() {
-                        @NonNull
-                        @Override
-                        public Transaction.Result doTransaction(@NonNull MutableData mutableData) {
-                            Article article = mutableData.getValue(Article.class);
-                            if (article == null) {
-                                return Transaction.success(mutableData);
-                            }
-
-                            article.setReadTime(readTime);
-                            mutableData.setValue(article);
-                            return Transaction.success(mutableData);
-                        }
-
-                        @Override
-                        public void onComplete(@Nullable DatabaseError databaseError, boolean b, @Nullable DataSnapshot dataSnapshot) {
-                        }
-                    });
-
-                    mExecutors.networkIO().execute(() -> {
-                        mArticleListener = mArticleRef.addValueEventListener(new ValueEventListener() {
-                            @Override
-                            public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
-                                // set up bottom toolbar
-                                if (dataSnapshot.exists()) {
-                                    mArticle = dataSnapshot.getValue(Article.class);
-
-                                    if (mArticle != null) {
-                                        if (mArticle.upvoters.containsKey(mUid)) {
-                                            upVoteView.setChecked(true);
-                                        } else {
-                                            upVoteView.setChecked(false);
-                                        }
-                                        if (mArticle.downvoters.containsKey(mUid)) {
-                                            downVoteView.setChecked(true);
-                                        } else {
-                                            downVoteView.setChecked(false);
-                                        }
-                                        if (mArticle.commenters.containsKey(mUid)) {
-                                            commentView.setChecked(true);
-                                        } else {
-                                            commentView.setChecked(false);
-                                        }
-                                        if (mArticle.savers.containsKey(mUid)) {
-                                            favView.setChecked(true);
-                                        } else {
-                                            favView.setChecked(false);
-                                        }
-
-                                        upVoteView.setOnClickListener(onClickListener(mArticle, "upvote"));
-                                        downVoteView.setOnClickListener(onClickListener(mArticle, "downvote"));
-                                        commentView.setOnClickListener(onClickListener(mArticle, "comment"));
-                                        favView.setOnClickListener(onClickListener(mArticle, "favourite"));
-                                        shareView.setOnClickListener(onClickListener(mArticle, "share"));
-
-                                        if (!hasLoggedSelectContent) {
-                                            Bundle bundle = new Bundle();
-                                            bundle.putString(FirebaseAnalytics.Param.ITEM_ID, mArticle.getObjectID());
-                                            bundle.putString(FirebaseAnalytics.Param.ITEM_NAME, mArticle.getTitle());
-                                            bundle.putString(FirebaseAnalytics.Param.ITEM_CATEGORY, mArticle.getMainTheme());
-                                            bundle.putString("item_source", mArticle.getSource());
-                                            bundle.putString(FirebaseAnalytics.Param.CONTENT_TYPE, mArticle.getType());
-                                            mFirebaseAnalytics.logEvent(FirebaseAnalytics.Event.SELECT_CONTENT, bundle);
-                                            hasLoggedSelectContent = true;
-                                        }
-                                    }
-                                }
-                            }
-
-                            @Override
-                            public void onCancelled(@NonNull DatabaseError databaseError) {
-                                createToast(WebViewActivity.this, databaseError.toString(), Toast.LENGTH_SHORT);
-                            }
-                        });
-                    });
+                    if (htmlContent != null && !htmlContent.equals("")) {
+                        loadFromLocalDb();
+                    } else {
+                        loadFromFirebaseDb();
+                    }
                 } else {
-                    mExecutors.networkIO().execute(() -> {
-                        mArticleListener = mArticleRef.addValueEventListener(new ValueEventListener() {
-                            @Override
-                            public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
-                                if (dataSnapshot.exists()) {
-                                    mArticle = dataSnapshot.getValue(Article.class);
-
-                                    // get data to set up card
-                                    if (mArticle != null) {
-                                        Log.d(TAG, "loaded from firebaseDb");
-                                        link = mArticle.getLink();
-                                        title = mArticle.getTitle();
-                                        author = mArticle.getAuthor();
-                                        source = mArticle.getSource();
-                                        date = DateUtils.parseDate(mArticle.getPubDate());
-                                        selector = mArticle.selector;
-//                                        htmlContent = mArticle.htmlContent;
-                                        if (!isArticleLoaded) {
-                                            if (mArticle.getType() != null && mArticle.getType().equals("article")) {
-                                                mExecutors.mainThread().execute(() -> genHtml());
-                                            } else {
-                                                mExecutors.mainThread().execute(() -> webView.loadUrl(link));
-                                            }
-                                            isArticleLoaded = true;
-                                        }
-
-                                        // set up bottom toolbar
-                                        if (mArticle.upvoters.containsKey(mUid)) {
-                                            upVoteView.setChecked(true);
-                                        } else {
-                                            upVoteView.setChecked(false);
-                                        }
-                                        if (mArticle.downvoters.containsKey(mUid)) {
-                                            downVoteView.setChecked(true);
-                                        } else {
-                                            downVoteView.setChecked(false);
-                                        }
-                                        if (mArticle.commenters.containsKey(mUid)) {
-                                            commentView.setChecked(true);
-                                        } else {
-                                            commentView.setChecked(false);
-                                        }
-                                        if (mArticle.savers.containsKey(mUid)) {
-                                            favView.setChecked(true);
-                                        } else {
-                                            favView.setChecked(false);
-                                        }
-
-                                        upVoteView.setOnClickListener(onClickListener(mArticle, "upvote"));
-                                        downVoteView.setOnClickListener(onClickListener(mArticle, "downvote"));
-                                        commentView.setOnClickListener(onClickListener(mArticle, "comment"));
-                                        favView.setOnClickListener(onClickListener(mArticle, "favourite"));
-                                        shareView.setOnClickListener(onClickListener(mArticle, "share"));
-
-                                        if (!hasLoggedSelectContent) {
-                                            Bundle bundle = new Bundle();
-                                            bundle.putString(FirebaseAnalytics.Param.ITEM_ID, mArticle.getObjectID());
-                                            bundle.putString(FirebaseAnalytics.Param.ITEM_NAME, mArticle.getTitle());
-                                            bundle.putString(FirebaseAnalytics.Param.ITEM_CATEGORY, mArticle.getMainTheme());
-                                            bundle.putString("item_source", mArticle.getSource());
-                                            bundle.putString(FirebaseAnalytics.Param.CONTENT_TYPE, mArticle.getType());
-                                            mFirebaseAnalytics.logEvent(FirebaseAnalytics.Event.SELECT_CONTENT, bundle);
-                                            hasLoggedSelectContent = true;
-                                        }
-                                    }
-                                }
-                            }
-
-                            @Override
-                            public void onCancelled(@NonNull DatabaseError databaseError) {
-                                createToast(WebViewActivity.this, databaseError.toString(), Toast.LENGTH_SHORT);
-                            }
-                        });
-                    });
+                    loadFromFirebaseDb();
                 }
             });
         });
@@ -559,6 +407,169 @@ public class WebViewActivity extends AppCompatActivity {
                 mDataSource.recordArticleOpenDetails(mArticle);
             });
         }
+    }
+
+    private void loadFromLocalDb() {
+        Log.d(TAG, "loaded from roomDb");
+        String generatedHtml = HtmlUtils.generateHtmlContent(this, title, link,
+                htmlContent, author, source, date);
+        webView.loadDataWithBaseURL(null, generatedHtml, "text/html", "utf-8", null);
+
+        double wordCount = generatedHtml.split("\\s+").length;
+        int readTime = (int) Math.ceil(wordCount / 200D);
+
+        mArticleRef.runTransaction(new Transaction.Handler() {
+            @NonNull
+            @Override
+            public Transaction.Result doTransaction(@NonNull MutableData mutableData) {
+                Article article = mutableData.getValue(Article.class);
+                if (article == null) {
+                    return Transaction.success(mutableData);
+                }
+
+                article.setReadTime(readTime);
+                mutableData.setValue(article);
+                return Transaction.success(mutableData);
+            }
+
+            @Override
+            public void onComplete(@Nullable DatabaseError databaseError, boolean b, @Nullable DataSnapshot dataSnapshot) {
+            }
+        });
+
+        mExecutors.networkIO().execute(() -> {
+            mArticleListener = mArticleRef.addValueEventListener(new ValueEventListener() {
+                @Override
+                public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+                    // set up bottom toolbar
+                    if (dataSnapshot.exists()) {
+                        mArticle = dataSnapshot.getValue(Article.class);
+
+                        if (mArticle != null) {
+                            if (mArticle.upvoters.containsKey(mUid)) {
+                                upVoteView.setChecked(true);
+                            } else {
+                                upVoteView.setChecked(false);
+                            }
+                            if (mArticle.downvoters.containsKey(mUid)) {
+                                downVoteView.setChecked(true);
+                            } else {
+                                downVoteView.setChecked(false);
+                            }
+                            if (mArticle.commenters.containsKey(mUid)) {
+                                commentView.setChecked(true);
+                            } else {
+                                commentView.setChecked(false);
+                            }
+                            if (mArticle.savers.containsKey(mUid)) {
+                                favView.setChecked(true);
+                            } else {
+                                favView.setChecked(false);
+                            }
+
+                            upVoteView.setOnClickListener(onClickListener(mArticle, "upvote"));
+                            downVoteView.setOnClickListener(onClickListener(mArticle, "downvote"));
+                            commentView.setOnClickListener(onClickListener(mArticle, "comment"));
+                            favView.setOnClickListener(onClickListener(mArticle, "favourite"));
+                            shareView.setOnClickListener(onClickListener(mArticle, "share"));
+
+                            if (!hasLoggedSelectContent) {
+                                Bundle bundle = new Bundle();
+                                bundle.putString(FirebaseAnalytics.Param.ITEM_ID, mArticle.getObjectID());
+                                bundle.putString(FirebaseAnalytics.Param.ITEM_NAME, mArticle.getTitle());
+                                bundle.putString(FirebaseAnalytics.Param.ITEM_CATEGORY, mArticle.getMainTheme());
+                                bundle.putString("item_source", mArticle.getSource());
+                                bundle.putString(FirebaseAnalytics.Param.CONTENT_TYPE, mArticle.getType());
+                                mFirebaseAnalytics.logEvent(FirebaseAnalytics.Event.SELECT_CONTENT, bundle);
+                                hasLoggedSelectContent = true;
+                            }
+                        }
+                    }
+                }
+
+                @Override
+                public void onCancelled(@NonNull DatabaseError databaseError) {
+                    createToast(WebViewActivity.this, databaseError.toString(), Toast.LENGTH_SHORT);
+                }
+            });
+        });
+    }
+
+    private void loadFromFirebaseDb() {
+        mExecutors.networkIO().execute(() -> {
+            mArticleListener = mArticleRef.addValueEventListener(new ValueEventListener() {
+                @Override
+                public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+                    if (dataSnapshot.exists()) {
+                        mArticle = dataSnapshot.getValue(Article.class);
+
+                        // get data to set up card
+                        if (mArticle != null) {
+                            Log.d(TAG, "loaded from firebaseDb");
+                            link = mArticle.getLink();
+                            title = mArticle.getTitle();
+                            author = mArticle.getAuthor();
+                            source = mArticle.getSource();
+                            date = DateUtils.parseDate(mArticle.getPubDate());
+                            selector = mArticle.selector;
+//                                        htmlContent = mArticle.htmlContent;
+                            if (!isArticleLoaded) {
+                                if (mArticle.getType() != null && mArticle.getType().equals("article")) {
+                                    mExecutors.mainThread().execute(() -> genHtml());
+                                } else {
+                                    mExecutors.mainThread().execute(() -> webView.loadUrl(link));
+                                }
+                                isArticleLoaded = true;
+                            }
+
+                            // set up bottom toolbar
+                            if (mArticle.upvoters.containsKey(mUid)) {
+                                upVoteView.setChecked(true);
+                            } else {
+                                upVoteView.setChecked(false);
+                            }
+                            if (mArticle.downvoters.containsKey(mUid)) {
+                                downVoteView.setChecked(true);
+                            } else {
+                                downVoteView.setChecked(false);
+                            }
+                            if (mArticle.commenters.containsKey(mUid)) {
+                                commentView.setChecked(true);
+                            } else {
+                                commentView.setChecked(false);
+                            }
+                            if (mArticle.savers.containsKey(mUid)) {
+                                favView.setChecked(true);
+                            } else {
+                                favView.setChecked(false);
+                            }
+
+                            upVoteView.setOnClickListener(onClickListener(mArticle, "upvote"));
+                            downVoteView.setOnClickListener(onClickListener(mArticle, "downvote"));
+                            commentView.setOnClickListener(onClickListener(mArticle, "comment"));
+                            favView.setOnClickListener(onClickListener(mArticle, "favourite"));
+                            shareView.setOnClickListener(onClickListener(mArticle, "share"));
+
+                            if (!hasLoggedSelectContent) {
+                                Bundle bundle = new Bundle();
+                                bundle.putString(FirebaseAnalytics.Param.ITEM_ID, mArticle.getObjectID());
+                                bundle.putString(FirebaseAnalytics.Param.ITEM_NAME, mArticle.getTitle());
+                                bundle.putString(FirebaseAnalytics.Param.ITEM_CATEGORY, mArticle.getMainTheme());
+                                bundle.putString("item_source", mArticle.getSource());
+                                bundle.putString(FirebaseAnalytics.Param.CONTENT_TYPE, mArticle.getType());
+                                mFirebaseAnalytics.logEvent(FirebaseAnalytics.Event.SELECT_CONTENT, bundle);
+                                hasLoggedSelectContent = true;
+                            }
+                        }
+                    }
+                }
+
+                @Override
+                public void onCancelled(@NonNull DatabaseError databaseError) {
+                    createToast(WebViewActivity.this, databaseError.toString(), Toast.LENGTH_SHORT);
+                }
+            });
+        });
     }
 
     public void genHtml() {

@@ -103,7 +103,7 @@ public class RecDealsJobService extends JobService {
             if (keys.equals("")) {
                 keys = key;
             } else {
-                if (!keys.contains(key)) keys += "·" + key;
+                if (!keys.contains(key)) keys += "|·|" + key;
             }
 
             String imageUrl = null;
@@ -124,15 +124,15 @@ public class RecDealsJobService extends JobService {
             }
 
             // type, articleId, text, title, source, imageUrl, theme, extra, timestamp
-            value = "deal" + "·" + // type
-                    article.getObjectID() + "·" + // articleId
-                    "Trending Deal·" + // text
-                    title + "·" + // title
-                    source + "·" + // source
-                    imageUrl + "·" + // imageUrl
-                    article.getMainTheme() + "·" + // theme
-                    String.valueOf(article.getPubDate()) + "·" + // extra
-                    String.valueOf((new Date()).getTime()) + "·" + // timestamp
+            value = "deal" + "|·|" + // type
+                    article.getObjectID() + "|·|" + // articleId
+                    "Trending Deal|·|" + // text
+                    title + "|·|" + // title
+                    source + "|·|" + // source
+                    imageUrl + "|·|" + // imageUrl
+                    article.getMainTheme() + "|·|" + // theme
+                    String.valueOf(article.getPubDate()) + "|·|" + // extra
+                    String.valueOf((new Date()).getTime()) + "|·|" + // timestamp
                     article.getLink(); // link
             sharedPrefs.edit().putString(key, value).apply();
 

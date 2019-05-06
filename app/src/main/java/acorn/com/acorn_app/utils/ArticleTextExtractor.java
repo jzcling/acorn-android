@@ -476,7 +476,13 @@ public class ArticleTextExtractor {
     private static Collection<Element> getNodes(Document doc, @Nullable String selector) {
         if (selector == null) { selector = "body"; }
         Collection<Element> nodes = new HashSet<>(64);
-        for (Element el : doc.select(selector)) {
+        List<Element> elements;
+        if (selector == "body") {
+            elements = doc.select(selector).select("*");
+        } else {
+            elements = doc.select(selector);
+        }
+        for (Element el : elements) {
 //        for (Element el : doc.children()) {
                 if (NODES.matcher(el.tagName()).matches()) {
                 nodes.add(el);

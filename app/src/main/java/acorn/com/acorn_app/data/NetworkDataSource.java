@@ -319,6 +319,7 @@ public class NetworkDataSource {
         mExecutors.networkIO().execute(() -> {
             Log.d(TAG, "getSavedArticlesReminderData");
             List<Article> reminderList = new ArrayList<>();
+            if (mUid == null) mUid = mSharedPrefs.getString("uid", "");
             DatabaseReference userRef = mDatabaseReference.child(USER_REF).child(mUid).child("savedItems");
             userRef.addListenerForSingleValueEvent(new ValueEventListener() {
                 @Override
@@ -353,7 +354,8 @@ public class NetworkDataSource {
                             }
 
                             @Override
-                            public void onCancelled(@NonNull DatabaseError databaseError) { }
+                            public void onCancelled(@NonNull DatabaseError databaseError) {
+                            }
                         });
                     }
                 }

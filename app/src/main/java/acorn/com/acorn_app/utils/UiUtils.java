@@ -10,6 +10,7 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.recyclerview.widget.ItemTouchHelper;
 import android.util.DisplayMetrics;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.TouchDelegate;
 import android.view.View;
@@ -146,10 +147,10 @@ public class UiUtils implements NotificationItemTouchHelper.RecyclerItemTouchHel
 
         String keys = sharedPrefs.getString(context.getString(R.string.notif_pref_key), "");
         if (!keys.equals("")) {
-            String[] keyList = keys.split("·");
+            String[] keyList = keys.split("|·|");
             for (String key : keyList) {
                 String value = sharedPrefs.getString(key, "");
-                List<String> valueList = Arrays.asList(value.split("·"));
+                List<String> valueList = Arrays.asList(value.split("|·|"));
 
                 // new as of 1.4.2 to clear all notifications of previous versions
                 // due to addition of link (index position 9)
@@ -158,10 +159,14 @@ public class UiUtils implements NotificationItemTouchHelper.RecyclerItemTouchHel
                     return new ArrayList<>();
                 }
 
-                Notif notification = new Notif(valueList.get(0), valueList.get(1), valueList.get(2),
-                        valueList.get(3), valueList.get(4), valueList.get(5), valueList.get(6),
-                        valueList.get(7), Long.parseLong(valueList.get(8)), valueList.get(9));
-                mNotifList.add(notification);
+                try {
+                    Notif notification = new Notif(valueList.get(0), valueList.get(1), valueList.get(2),
+                            valueList.get(3), valueList.get(4), valueList.get(5), valueList.get(6),
+                            valueList.get(7), Long.parseLong(valueList.get(8)), valueList.get(9));
+                    mNotifList.add(notification);
+                } catch (Exception e) {
+                    Log.d(TAG, e.getLocalizedMessage());
+                }
             }
         }
 
