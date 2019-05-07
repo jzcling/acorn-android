@@ -255,6 +255,37 @@ public class NetworkDataSource {
         });
     }
 
+    public void getSearchData(String searchKey, String searchFilter, Runnable bindToUi) {
+        mExecutors.networkIO().execute(() -> {
+            String cleanedSearchKey = searchKey.replaceAll("[.#$\\[\\]]", "");
+            DatabaseReference resultRef = mDatabaseReference.child(SEARCH_REF).child(cleanedSearchKey);
+            resultRef.addListenerForSingleValueEvent(new ValueEventListener() {
+                @Override
+                public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+                    if (dataSnapshot.getValue() == null) {
+                        searchThemeArticles(cleanedSearchKey, searchFilter, bindToUi);
+                    } else {
+                        Long timeNow = (new Date().getTime());
+                        Long lastQueryTimestamp = (Long) dataSnapshot.child("lastQueryTimestamp").getValue();
+                        if (lastQueryTimestamp == null) {
+                            searchThemeArticles(cleanedSearchKey, searchFilter, bindToUi);
+                        } else {
+                            if (timeNow - lastQueryTimestamp < 3L * 60L * 60L * 1000L) { // 3 hours
+                                mExecutors.mainThread().execute(bindToUi);
+                            } else {
+                                searchThemeArticles(cleanedSearchKey, searchFilter, bindToUi);
+                            }
+                        }
+                    }
+                }
+
+                @Override
+                public void onCancelled(@NonNull DatabaseError databaseError) {
+                }
+            });
+        });
+    }
+
     private void searchThemeArticles(String themeSearchKey, String themeSearchFilter, Runnable bindToUi) {
         mExecutors.networkIO().execute(() -> {
             DatabaseReference resultRef = mDatabaseReference.child(SEARCH_REF).child(themeSearchKey);

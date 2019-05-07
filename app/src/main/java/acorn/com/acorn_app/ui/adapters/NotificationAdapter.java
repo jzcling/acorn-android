@@ -73,7 +73,7 @@ public class NotificationAdapter extends RecyclerView.Adapter<NotificationViewHo
 
         String keys = sharedPrefs.getString(mContext.getString(R.string.notif_pref_key), "");
 
-        List<String> keyList = new ArrayList<>(Arrays.asList(keys.split("|·|")));
+        List<String> keyList = new ArrayList<>(Arrays.asList(keys.split("~·~")));
 
         if (key != null) {
             keyList.remove(key);
@@ -82,7 +82,7 @@ public class NotificationAdapter extends RecyclerView.Adapter<NotificationViewHo
                 if (newKeys == null) {
                     newKeys = k;
                 } else {
-                    newKeys += "|·|" + k;
+                    newKeys += "~·~" + k;
                 }
             }
 

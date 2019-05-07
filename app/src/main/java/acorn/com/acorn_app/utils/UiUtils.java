@@ -147,10 +147,10 @@ public class UiUtils implements NotificationItemTouchHelper.RecyclerItemTouchHel
 
         String keys = sharedPrefs.getString(context.getString(R.string.notif_pref_key), "");
         if (!keys.equals("")) {
-            String[] keyList = keys.split("|·|");
+            String[] keyList = keys.split("~·~");
             for (String key : keyList) {
                 String value = sharedPrefs.getString(key, "");
-                List<String> valueList = Arrays.asList(value.split("|·|"));
+                List<String> valueList = Arrays.asList(value.split("~·~"));
 
                 // new as of 1.4.2 to clear all notifications of previous versions
                 // due to addition of link (index position 9)

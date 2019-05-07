@@ -39,10 +39,6 @@ public class FbQuery implements Parcelable {
             limit = 500;
         } else if (state == 4) { // Deals
             orderByChild = "trendingIndex";
-        } else if (state == -1) { // mainTheme
-            orderByChild = "mainTheme";
-        } else if (state == -2) { // source
-            orderByChild = "source";
         }
         if (indexType == 0) {
             strStartAt = index instanceof String ? (String) index : "";

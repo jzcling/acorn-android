@@ -619,7 +619,7 @@ public class AcornActivity extends AppCompatActivity
         if (isLoadingMore) return;
 
         // Don't trigger load more for feed filtered by theme / source
-        if (mQuery.state < 0) return;
+//        if (mQuery.state < 0) return;
 
         int currentPosition = mLinearLayoutManager.findLastCompletelyVisibleItemPosition();
         final int trigger = 5;
@@ -647,6 +647,12 @@ public class AcornActivity extends AppCompatActivity
                     index = lastArticle.getTrendingIndex();
                     break;
                 case 4:
+                    index = lastArticle.getTrendingIndex();
+                    break;
+                case -1:
+                    index = lastArticle.getTrendingIndex();
+                    break;
+                case -2:
                     index = lastArticle.getTrendingIndex();
                     break;
             }
@@ -1057,9 +1063,23 @@ public class AcornActivity extends AppCompatActivity
     @Override
     public void onLongClick(Article article, int id, String text) {
         if (id == R.id.card_theme) {
-            mQuery = new FbQuery(-1, article.getMainTheme(), 1);
+            String themeRef = SEARCH_REF + "/" + article.getMainTheme() + "/hits";
+            String searchKey = article.getMainTheme();
+            String searchFilter = "mainTheme: \"" + article.getMainTheme() + "\"";
+            mDataSource.getSearchData(searchKey, searchFilter, ()->{
+                mLlmState = null;
+                mQuery = new FbQuery(-1, themeRef, "trendingIndex");
+                resetView();
+            });
         } else if (id == R.id.card_contributor) {
-            mQuery = new FbQuery(-2, article.getSource(), 1);
+            String sourceRef = SEARCH_REF + "/" + article.getSource().replaceAll("[.#$\\[\\]]", "") + "/hits";
+            String searchKey = article.getSource();
+            String searchFilter = "source: \"" + article.getSource() + "\"";
+            mDataSource.getSearchData(searchKey, searchFilter, ()->{
+                mLlmState = null;
+                mQuery = new FbQuery(-2, sourceRef, "trendingIndex");
+                resetView();
+            });
         }
         resetView();
     }

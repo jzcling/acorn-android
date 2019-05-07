@@ -238,10 +238,10 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
         if (commentsText.equals("")) {
             commentsText = data.get("commentText");
         } else {
-            commentsText += "|·|" + data.get("commentText");
+            commentsText += "~·~" + data.get("commentText");
         }
 
-        List<String> comments = Arrays.asList(commentsText.split("|·|"));
+        List<String> comments = Arrays.asList(commentsText.split("~·~"));
         String commentCount;
         String contentTitle;
         String contentText = data.get("commenter") + ": " + data.get("commentText");
@@ -292,22 +292,22 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
     private void updateSharedPrefsForComments(SharedPreferences sharedPrefs, Map<String, String> data) {
         String keys = sharedPrefs.getString(getString(R.string.notif_pref_key), "");
 
-        List<String> keyList = Arrays.asList(keys.split("|·|"));
+        List<String> keyList = Arrays.asList(keys.split("~·~"));
         String key = "c_" + data.get("articleId");
         if (keyList.contains(key)) {
             String value = sharedPrefs.getString(key, "");
-            List<String> valueList = Arrays.asList(value.split("|·|"));
+            List<String> valueList = Arrays.asList(value.split("~·~"));
             int count = Integer.parseInt(Arrays.asList(valueList.get(2).split(" ")).get(0)) + 1;
             // type, articleId, text, title, source, imageUrl, theme, extra, timestamp
-            value = "comment" + "|·|" + // type
-                    data.get("articleId") + "|·|" + // articleId
-                    count + " new comments on an article you follow" + "|·|" + // text
-                    data.get("title") + "|·|" + // title
-                    data.get("source") + "|·|" + // source
-                    data.get("imageUrl") + "|·|" + // imageUrl
-                    data.get("mainTheme") + "|·|" + // theme
-                    data.get("mainTheme") + "|·|" + // extra
-                    data.get("timestamp") + "|·|" + // timestamp
+            value = "comment" + "~·~" + // type
+                    data.get("articleId") + "~·~" + // articleId
+                    count + " new comments on an article you follow" + "~·~" + // text
+                    data.get("title") + "~·~" + // title
+                    data.get("source") + "~·~" + // source
+                    data.get("imageUrl") + "~·~" + // imageUrl
+                    data.get("mainTheme") + "~·~" + // theme
+                    data.get("mainTheme") + "~·~" + // extra
+                    data.get("timestamp") + "~·~" + // timestamp
                     ""; // link
 
             sharedPrefs.edit().putString(key, value).apply();
@@ -316,18 +316,18 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
             if (keys.equals("")) {
                 keys = key;
             } else {
-                keys += "|·|" + key;
+                keys += "~·~" + key;
             }
             // type, articleId, text, title, source, imageUrl, theme, extra, timestamp, link
-            String value = "comment" + "|·|" + // type
-                    data.get("articleId") + "|·|" + // articleId
-                    "1 new comment on an article you follow" + "|·|" + // text
-                    data.get("title") + "|·|" + // title
-                    data.get("source") + "|·|" + // source
-                    data.get("imageUrl") + "|·|" + // imageUrl
-                    data.get("mainTheme") + "|·|" + // theme
-                    data.get("mainTheme") + "|·|" + // extra
-                    data.get("timestamp") + "|·|" + // timestamp
+            String value = "comment" + "~·~" + // type
+                    data.get("articleId") + "~·~" + // articleId
+                    "1 new comment on an article you follow" + "~·~" + // text
+                    data.get("title") + "~·~" + // title
+                    data.get("source") + "~·~" + // source
+                    data.get("imageUrl") + "~·~" + // imageUrl
+                    data.get("mainTheme") + "~·~" + // theme
+                    data.get("mainTheme") + "~·~" + // extra
+                    data.get("timestamp") + "~·~" + // timestamp
                     ""; // link
 
             sharedPrefs.edit().putString(getString(R.string.notif_pref_key), keys)
@@ -407,19 +407,19 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
                     if (keys.equals("")) {
                         keys = key;
                     } else {
-                        if (!keys.contains(key)) keys += "|·|" + key;
+                        if (!keys.contains(key)) keys += "~·~" + key;
                     }
 
                     // type, articleId, text, title, source, imageUrl, theme, extra, timestamp
-                    value = "savedArticleReminder" + "|·|" + // type
-                            article.getObjectID() + "|·|" + // articleId
-                            "Don't forget this saved article!|·|" + // text
-                            contentTitle + "|·|" + // title
-                            source + "|·|" + // source
-                            imageUrl + "|·|" + // imageUrl
-                            article.getMainTheme() + "|·|" + // theme
-                            String.valueOf(article.getPubDate()) + "|·|" + // extra
-                            String.valueOf((new Date()).getTime()) + "|·|" + // timestamp
+                    value = "savedArticleReminder" + "~·~" + // type
+                            article.getObjectID() + "~·~" + // articleId
+                            "Don't forget this saved article!~·~" + // text
+                            contentTitle + "~·~" + // title
+                            source + "~·~" + // source
+                            imageUrl + "~·~" + // imageUrl
+                            article.getMainTheme() + "~·~" + // theme
+                            String.valueOf(article.getPubDate()) + "~·~" + // extra
+                            String.valueOf((new Date()).getTime()) + "~·~" + // timestamp
                             article.getLink(); // link
                     sharedPrefs.edit().putString(key, value).apply();
 
