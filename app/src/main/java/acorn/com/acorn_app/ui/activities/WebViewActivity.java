@@ -242,6 +242,7 @@ public class WebViewActivity extends AppCompatActivity {
                     source = mDbArticle.source;
                     date = DateUtils.parseDate(mDbArticle.pubDate);
                     htmlContent = mDbArticle.htmlContent;
+//                    Log.d(TAG, "htmlContent: " + htmlContent);
                     if (htmlContent != null && !htmlContent.equals("")) {
                         loadFromLocalDb();
                     } else {
@@ -577,7 +578,7 @@ public class WebViewActivity extends AppCompatActivity {
 //        Log.d(TAG, "htmlContent: " + htmlContent.substring(0, 20));
         mExecutors.networkIO().execute(() -> {
             String generatedHtml = HtmlUtils.regenArticleHtml(this, link, title, author, source, date, //htmlContent,
-                    selector);
+                    selector, articleId);
 
             boolean isSuccessful = generatedHtml != null && !generatedHtml.equals("");
 
