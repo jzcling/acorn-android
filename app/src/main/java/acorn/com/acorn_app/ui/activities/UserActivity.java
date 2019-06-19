@@ -3,6 +3,9 @@ package acorn.com.acorn_app.ui.activities;
 import android.os.Bundle;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
+
+import android.util.Log;
+import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageView;
 import android.widget.ProgressBar;
@@ -15,6 +18,14 @@ import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ValueEventListener;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collector;
+import java.util.stream.Collectors;
+
 import acorn.com.acorn_app.R;
 import acorn.com.acorn_app.models.User;
 
@@ -25,6 +36,7 @@ import static acorn.com.acorn_app.ui.activities.AcornActivity.LEVEL_2;
 import static acorn.com.acorn_app.ui.activities.AcornActivity.LEVEL_3;
 import static acorn.com.acorn_app.ui.activities.AcornActivity.mUid;
 import static acorn.com.acorn_app.utils.UiUtils.createToast;
+import static java.util.Map.Entry.comparingByValue;
 
 public class UserActivity extends AppCompatActivity {
     private static final String TAG = "UserActivity";
@@ -40,6 +52,7 @@ public class UserActivity extends AppCompatActivity {
     // Main user views
     private TextView mDisplayNameView;
     private TextView mStatusView;
+    private TextView mPointsView;
     private ImageView mStatusImageView;
     private TextView mUpvoteCountView;
     private TextView mDownvoteCountView;
@@ -51,11 +64,11 @@ public class UserActivity extends AppCompatActivity {
     private TextView mProgressRequirementView;
     private ProgressBar mProgressBar;
 
-    // Categories views
-    private ViewGroup mCategoriesGroup;
-    private TextView mCategory1View;
-    private TextView mCategery2View;
-    private TextView mCategory3View;
+    // Themes views
+    private ViewGroup mThemesGroup;
+    private TextView mTheme1View;
+    private TextView mTheme2View;
+    private TextView mTheme3View;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -71,6 +84,7 @@ public class UserActivity extends AppCompatActivity {
         // Set up views
         mDisplayNameView = findViewById(R.id.user_displayNameView);
         mStatusView = findViewById(R.id.user_statusTextView);
+        mPointsView = findViewById(R.id.user_pointsTextView);
         mStatusImageView = findViewById(R.id.user_statusImageView);
         mUpvoteCountView = findViewById(R.id.user_upvoteCountView);
         mDownvoteCountView = findViewById(R.id.user_downvoteCountView);
@@ -79,10 +93,10 @@ public class UserActivity extends AppCompatActivity {
         mProgressGroup = findViewById(R.id.user_progressBarLayout);
         mProgressRequirementView = findViewById(R.id.user_pointsToNextLevel);
         mProgressBar = findViewById(R.id.user_progressBar);
-        mCategoriesGroup = findViewById(R.id.user_categoriesLayout);
-        mCategory1View = findViewById(R.id.user_categories1);
-        mCategery2View = findViewById(R.id.user_categories2);
-        mCategory3View = findViewById(R.id.user_categories3);
+        mThemesGroup = findViewById(R.id.user_themesLayout);
+        mTheme1View = findViewById(R.id.user_themes1);
+        mTheme2View = findViewById(R.id.user_themes2);
+        mTheme3View = findViewById(R.id.user_themes3);
 
         // Get user data
         mUserRef.addListenerForSingleValueEvent(new ValueEventListener() {
@@ -90,6 +104,7 @@ public class UserActivity extends AppCompatActivity {
             public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
                 mUser = dataSnapshot.getValue(User.class);
                 mDisplayNameView.setText(mUser.getDisplayName());
+                mPointsView.setText(mUser.getPoints() + " Pts");
                 if (mUser.getStatus() == 0) {
                     mStatusImageView.setBackground(getDrawable(R.drawable.user_acorn));
                     mStatusView.setText(LEVEL_0);
@@ -115,6 +130,30 @@ public class UserActivity extends AppCompatActivity {
                 int progressLevel = (int) Math.max(Math.floor((x - z) / (y - z) * 100D), 0);
 
                 mProgressBar.setProgress(progressLevel);
+
+                if (mUser.openedThemes.size() < 1) {
+                    mThemesGroup.setVisibility(View.GONE);
+                } else {
+                    Map<String, Integer> sortedOpenedThemes = mUser.openedThemes.entrySet().stream()
+                            .sorted(Collections.reverseOrder(Map.Entry.comparingByValue()))
+                            .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue, (e1, e2) -> e2, LinkedHashMap::new));
+                    List<String> themes = new ArrayList<>(sortedOpenedThemes.keySet());
+                    Log.d(TAG, sortedOpenedThemes.toString());
+                    
+                    if (themes.size() < 2) {
+                        mTheme2View.setVisibility(View.GONE);
+                        mTheme3View.setVisibility(View.GONE);
+                        mTheme1View.setText(themes.get(0));
+                    } else if (themes.size() < 3) {
+                        mTheme3View.setVisibility(View.GONE);
+                        mTheme1View.setText(themes.get(0));
+                        mTheme2View.setText(themes.get(1));
+                    } else {
+                        mTheme1View.setText(themes.get(0));
+                        mTheme2View.setText(themes.get(1));
+                        mTheme3View.setText(themes.get(2));
+                    }
+                }
             }
 
             @Override

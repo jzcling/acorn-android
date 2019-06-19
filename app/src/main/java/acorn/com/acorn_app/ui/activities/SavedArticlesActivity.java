@@ -63,13 +63,13 @@ public class SavedArticlesActivity extends AppCompatActivity
     private static Parcelable mLlmState;
 
     //For filtering
-    String[] themeList;
-    boolean[] checkedStatus;
+    private String[] themeList;
+    private boolean[] checkedStatus;
     private String mSearchText;
-    List<String> mThemeFilterList = new ArrayList<>();
+    private List<String> mThemeFilterList = new ArrayList<>();
 
     // Article list
-    ArticleListLiveData articleListLD;
+    private ArticleListLiveData articleListLD;
 
 
     @Override protected void onCreate(@Nullable Bundle savedInstanceState) {

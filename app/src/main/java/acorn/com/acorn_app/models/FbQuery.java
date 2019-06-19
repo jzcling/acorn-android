@@ -3,12 +3,15 @@ package acorn.com.acorn_app.models;
 import android.os.Parcel;
 import android.os.Parcelable;
 
+import java.util.Random;
+
 import static acorn.com.acorn_app.ui.viewModels.ArticleViewModel.QUERY_LIMIT;
 
 public class FbQuery implements Parcelable {
     public final int state;
     public String dbRef = "article";
     public String orderByChild;
+    public String orderByKey;
     public String strStartAt = "";
     public Long numStartAt = Long.MAX_VALUE;
     public String strEqualTo = "";

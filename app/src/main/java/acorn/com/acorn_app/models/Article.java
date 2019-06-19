@@ -42,6 +42,7 @@ public class Article {
     public String htmlContent;
     public String selector;
     public Long reminderDate;
+    //public List<String> addresses = new ArrayList<>();
 
     public Article() {}
 

@@ -3,6 +3,7 @@ package acorn.com.acorn_app.ui.activities;
 import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.Intent;
+import android.graphics.Point;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.net.Uri;
@@ -15,6 +16,7 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.SearchView;
 import androidx.appcompat.widget.Toolbar;
 import android.util.Log;
+import android.view.Display;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
@@ -576,9 +578,13 @@ public class WebViewActivity extends AppCompatActivity {
     public void genHtml() {
         Log.d(TAG, "genHtml");
 //        Log.d(TAG, "htmlContent: " + htmlContent.substring(0, 20));
+        Display display = getWindowManager().getDefaultDisplay();
+        Point size = new Point();
+        display.getSize(size);
+        int width = size.x;
         mExecutors.networkIO().execute(() -> {
             String generatedHtml = HtmlUtils.regenArticleHtml(this, link, title, author, source, date, //htmlContent,
-                    selector, articleId);
+                    selector, articleId, width);
 
             boolean isSuccessful = generatedHtml != null && !generatedHtml.equals("");
 

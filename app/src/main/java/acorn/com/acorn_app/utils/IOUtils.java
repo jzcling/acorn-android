@@ -72,6 +72,7 @@ public class IOUtils {
                 URL url = new URL(imageUrl);
                 InputStream input = url.openConnection().getInputStream();
                 Bitmap bitmap = BitmapFactory.decodeStream(input);
+                input.close();
                 return bitmap;
             } catch (IOException e) {
                 e.printStackTrace();

@@ -1,6 +1,7 @@
 package acorn.com.acorn_app.data;
 
 import androidx.lifecycle.LiveData;
+
 import android.os.Handler;
 import androidx.annotation.NonNull;
 import android.util.Log;
@@ -25,13 +26,15 @@ public class ArticleListLiveData extends LiveData<List<Article>> {
 
     private final DatabaseReference mDatabaseReference = FirebaseDatabase.getInstance().getReference();
 
-    private final Query query;
+    private Query query;
+    private List<Query> queryList;
     public Map<Query, ValueEventListener> savedArticlesQueryList = new HashMap<>();
+    public Map<Query, ValueEventListener> nearbyArticlesQueryList = new HashMap<>();
 
-    // States: 0 = Recent, 1 = Trending, 2 = Saved articles, 3 = Search,
+    // States: 0 = Recent, 1 = Trending, 2 = Saved articles, 3 = Search, 4 = Deals
     // -1 = mainTheme, -2 = source
     private int state = 0;
-    private int startAt = 0;
+    private long startAt = 0;
     private int limit = 10;
 
     private final MyChildEventListener childListener = new MyChildEventListener();
@@ -45,12 +48,12 @@ public class ArticleListLiveData extends LiveData<List<Article>> {
     private final Runnable removeListener = new Runnable() {
         @Override
         public void run() {
-            if (state != 2) {
-                query.removeEventListener(childListener);
-            } else {
+            if (state == 2){
                 for (Query query : savedArticlesQueryList.keySet()) {
                     query.removeEventListener(savedArticlesQueryList.get(query));
                 }
+            } else {
+                query.removeEventListener(childListener);
             }
             listenerRemovePending = false;
         }
@@ -60,8 +63,15 @@ public class ArticleListLiveData extends LiveData<List<Article>> {
         this.query = query;
     }
 
-    public ArticleListLiveData(Query query, int state, int limit, int startAt) {
+    public ArticleListLiveData(Query query, int state, int limit, long startAt) {
         this.query = query;
+        this.state = state;
+        this.limit = limit;
+        this.startAt = startAt;
+    }
+
+    public ArticleListLiveData(List<Query> queryList, int state, int limit, long startAt) {
+        this.queryList = queryList;
         this.state = state;
         this.limit = limit;
         this.startAt = startAt;
@@ -73,9 +83,7 @@ public class ArticleListLiveData extends LiveData<List<Article>> {
             handler.removeCallbacks(removeListener);
         }
         else {
-            if (state != 2) {
-                query.addChildEventListener(childListener);
-            } else {
+            if (state == 2) {
                 query.addListenerForSingleValueEvent(new ValueEventListener() {
                     @Override
                     public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
@@ -86,8 +94,8 @@ public class ArticleListLiveData extends LiveData<List<Article>> {
 
                         List<String> savedIdList = new ArrayList<>(savedItems.keySet());
 
-                        int endIndex = Math.min(startAt + limit, savedIdList.size());
-                        for (int i = startAt; i < endIndex; i++) {
+                        int endIndex = (int) Math.min(startAt + limit, savedIdList.size());
+                        for (int i = (int) startAt; i < endIndex; i++) {
                             Query articleQuery = mDatabaseReference.child("article/" + savedIdList.get(i));
                             savedArticlesQueryList.put(articleQuery, valueListener);
                             articleQuery.addValueEventListener(valueListener);
@@ -98,6 +106,8 @@ public class ArticleListLiveData extends LiveData<List<Article>> {
                     public void onCancelled(@NonNull DatabaseError databaseError) {
                     }
                 });
+            } else {
+                query.addChildEventListener(childListener);
             }
         }
         listenerRemovePending = false;

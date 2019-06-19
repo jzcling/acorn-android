@@ -26,17 +26,18 @@ public class HtmlUtils {
             .addAttributes("audio", "src", "controls")
             .addAttributes("source", "src", "type")
             .addAttributes("track", "src", "kind", "srclang", "label")
-            .addAttributes("img", "src", "alt", "srcset")
+            .addAttributes("img", "src", "alt", "srcset", "class")
             .addAttributes("span", "style");
 
     private static final Pattern IMG_PATTERN = Pattern.compile("(<img)[^>]*\\ssrc=\\s*['\"]([^'\"]+)['\"][^>]*>", Pattern.CASE_INSENSITIVE);
     private static final Pattern LAZY_LOADING_PATTERN = Pattern.compile("(<img)[^>]*\\s(data-lazy-src|original-src|data-src|original[^>\\s]*?src|data[^>\\s]*?src|data-original)=\\s*['\"]([^'\"]+)['\"]", Pattern.CASE_INSENSITIVE);
-//    private static final Pattern SRC_SET_PATTERN = Pattern.compile("<source[^>]*srcset=['\"][^>\\s]+\\s[0-9]+w,\\s*[^>\\s]+\\s[0-9]+w,\\s*([^>\\s]+)\\s[0-9]+w[^>]*['\"]>.*?<img\\s[^>]*>", Pattern.CASE_INSENSITIVE);
+    private static final Pattern SEEDLY_IMG_DESC_PATTERN = Pattern.compile("data-image-description=['\"][^'\"]*['\"]", Pattern.CASE_INSENSITIVE);
+    private static final Pattern CNA_IMAGE_PATTERN = Pattern.compile("<source[^>]*srcset=['\"]([^'\"]+)['\"]>.*?<img\\s[^>]+src=['\"]([^'\"]+)['\"][^>]+/>", Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
     private static final Pattern NOSCRIPT_PATTERN = Pattern.compile("<noscript>.*?</noscript>", Pattern.CASE_INSENSITIVE);
     private static final Pattern ADS_PATTERN = Pattern.compile("<div class=['\"]mf-viral['\"]><table border=['\"]0['\"]>.*", Pattern.CASE_INSENSITIVE);
     private static final Pattern EMPTY_IMAGE_PATTERN = Pattern.compile("<img\\s+(height=['\"]1['\"]\\s+width=['\"]1['\"]|width=['\"]1['\"]\\s+height=['\"]1['\"])\\s+[^>]*src=\\s*['\"]([^'\"]+)['\"][^>]*>", Pattern.CASE_INSENSITIVE);
-    private static final Pattern RELATIVE_IMAGE_PATTERN = Pattern.compile("\\s+(href|src)=([\"'])//", Pattern.CASE_INSENSITIVE);
-    private static final Pattern RELATIVE_IMAGE_PATTERN_2 = Pattern.compile("\\s+(href|src)=([\"'])/", Pattern.CASE_INSENSITIVE);
+    private static final Pattern RELATIVE_IMAGE_PATTERN = Pattern.compile("\\s+(href|src)=\\s*?[\"'](//[^'\">\\s]+)[\"']", Pattern.CASE_INSENSITIVE);
+    private static final Pattern RELATIVE_IMAGE_PATTERN_2 = Pattern.compile("\\s+(href|src)=\\s*?[\"'](/[^/][^'\">\\s]+)[\"']", Pattern.CASE_INSENSITIVE);
     private static final Pattern ALT_IMAGE_PATTERN = Pattern.compile("amp-img\\s", Pattern.CASE_INSENSITIVE);
     private static final Pattern BAD_IMAGE_PATTERN = Pattern.compile("<img\\s+[^>]*src=\\s*['\"]([^'\"]+)\\.img['\"][^>]*>", Pattern.CASE_INSENSITIVE);
     private static final Pattern START_BR_PATTERN = Pattern.compile("^(\\s*<br\\s*[/]*>\\s*)*", Pattern.CASE_INSENSITIVE);
@@ -61,25 +62,28 @@ public class HtmlUtils {
     private static final String SUBTITLE_END = "</p>";
 
 
-    public static String improveHtmlContent(String content, String baseUrl, String aid, String link) {
+    public static String improveHtmlContent(String content, String baseUrl, String aid, String link, int width) {
         if (content != null) {
+
             // remove some ads
             content = ADS_PATTERN.matcher(content).replaceAll("");
             // remove noscript blocks
             content = NOSCRIPT_PATTERN.matcher(content).replaceAll("");
+
+            // remove interfering elements
+            content = SEEDLY_IMG_DESC_PATTERN.matcher(content).replaceAll("");
+//            content = CNA_IMAGE_PATTERN.matcher(content).replaceAll("<img src=\"$2\" srcset=$1>");
             // remove lazy loading images stuff
-            content = LAZY_LOADING_PATTERN.matcher(content).replaceAll("$1 src=\"$3\">");
+            content = LAZY_LOADING_PATTERN.matcher(content).replaceAll("$1 src=\"$3\"");
             // fix relative image paths
-            content = RELATIVE_IMAGE_PATTERN.matcher(content).replaceAll(" $1=$2http://");
+            content = RELATIVE_IMAGE_PATTERN.matcher(content).replaceAll(" $1=\"http://$2\"");
             // fix alternative image tags
             content = ALT_IMAGE_PATTERN.matcher(content).replaceAll("img ");
-
-//            content = SRC_SET_PATTERN.matcher(content).replaceAll("<img src=$1>");
 
             // clean by JSoup
             content = Jsoup.clean(content, baseUrl, JSOUP_WHITELIST);
 
-            content = RELATIVE_IMAGE_PATTERN_2.matcher(content).replaceAll(" $1=$2" + baseUrl);
+            content = RELATIVE_IMAGE_PATTERN_2.matcher(content).replaceAll(" $1=\"" + baseUrl + "$2\"");
 
             //replace all images with appropriate image from srcset or api derived images
             String encodedLink = null;
@@ -92,23 +96,27 @@ public class HtmlUtils {
             StringBuffer buffer = new StringBuffer();
             Matcher matcher = IMG_PATTERN.matcher(content);
             while(matcher.find()) {
+                Log.d(TAG, matcher.group(0));
                 Pattern srcsetPattern = Pattern.compile("<img[^>]*srcset=\\s*['\"]([^>'\"]*)['\"][^>]*>", Pattern.CASE_INSENSITIVE);
                 Matcher srcMatcher = srcsetPattern.matcher(matcher.group(0));
                 boolean hasSrc = false;
                 while (srcMatcher.find()) {
+                    Log.d(TAG, srcMatcher.group(0));
                     String[] srcset = srcMatcher.group(1).split("w,");
-                    int smallestDiff = 10000;
+                    int smallestAboveWidth = 10000;
                     String srcUrl = "";
                     for (String s : srcset) {
-                        int diff = Math.abs((Integer.parseInt(s.trim().split(" ")[1].split("w")[0])) - 500);
-                        if (diff < smallestDiff) {
-                            smallestDiff = diff;
+                        int diff = (Integer.parseInt(s.trim().split(" ")[1].split("w")[0])) - width;
+                        if (diff > 0 && diff < smallestAboveWidth) {
+                            smallestAboveWidth = diff;
                             srcUrl = s.trim().split(" ")[0];
+                            srcUrl = srcUrl.replaceAll("amp;", "")
+                                    .replaceAll("#038;", "");
                             hasSrc = true;
                         }
                     }
                     if (hasSrc) {
-                        String replacement = matcher.group(1) + " src=\"" + srcUrl + "\">";
+                        String replacement = "<img src=\"" + srcUrl + "\">";
                         Log.d(TAG, "replacement: " + replacement);
                         matcher.appendReplacement(buffer, replacement);
                     }
@@ -116,12 +124,14 @@ public class HtmlUtils {
                 if (!hasSrc) {
                     String encodedImageUrl = null;
                     try {
-                        encodedImageUrl = URLEncoder.encode(matcher.group(2), "UTF-8");
+                        String img = matcher.group(2).replaceAll("amp;", "")
+                                .replaceAll("#038;", "");
+                        encodedImageUrl = URLEncoder.encode(img, "UTF-8");
                     } catch (Exception e) {
                         Log.d(TAG, e.getLocalizedMessage());
                     }
                     if (encodedImageUrl != null && encodedLink != null) {
-                        String replacement = matcher.group(1) + " src=\"https://acorncommunity.sg/api/v1/resizeImage?url=" + encodedImageUrl + "&aid=" + aid + "&link=" + encodedLink + "\">";
+                        String replacement = "<img src=\"https://acorncommunity.sg/api/v1/resizeImage?url=" + encodedImageUrl + "&aid=" + aid + "&link=" + encodedLink + "\">";
                         Log.d(TAG, "replacement: " + replacement);
                         matcher.appendReplacement(buffer, replacement);
                     }
@@ -145,7 +155,6 @@ public class HtmlUtils {
             content = TABLE_END_PATTERN.matcher(content).replaceAll("$1</div>");
         }
 
-//        System.out.print(content);
         return content;
     }
 
@@ -221,19 +230,19 @@ public class HtmlUtils {
     @Nullable
     public static String regenArticleHtml(Context context, String url, String title, String author,
                                           String source, String date, //@Nullable String htmlContent,
-                                          @Nullable String selector, String aid) {
+                                          @Nullable String selector, String aid, int width) {
         Log.d(TAG, "regenArticleHtml");
-        Pattern baseUrlPattern = Pattern.compile("(https?://.*?/).*", Pattern.CASE_INSENSITIVE);
+        Pattern baseUrlPattern = Pattern.compile("(https?://[^/]+?/).*", Pattern.CASE_INSENSITIVE);
         String baseUrl = baseUrlPattern.matcher(url).replaceAll("$1");
         String parsedHtml;
         String extractedHtml;
         try {
             String input = getInputStream(context, url);
-            extractedHtml = ArticleTextExtractor.extractContent(input, selector);
+            extractedHtml = ArticleTextExtractor.extractContent(input, selector, baseUrl);
 
 //            Log.d(TAG, "extractedHtml: " + extractedHtml);
             if (extractedHtml != null && !extractedHtml.equals("")) {
-                parsedHtml = improveHtmlContent(extractedHtml, baseUrl, aid, url);
+                parsedHtml = improveHtmlContent(extractedHtml, baseUrl, aid, url, width);
                 return generateHtmlContent(context, title, url, parsedHtml, author, source, date);
             } else {
                 return null;
@@ -244,15 +253,15 @@ public class HtmlUtils {
         return null;
     }
 
-    public static String getCleanedHtml(Context context, String url, @Nullable String selector, String aid) {
+    public static String getCleanedHtml(Context context, String url, @Nullable String selector, String aid, int width) {
         if (url != null) {
             Pattern baseUrlPattern = Pattern.compile("(https?://.*?/).*", Pattern.CASE_INSENSITIVE);
             String baseUrl = baseUrlPattern.matcher(url).replaceAll("$1");
             String parsedHtml;
             try {
-                String extractedHtml = ArticleTextExtractor.extractContent(getInputStream(context, url), selector);
+                String extractedHtml = ArticleTextExtractor.extractContent(getInputStream(context, url), selector, baseUrl);
                 if (extractedHtml != null && !extractedHtml.equals("")) {
-                    parsedHtml = improveHtmlContent(extractedHtml, baseUrl, aid, url);
+                    parsedHtml = improveHtmlContent(extractedHtml, baseUrl, aid, url, width);
                     return parsedHtml;
                 } else {
                     return null;
@@ -264,15 +273,15 @@ public class HtmlUtils {
         return null;
     }
 
-    public static String cleanHtmlContent(String html, String url, @Nullable String selector, String aid) {
+    public static String cleanHtmlContent(String html, String url, @Nullable String selector, String aid, int width) {
         if (url != null) {
             Pattern baseUrlPattern = Pattern.compile("(https?://.*?/).*", Pattern.CASE_INSENSITIVE);
             String baseUrl = baseUrlPattern.matcher(url).replaceAll("$1");
             String parsedHtml;
             try {
-                String extractedHtml = ArticleTextExtractor.extractContent(html, selector);
+                String extractedHtml = ArticleTextExtractor.extractContent(html, selector, baseUrl);
                 if (!extractedHtml.equals("")) {
-                    parsedHtml = improveHtmlContent(extractedHtml, baseUrl, aid, url);
+                    parsedHtml = improveHtmlContent(extractedHtml, baseUrl, aid, url, width);
                     return parsedHtml;
                 } else {
                     return null;

@@ -1,5 +1,7 @@
 package acorn.com.acorn_app.ui.viewModels;
 
+import android.location.Location;
+
 import androidx.lifecycle.ViewModel;
 
 import acorn.com.acorn_app.data.ArticleListLiveData;

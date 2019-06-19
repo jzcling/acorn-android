@@ -1,11 +1,12 @@
 package acorn.com.acorn_app.ui.adapters;
 
 import android.content.Context;
-import androidx.constraintlayout.widget.ConstraintLayout;
-import androidx.recyclerview.widget.RecyclerView;
 import android.view.View;
 import android.widget.ImageView;
 import android.widget.TextView;
+
+import androidx.constraintlayout.widget.ConstraintLayout;
+import androidx.recyclerview.widget.RecyclerView;
 
 import com.bumptech.glide.Glide;
 import com.bumptech.glide.request.RequestOptions;
@@ -17,8 +18,8 @@ import acorn.com.acorn_app.models.Article;
 import acorn.com.acorn_app.utils.AppExecutors;
 import acorn.com.acorn_app.utils.DateUtils;
 
-public class SavedArticleViewHolder extends RecyclerView.ViewHolder {
-    private static final String TAG = "SavedArticleViewHolder";
+public class NearbyArticleViewHolder extends RecyclerView.ViewHolder {
+    private static final String TAG = "NearbyArticleViewHolder";
     private final String mArticleType;
     private final Context mContext;
 
@@ -37,7 +38,7 @@ public class SavedArticleViewHolder extends RecyclerView.ViewHolder {
 
     private final AppExecutors mExecutors = AppExecutors.getInstance();
 
-    public SavedArticleViewHolder(Context context, View view, String articleType) {
+    public NearbyArticleViewHolder(Context context, View view, String articleType) {
         super(view);
         mContext = context;
         mArticleType = articleType;
@@ -53,7 +54,6 @@ public class SavedArticleViewHolder extends RecyclerView.ViewHolder {
 
         rootView = (ConstraintLayout) view.findViewById(R.id.card_root);
         viewBackground = (ConstraintLayout) view.findViewById(R.id.view_background);
-        viewBackground.setVisibility(View.VISIBLE);
         viewForeground = (ConstraintLayout) view.findViewById(R.id.view_foreground);
     }
 

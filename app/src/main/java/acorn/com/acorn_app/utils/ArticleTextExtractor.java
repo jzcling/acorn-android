@@ -54,16 +54,16 @@ public class ArticleTextExtractor {
      *                         with improper HTML, although jSoup should be able to handle minor stuff.
      * @return extracted article, all HTML tags stripped
      */
-    public static String extractContent(String input, @Nullable String selector) {
-        return extractContent(Jsoup.parse(input), selector);
+    public static String extractContent(String input, @Nullable String selector, String baseUrl) {
+        return extractContent(Jsoup.parse(input), selector, baseUrl);
     }
 
-    public static String extractContent(Document doc, @Nullable String selector) {
+    public static String extractContent(Document doc, @Nullable String selector, String baseUrl) {
         if (doc == null)
             throw new NullPointerException("missing document");
 
         // now remove the clutter
-        prepareDocument(doc);
+        prepareDocument(doc, baseUrl);
 
         // init elements
         Collection<Element> nodes = getNodes(doc, selector);
@@ -111,16 +111,16 @@ public class ArticleTextExtractor {
      * @param input            cleans article text from given html string.
      * @return cleaned article, all unwanted HTML tags stripped
      */
-    public static String cleanContent(String input) {
-        return cleanContent(Jsoup.parse(input));
+    public static String cleanContent(String input, String baseUrl) {
+        return cleanContent(Jsoup.parse(input), baseUrl);
     }
 
-    public static String cleanContent(Document doc) {
+    public static String cleanContent(Document doc, String baseUrl) {
         if (doc == null) {
             throw new NullPointerException("missing document");
         }
 
-        prepareDocument(doc);
+        prepareDocument(doc, baseUrl);
         return doc.toString();
     }
 
@@ -255,7 +255,7 @@ public class ArticleTextExtractor {
      * @param doc document to prepare. Passed as reference, and changed inside
      *            of function
      */
-    private static void prepareDocument(Document doc) {
+    private static void prepareDocument(Document doc, String baseUrl) {
         // stripUnlikelyCandidates(doc);
         removeNav(doc);
         removeSelectsAndOptions(doc);
@@ -265,6 +265,7 @@ public class ArticleTextExtractor {
         removeAuthor(doc);
         removeTitle(doc);
         removeMisc(doc);
+        handleImages(doc, baseUrl);
     }
 
     /**
@@ -458,6 +459,32 @@ public class ArticleTextExtractor {
         misc = doc.select("iframe[src~=peatix]");
         for (Element item : misc) {
             item.remove();
+        }
+    }
+
+    private static void handleImages(Document doc, String baseUrl) {
+        // ChannelNews Asia specific
+        Elements pictures = doc.getElementsByTag("picture");
+        for (Element picture : pictures) {
+            Element source = picture.child(0);
+            String srcset = source.attr("data-srcset");
+
+            Element image = picture.child(1);
+            image.attr("srcset", srcset);
+        }
+
+        // Handle relative links
+        if (baseUrl.substring(baseUrl.length()-1).equals("/")) {
+            baseUrl = baseUrl.substring(0, baseUrl.length()-1);
+        }
+        Elements images = doc.getElementsByTag("img");
+        for (Element image : images) {
+            String src = image.attr("src");
+            if (src.startsWith("//")) {
+                image.attr("src", "http:" + src);
+            } else if (src.startsWith("/")) {
+                image.attr("src", baseUrl + src);
+            }
         }
     }
 

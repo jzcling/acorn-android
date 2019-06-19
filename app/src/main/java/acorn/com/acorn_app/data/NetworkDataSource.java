@@ -15,15 +15,21 @@
  */
 package acorn.com.acorn_app.data;
 
+import android.app.Activity;
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.graphics.Point;
+import android.location.Location;
 import android.preference.PreferenceManager;
 
+import acorn.com.acorn_app.models.Address;
+import acorn.com.acorn_app.models.MrtStation;
 import acorn.com.acorn_app.models.Video;
 import acorn.com.acorn_app.utils.DateUtils;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import android.util.Log;
+import android.view.Display;
 
 import com.algolia.search.saas.Client;
 import com.algolia.search.saas.Index;
@@ -35,6 +41,13 @@ import com.firebase.jobdispatcher.Job;
 import com.firebase.jobdispatcher.Lifetime;
 import com.firebase.jobdispatcher.RetryStrategy;
 import com.firebase.jobdispatcher.Trigger;
+import com.google.common.geometry.S1Angle;
+import com.google.common.geometry.S2Cap;
+import com.google.common.geometry.S2CellId;
+import com.google.common.geometry.S2CellUnion;
+import com.google.common.geometry.S2LatLng;
+import com.google.common.geometry.S2Point;
+import com.google.common.geometry.S2RegionCoverer;
 import com.google.firebase.database.ChildEventListener;
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
@@ -49,10 +62,14 @@ import com.google.gson.reflect.TypeToken;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
@@ -67,6 +84,7 @@ import acorn.com.acorn_app.services.RecArticlesJobService;
 import acorn.com.acorn_app.services.RecDealsJobService;
 import acorn.com.acorn_app.utils.AppExecutors;
 import acorn.com.acorn_app.utils.HtmlUtils;
+import bolts.TaskCompletionSource;
 
 import static acorn.com.acorn_app.ui.activities.AcornActivity.mUid;
 
@@ -81,10 +99,13 @@ public class NetworkDataSource {
     public static final String COMMENT_REF = "comment";
     public static final String USER_REF = "user";
     public static final String SEARCH_REF = "search";
+    public static final String ADDRESS_REF = "address";
     public static final String PREFERENCES_REF = "preference";
     public static final String NOTIFICATION_TOKENS = "notificationTokens";
-    public static final String ALGOLIA_API_KEY_REF = "algoliaApiKey";
-    public static final String YOUTUBE_API_KEY_REF = "youtubeApiKey";
+    public static final String API_KEY_REF = "api";
+    public static final String ALGOLIA_API_KEY_REF = "algoliaKey";
+    public static final String YOUTUBE_API_KEY_REF = "youtubeKey";
+    public static final String MAPS_API_KEY_REF = "mapsKey";
     public static final String REPORT_REF = "reported";
 
     // Recommended articles
@@ -149,9 +170,100 @@ public class NetworkDataSource {
         return new ArticleListLiveData(tempQuery);
     }
 
+    private void getRandomArticles(List<String> articleIds, Consumer<List<Article>> onComplete) {
+        if (articleIds.size() == 0) {
+            onComplete.accept(new ArrayList<>());
+            return;
+        }
+
+        List<Article> articles = new ArrayList<>();
+
+        //Log.d(TAG, "first id: " + articleIds.get(0));
+        Collections.shuffle(articleIds);
+        //Log.d(TAG, "shuffled first id: " + articleIds.get(0));
+        int articleLimit = Math.min(50, articleIds.size());
+        List<String> doneList = new ArrayList<>();
+        for (int i = 0; i < articleLimit; i++) {
+            String articleId = articleIds.get(i);
+            Query query = mDatabaseReference.child(ARTICLE_REF).child(articleId);
+            query.addListenerForSingleValueEvent(new ValueEventListener() {
+                @Override
+                public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+                    Article article = dataSnapshot.getValue(Article.class);
+                    if (article != null) {
+                        //Log.d(TAG, "title: " + article.getTitle());
+                        articles.add(article);
+                        doneList.add(article.getObjectID());
+                    } else {
+                        doneList.add("failed to load article " + (doneList.size() + 1));
+                    }
+
+                    if (doneList.size() >= articleLimit) {
+                        onComplete.accept(articles);
+                    }
+                }
+
+                @Override
+                public void onCancelled(@NonNull DatabaseError databaseError) { }
+            });
+        }
+    }
+
     public ArticleListLiveData getSavedArticles(FbQuery query) {
-        Query tempQuery = mDatabaseReference.child(USER_REF + "/" + mUid + "/savedItems");
-        return new ArticleListLiveData(tempQuery, query.state, query.limit, query.numStartAt.intValue());
+        Query savedItemsQuery = mDatabaseReference.child(USER_REF + "/" + mUid + "/savedItems");
+        return new ArticleListLiveData(savedItemsQuery, query.state, query.limit, query.numStartAt);
+    }
+
+    public void getNearbyArticles(double lat, double lng, double radius,
+                                  Consumer<List<Article>> onComplete) {
+        // get sphere cap centred at location
+        S2Point point = S2LatLng.fromDegrees(lat, lng).toPoint();
+        S1Angle angle = S1Angle.radians(radius / S2LatLng.EARTH_RADIUS_METERS);
+        S2Cap cap = S2Cap.fromAxisAngle(point, angle);
+
+        // get covering cell ids
+        S2RegionCoverer coverer = new S2RegionCoverer();
+        S2CellUnion covering = coverer.getCovering(cap);
+
+        // get all addresses and associated articles in covering cells
+        List<String> articleIds = new ArrayList<>();
+        List<Long> doneList = new ArrayList<>();
+        for (S2CellId id : covering) {
+            String minRange = String.valueOf(id.rangeMin().id());
+            String maxRange = String.valueOf(id.rangeMax().id());
+            Log.d(TAG, "minRange: " + minRange + ", maxRange: " + maxRange);
+            Query addressQuery = mDatabaseReference.child(ADDRESS_REF)
+                    .orderByKey().startAt(minRange).endAt(maxRange);
+
+            addressQuery.addListenerForSingleValueEvent(new ValueEventListener() {
+                @Override
+                public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+                    if (dataSnapshot.exists()) {
+                        //Log.d(TAG, "address count: " + dataSnapshot.getChildrenCount());
+                        for (DataSnapshot snap : dataSnapshot.getChildren()) {
+                            Address address = snap.getValue(Address.class);
+                            if (address != null) {
+                                for (String id : address.article.keySet()) {
+                                    if (!articleIds.contains(id)) {
+                                        articleIds.add(id);
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    doneList.add(id.id());
+
+                    if (doneList.size() >= covering.size()) {
+                        Log.d(TAG, "articleIds size: " + articleIds.size());
+                        getRandomArticles(articleIds, onComplete);
+                    }
+                }
+
+                @Override
+                public void onCancelled(@NonNull DatabaseError databaseError) { }
+            });
+        }
     }
 
     public ArticleListLiveData getAdditionalArticles(FbQuery query, Object index, int indexType) {
@@ -196,6 +308,7 @@ public class NetworkDataSource {
             String themeSearchFilter = filterStringBuilder.toString();
 
             DatabaseReference resultRef = mDatabaseReference.child(SEARCH_REF).child(themeSearchKey);
+            resultRef.keepSynced(true);
             resultRef.addListenerForSingleValueEvent(new ValueEventListener() {
                 @Override
                 public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
@@ -228,6 +341,7 @@ public class NetworkDataSource {
             mThemeSearchKey = mSharedPrefs.getString("themeSearchKey", "");
             mThemeSearchFilter = mSharedPrefs.getString("themeSearchFilter", "");
             DatabaseReference resultRef = mDatabaseReference.child(SEARCH_REF).child(mThemeSearchKey);
+            resultRef.keepSynced(true);
             resultRef.addListenerForSingleValueEvent(new ValueEventListener() {
                 @Override
                 public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
@@ -259,6 +373,7 @@ public class NetworkDataSource {
         mExecutors.networkIO().execute(() -> {
             String cleanedSearchKey = searchKey.replaceAll("[.#$\\[\\]]", "");
             DatabaseReference resultRef = mDatabaseReference.child(SEARCH_REF).child(cleanedSearchKey);
+            resultRef.keepSynced(true);
             resultRef.addListenerForSingleValueEvent(new ValueEventListener() {
                 @Override
                 public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
@@ -318,6 +433,7 @@ public class NetworkDataSource {
             String dealsSearchKey = "Deals";
             String dealsSearchFilter = "mainTheme: Deals";
             DatabaseReference resultRef = mDatabaseReference.child(SEARCH_REF).child("Deals");
+            resultRef.keepSynced(true);
             resultRef.addListenerForSingleValueEvent(new ValueEventListener() {
                 @Override
                 public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
@@ -399,8 +515,9 @@ public class NetworkDataSource {
     }
 
     // Download subscribed articles
-    public void downloadSubscribedArticles(Consumer<List<dbArticle>> onComplete, Runnable onError) {
+    public void downloadSubscribedArticles(int width, Consumer<List<dbArticle>> onComplete, Runnable onError) {
         Log.d(TAG, "downloadSubscribedArticles started");
+
         List<dbArticle> articleList = new ArrayList<>();
         mExecutors.networkIO().execute(() -> {
             getTrendingData(() -> {
@@ -420,7 +537,8 @@ public class NetworkDataSource {
                                 if (algArticle == null) continue;
 
                                 String articleId = algArticle.getObjectID();
-                                mDatabaseReference.child(ARTICLE_REF).child(articleId).addListenerForSingleValueEvent(new ValueEventListener() {
+                                mDatabaseReference.child(ARTICLE_REF).child(articleId)
+                                        .addListenerForSingleValueEvent(new ValueEventListener() {
                                     @Override
                                     public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
                                         doneList.add(snap.getKey());
@@ -428,7 +546,7 @@ public class NetworkDataSource {
                                         if (article != null) {
                                             if (article.htmlContent != null && !article.htmlContent.equals("")) {
                                                 article.htmlContent = HtmlUtils.cleanHtmlContent(article.htmlContent,
-                                                        article.getLink(), article.selector, article.getObjectID());
+                                                        article.getLink(), article.selector, article.getObjectID(), width);
                                                 dbArticle localArticle = new dbArticle(mContext, article);
                                                 articleList.add(localArticle);
 //                                                mExecutors.diskWrite().execute(() -> {
@@ -440,6 +558,7 @@ public class NetworkDataSource {
                                         }
 
                                         if (doneList.size() >= articlesSnap.getChildrenCount()) {
+                                            Log.d(TAG, "articlesDownloaded: " + articleList.size());
                                             onComplete.accept(articleList);
                                         }
                                     }
@@ -659,7 +778,7 @@ public class NetworkDataSource {
 
     // Algolia
     public void setupAlgoliaClient(@Nullable Runnable onComplete) {
-        mDatabaseReference.child(ALGOLIA_API_KEY_REF).addListenerForSingleValueEvent(new ValueEventListener() {
+        mDatabaseReference.child(API_KEY_REF).child(ALGOLIA_API_KEY_REF).addListenerForSingleValueEvent(new ValueEventListener() {
             @Override
             public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
                 if (dataSnapshot.exists()) {
@@ -679,7 +798,7 @@ public class NetworkDataSource {
 
     // Youtube Key
     public void getYoutubeApiKey(Consumer<String> onComplete) {
-        mDatabaseReference.child(YOUTUBE_API_KEY_REF).addListenerForSingleValueEvent(new ValueEventListener() {
+        mDatabaseReference.child(API_KEY_REF).child(YOUTUBE_API_KEY_REF).addListenerForSingleValueEvent(new ValueEventListener() {
             @Override
             public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
                 if (dataSnapshot.exists()) {
@@ -694,6 +813,55 @@ public class NetworkDataSource {
             }
         });
     }
+
+    // Maps Key
+    public void getMapsApiKey(Consumer<String> onComplete) {
+        mDatabaseReference.child(API_KEY_REF).child(MAPS_API_KEY_REF).addListenerForSingleValueEvent(new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+                if (dataSnapshot.exists()) {
+                    String apiKey = dataSnapshot.getValue(String.class);
+                    onComplete.accept(apiKey);
+                }
+            }
+
+            @Override
+            public void onCancelled(@NonNull DatabaseError databaseError) {
+
+            }
+        });
+    }
+
+
+    // get mrt stations list
+    public void getMrtStations(Consumer<Map<String, Map<String, Double>>> onComplete,
+                               @Nullable Consumer<DatabaseError> onError) {
+        Map<String, Map<String, Double>> mrtStationMap = new HashMap<>();
+        Query mrtRef = mDatabaseReference.child("mrtStation").orderByChild("type").equalTo("MRT");
+        mrtRef.addListenerForSingleValueEvent(new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+                if (dataSnapshot.exists()) {
+                    for (DataSnapshot snap : dataSnapshot.getChildren()) {
+                        MrtStation station = snap.getValue(MrtStation.class);
+                        if (station != null && mrtStationMap.get(station.stationLocale) == null) {
+                            Map<String, Double> location = new HashMap<>();
+                            location.put("latitude", station.latitude);
+                            location.put("longitude", station.longitude);
+                            mrtStationMap.put(station.stationLocale, location);
+                        }
+                    }
+                    onComplete.accept(mrtStationMap);
+                }
+            }
+
+            @Override
+            public void onCancelled(@NonNull DatabaseError databaseError) {
+                onError.accept(databaseError);
+            }
+        });
+    }
+
 
     // Videos
     public VideoListLiveData getVideos(String orderByChild, @Nullable String startAt, int limit) {

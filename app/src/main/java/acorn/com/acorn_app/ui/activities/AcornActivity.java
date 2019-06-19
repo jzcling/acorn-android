@@ -10,6 +10,7 @@ import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.content.pm.Signature;
 import android.graphics.Color;
+import android.graphics.Point;
 import android.graphics.PorterDuff;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
@@ -37,6 +38,7 @@ import androidx.recyclerview.widget.SimpleItemAnimator;
 import androidx.appcompat.widget.Toolbar;
 import android.util.Base64;
 import android.util.Log;
+import android.view.Display;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
@@ -405,6 +407,10 @@ public class AcornActivity extends AppCompatActivity
             case R.id.nav_saved:
                 Intent savedArticlesIntent = new Intent(this, SavedArticlesActivity.class);
                 startActivity(savedArticlesIntent);
+                break;
+            case R.id.nav_nearby:
+                Intent nearbyArticlesIntent = new Intent(this, NearbyActivity.class);
+                startActivity(nearbyArticlesIntent);
                 break;
             case R.id.nav_video_feed:
                 Intent videoFeedIntent = new Intent(this, VideoFeedActivity.class);
@@ -948,13 +954,16 @@ public class AcornActivity extends AppCompatActivity
                                         mRecyclerView.setVisibility(View.INVISIBLE);
                                         mSwipeRefreshLayout.setRefreshing(true);
 
+                                        //int width = getDeviceWidth();
+
                                         mSharedPreferences.edit().putLong("lastDownloadArticlesTime", now).apply();
 
                                         mExecutors.networkIO().execute(
-                                                () -> mDataSource.downloadSubscribedArticles((articleList) -> {
+                                                () -> mDataSource.downloadSubscribedArticles(500, (articleList) -> {
                                                     Long cutOffDate = (new Date()).getTime() - 2L * 24L * 60L * 60L * 1000L; // more than 2 days ago
                                                     mExecutors.diskWrite().execute(() -> {
                                                         mRoomDb.articleDAO().insert(articleList);
+                                                        Log.d(TAG, "inserted: " + articleList.size() + " articles");
                                                         mRoomDb.articleDAO().deleteOld(cutOffDate);
                                                     });
                                                     mExecutors.mainThread().execute(() -> {
@@ -1192,5 +1201,13 @@ public class AcornActivity extends AppCompatActivity
 //            },100);
 //        }
 
+    }
+
+    private int getDeviceWidth() {
+        Display display = getWindowManager().getDefaultDisplay();
+        Point size = new Point();
+        display.getSize(size);
+        Log.d(TAG, "width: " + size.x);
+        return size.x;
     }
 }

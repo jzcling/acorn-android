@@ -9,6 +9,7 @@
     <string name="nav_trending">Trending</string>
     <string name="nav_deals">Deals</string>
     <string name="nav_saved">Saved Articles</string>
+    <string name="nav_nearby">Near Me</string>
     <string name="nav_video_feed">Videos</string>
     <string name="nav_subscriptions">Subscriptions</string>
     <string name="nav_themes">Edit Subscribed Themes</string>
