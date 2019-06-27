@@ -1,6 +1,8 @@
 package acorn.com.acorn_app.ui.activities;
 
 import android.app.AlertDialog;
+
+import androidx.cardview.widget.CardView;
 import androidx.lifecycle.Observer;
 import androidx.lifecycle.ViewModelProviders;
 import android.content.Context;
@@ -65,6 +67,8 @@ import com.google.firebase.messaging.FirebaseMessaging;
 import com.jaredrummler.android.device.DeviceName;
 import com.nex3z.notificationbadge.NotificationBadge;
 
+import org.w3c.dom.Text;
+
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
@@ -81,6 +85,7 @@ import acorn.com.acorn_app.data.ArticleRoomDatabase;
 import acorn.com.acorn_app.data.NetworkDataSource;
 import acorn.com.acorn_app.models.Article;
 import acorn.com.acorn_app.models.FbQuery;
+import acorn.com.acorn_app.models.PremiumStatus;
 import acorn.com.acorn_app.models.User;
 import acorn.com.acorn_app.models.dbArticle;
 import acorn.com.acorn_app.ui.adapters.ArticleAdapter;
@@ -90,6 +95,7 @@ import acorn.com.acorn_app.ui.viewModels.ArticleViewModelFactory;
 import acorn.com.acorn_app.ui.viewModels.NotificationViewModel;
 import acorn.com.acorn_app.utils.AppExecutors;
 import acorn.com.acorn_app.utils.InjectorUtils;
+import acorn.com.acorn_app.utils.InviteUtils;
 
 import static acorn.com.acorn_app.data.NetworkDataSource.ALGOLIA_API_KEY;
 import static acorn.com.acorn_app.data.NetworkDataSource.SEARCH_REF;
@@ -164,6 +170,7 @@ public class AcornActivity extends AppCompatActivity
     public static String mUsername;
     public static String mUserToken;
     private String mUserStatus;
+    public PremiumStatus mUserPremiumStatus;
     public static ArrayList<String> mUserThemePrefs;
     private long lastRecArticlesPushTime;
     private long lastRecArticlesScheduleTime;
@@ -171,6 +178,9 @@ public class AcornActivity extends AppCompatActivity
     private long lastRecDealsScheduleTime;
     private TextView mUsernameTextView;
     private TextView mUserStatusTextView;
+    private CardView mUserPremiumStatusCardView;
+    private TextView mUserPremiumStatusTextView;
+    private String mReferredBy;
 
     //Shared prefs
     public static SharedPreferences mSharedPreferences;
@@ -265,11 +275,32 @@ public class AcornActivity extends AppCompatActivity
                     mScrollFab.show();
                 } else {
                     mScrollFab.hide();
+                    loadMoreArticles();
                 }
-
-                loadMoreArticles();
             }
         });
+
+        // Set up swipe refresh
+        mSwipeRefreshLayout.setOnRefreshListener(() -> handleIntent(getIntent()));
+
+        // check to see if user opened an invite link
+        Intent intent = getIntent();
+        String appLinkAction = intent.getAction();
+        Uri appLinkData = intent.getData();
+        if (Intent.ACTION_VIEW.equals(appLinkAction) && appLinkData != null) {
+            FirebaseDynamicLinks.getInstance().getDynamicLink(intent)
+                    .addOnSuccessListener(this, pendingDynamicLinkData -> {
+                        Uri deepLink;
+                        if (pendingDynamicLinkData != null) {
+                            deepLink = pendingDynamicLinkData.getLink();
+                            mReferredBy = deepLink.getQueryParameter("referrer");
+                            Log.d(TAG, deepLink.toString() + ", referrer: " + mReferredBy);
+                        }
+                    })
+                    .addOnFailureListener(this, e -> {
+                        Log.d(TAG, "Failed to get deep link: " + e);
+                    });
+        }
 
         setupUser(mFirebaseUser);
 
@@ -285,12 +316,9 @@ public class AcornActivity extends AppCompatActivity
                 createToast(this, "Please verify your email to post", Toast.LENGTH_SHORT);
                 return;
             }
-            Intent intent = new Intent(this, CreatePostActivity.class);
-            startActivity(intent);
+            Intent createPostIntent = new Intent(this, CreatePostActivity.class);
+            startActivity(createPostIntent);
         });
-
-        // Set up swipe refresh
-        mSwipeRefreshLayout.setOnRefreshListener(() -> handleIntent(getIntent()));
 
         // Set up navigation mDrawer
         ActionBarDrawerToggle toggle = new ActionBarDrawerToggle(
@@ -320,6 +348,8 @@ public class AcornActivity extends AppCompatActivity
         View navHeaderLayout = navigationView.getHeaderView(0);
         mUsernameTextView = (TextView) navHeaderLayout.findViewById(R.id.nav_user_name_text_view);
         mUserStatusTextView = (TextView) navHeaderLayout.findViewById(R.id.nav_user_status_text_view);
+        mUserPremiumStatusCardView = (CardView) navHeaderLayout.findViewById(R.id.nav_user_premium_status_card_view);
+        mUserPremiumStatusTextView = (TextView) navHeaderLayout.findViewById(R.id.nav_user_premium_status_text_view);
         if (navMenu == null) navMenu = (Menu) navigationView.getMenu();
         MenuItem signInMenuItem = (MenuItem) navMenu.findItem(R.id.nav_login);
         MenuItem signOutMenuItem = (MenuItem) navMenu.findItem(R.id.nav_logout);
@@ -355,6 +385,15 @@ public class AcornActivity extends AppCompatActivity
             mUserStatusTextView.setText("");
         }
 
+        float height = mUserPremiumStatusCardView.getHeight();
+        mUserPremiumStatusCardView.setRadius(height/2);
+        if (mUserPremiumStatus != null) {
+            if (mUserPremiumStatus.end > (new Date()).getTime()) {
+                mUserPremiumStatusTextView.setText("Premium");
+                mUserPremiumStatusCardView.setBackgroundColor(getColor(R.color.colorPrimary));
+            }
+        }
+
         return true;
     }
 
@@ -373,18 +412,21 @@ public class AcornActivity extends AppCompatActivity
                 startActivityForResult(new Intent(this, SettingsActivity.class), RC_PREF);
                 return true;
             case R.id.action_share_app:
-                Intent shareIntent = new Intent();
-                shareIntent.setType("text/plain");
-                shareIntent.putExtra(Intent.EXTRA_TEXT, "Get your favourite blog articles all in one app! http://acorncommunity.sg");
-                shareIntent.setAction(Intent.ACTION_SEND);
-                startActivity(Intent.createChooser(shareIntent, "Share app with"));
+                InviteUtils.createShortDynamicLink(mUid, (link) -> {
+                    Intent shareIntent = new Intent();
+                    shareIntent.setType("text/plain");
+                    shareIntent.putExtra(Intent.EXTRA_TEXT,
+                            "Don't miss out on the latest news, deals, events and life hacks! " +
+                                    "Download Acorn: Your Favourite Blogs in a Nutshell now! " + link);
+                    shareIntent.setAction(Intent.ACTION_SEND);
+                    startActivity(Intent.createChooser(shareIntent, "Share app with"));
+                });
                 return true;
         }
 
         return super.onOptionsItemSelected(item);
     }
 
-    @SuppressWarnings("StatementWithEmptyBody")
     @Override
     public boolean onNavigationItemSelected(@NonNull MenuItem item) {
         DrawerLayout mDrawer = (DrawerLayout) findViewById(R.id.drawer_layout);
@@ -446,6 +488,7 @@ public class AcornActivity extends AppCompatActivity
 
     @Override
     protected void onNewIntent(Intent intent) {
+        Log.d(TAG, "onNewIntent");
         super.onNewIntent(intent);
         handleIntent(intent);
     }
@@ -615,17 +658,28 @@ public class AcornActivity extends AppCompatActivity
     }
 
     private void handleIntent(Intent intent) {
+        Log.d(TAG, "handle intent");
+
         mSwipeRefreshLayout.setRefreshing(false);
         if (mArticleViewModel != null) {
-            resetView();
+            if (navMenu != null) {
+                MenuItem subscriptionsMenuItem = (MenuItem) navMenu.findItem(R.id.nav_subscriptions);
+                MenuItem trendingMenuItem = (MenuItem) navMenu.findItem(R.id.nav_trending);
+                MenuItem dealsMenuItem = (MenuItem) navMenu.findItem(R.id.nav_deals);
+
+                if (subscriptionsMenuItem.isChecked()) {
+                    getThemeData();
+                } else if (trendingMenuItem.isChecked()) {
+                    getTrendingData();
+                } else if (dealsMenuItem.isChecked()) {
+                    getDealsData();
+                }
+            }
         }
     }
 
     private void loadMoreArticles() {
         if (isLoadingMore) return;
-
-        // Don't trigger load more for feed filtered by theme / source
-//        if (mQuery.state < 0) return;
 
         int currentPosition = mLinearLayoutManager.findLastCompletelyVisibleItemPosition();
         final int trigger = 5;
@@ -634,7 +688,6 @@ public class AcornActivity extends AppCompatActivity
         final Object index;
 
         if (initialListCount <= trigger) return;
-
 
         if (currentPosition > mAdapter.getItemCount() - trigger) {
             isLoadingMore = true;
@@ -683,17 +736,17 @@ public class AcornActivity extends AppCompatActivity
                         }
                     }
                     mAdapter.setList(currentList);
-
                 }
             };
             addListLD.observeForever(addListObserver);
             mObservedList.put(addListLD, addListObserver);
 
-            new Handler().postDelayed(()->isLoadingMore = false,100);
+            new Handler().postDelayed(()->isLoadingMore = false,1000);
         }
     }
 
     private void resetView() {
+        Log.d(TAG, "resetView");
         mRecyclerView.setVisibility(View.INVISIBLE);
         mSwipeRefreshLayout.setRefreshing(true);
         mRecyclerView.scrollToPosition(0);
@@ -746,8 +799,8 @@ public class AcornActivity extends AppCompatActivity
                 @Override
                 public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
                     User retrievedUser = dataSnapshot.getValue(User.class);
-                    FirebaseInstanceId.getInstance().getInstanceId().addOnSuccessListener(
-                            instanceIdResult -> {
+                    FirebaseInstanceId.getInstance().getInstanceId()
+                            .addOnSuccessListener(instanceIdResult -> {
                                 String userToken = instanceIdResult.getToken();
                                 if (retrievedUser == null) {
                                     isFirstTimeLogin = true;
@@ -772,6 +825,7 @@ public class AcornActivity extends AppCompatActivity
                                     mUid = newUser.getUid();
                                     mUsername = newUser.getDisplayName();
                                     mUserToken = newUser.getToken();
+                                    mUserPremiumStatus = newUser.premiumStatus;
                                     mUserStatus = LEVEL_0;
                                     lastRecArticlesPushTime = 0L;
                                     lastRecArticlesScheduleTime = 0L;
@@ -785,6 +839,13 @@ public class AcornActivity extends AppCompatActivity
                                     if (mUserStatusTextView != null) {
                                         mUserStatusTextView.setText(mUserStatus);
                                         mUserStatusTextView.setOnClickListener(v -> startActivity(new Intent(AcornActivity.this, UserActivity.class)));
+                                    }
+
+                                    if (mUserPremiumStatusCardView != null && mUserPremiumStatusTextView != null) {
+                                        if (mUserPremiumStatus.end > (new Date()).getTime()) {
+                                            mUserPremiumStatusTextView.setText("Premium");
+                                            mUserPremiumStatusCardView.setBackgroundColor(getColor(R.color.colorPrimary));
+                                        }
                                     }
 
                                     mUserThemePrefs = new ArrayList<>();
@@ -803,7 +864,8 @@ public class AcornActivity extends AppCompatActivity
                                         String hitsRef = SEARCH_REF + "/" + mThemeSearchKey + "/hits";
                                         mQuery = new FbQuery(3, hitsRef, "trendingIndex");
                                     }
-                                    setUpInitialViewModelObserver();
+
+                                    getThemeData();
 
                                     // set up search button
                                     mDataSource.setupAlgoliaClient(() -> {
@@ -846,6 +908,8 @@ public class AcornActivity extends AppCompatActivity
                                     mUid = retrievedUser.getUid();
                                     mUsername = retrievedUser.getDisplayName();
                                     mUserToken = retrievedUser.getToken();
+                                    mUserPremiumStatus = retrievedUser.premiumStatus;
+                                    mUserStatus = setUserStatus(retrievedUser.getStatus());
                                     mUserThemePrefs = retrievedUser.getSubscriptions();
                                     if (mUserThemePrefs.size() < 1) {
                                         mUserThemePrefs = new ArrayList<>();
@@ -853,7 +917,6 @@ public class AcornActivity extends AppCompatActivity
                                         Collections.addAll(mUserThemePrefs, themeArray);
                                     }
                                     Log.d(TAG, "themesPrefs: " + mUserThemePrefs.toString());
-                                    mUserStatus = setUserStatus(retrievedUser.getStatus());
                                     lastRecArticlesPushTime = retrievedUser.getLastRecArticlesPushTime();
                                     lastRecArticlesScheduleTime = retrievedUser.getLastRecArticlesScheduleTime();
                                     lastRecDealsPushTime = retrievedUser.getLastRecDealsPushTime();
@@ -871,7 +934,8 @@ public class AcornActivity extends AppCompatActivity
                                         String hitsRef = SEARCH_REF + "/" + mThemeSearchKey + "/hits";
                                         mQuery = new FbQuery(3, hitsRef, "trendingIndex");
                                     }
-                                    setUpInitialViewModelObserver();
+
+                                    getThemeData();
 
                                     // set up search button
                                     mDataSource.setupAlgoliaClient(() -> {
@@ -894,6 +958,13 @@ public class AcornActivity extends AppCompatActivity
                                     if (mUserStatusTextView != null) {
                                         mUserStatusTextView.setText(mUserStatus);
                                         mUserStatusTextView.setOnClickListener(v -> startActivity(new Intent(AcornActivity.this, UserActivity.class)));
+                                    }
+
+                                    if (mUserPremiumStatusCardView != null && mUserPremiumStatusTextView != null) {
+                                        if (mUserPremiumStatus.end > (new Date()).getTime()) {
+                                            mUserPremiumStatusTextView.setText("Premium");
+                                            mUserPremiumStatusCardView.setBackgroundColor(getColor(R.color.colorPrimary));
+                                        }
                                     }
                                 }
 
@@ -931,52 +1002,6 @@ public class AcornActivity extends AppCompatActivity
                                                     lastRecDealsScheduleTime < lastRecDealsPushTime)) { // and last scheduled time is before last push time
                                         mDataSource.scheduleRecDealsPush();
                                         mSharedPreferences.edit().putBoolean("isRecDealsScheduled", true).apply();
-                                    }
-                                }
-
-                                // Schedule articles download
-//                                boolean isArticlesDownloadScheduled = mSharedPreferences.getBoolean("isArticlesDownloadScheduled", false);
-////                                if (!isArticlesDownloadScheduled) {
-////                                    mDataSource.cancelDownloadArticles();
-//                                    mDataSource.scheduleArticlesDownload();
-//                                    Log.d(TAG, "articlesDownloadScheduled");
-//                                    mSharedPreferences.edit().putBoolean("isArticlesDownloadScheduled", true);
-////                                }
-
-                                Long lastDownloadArticlesTime = mSharedPreferences.getLong("lastDownloadArticlesTime", 0L);
-                                Long now = (new Date()).getTime();
-//                                lastDownloadArticlesTime = 0L;
-                                ConnectivityManager cm = (ConnectivityManager) getSystemService(CONNECTIVITY_SERVICE);
-                                NetworkInfo activeNetwork = cm.getActiveNetworkInfo();
-                                boolean isConnected = activeNetwork != null && activeNetwork.isConnectedOrConnecting();
-                                if (isConnected) {
-                                    if (lastDownloadArticlesTime == 0L || now > lastDownloadArticlesTime + 60L * 60L * 1000L) { // 1 hour
-                                        mRecyclerView.setVisibility(View.INVISIBLE);
-                                        mSwipeRefreshLayout.setRefreshing(true);
-
-                                        //int width = getDeviceWidth();
-
-                                        mSharedPreferences.edit().putLong("lastDownloadArticlesTime", now).apply();
-
-                                        mExecutors.networkIO().execute(
-                                                () -> mDataSource.downloadSubscribedArticles(500, (articleList) -> {
-                                                    Long cutOffDate = (new Date()).getTime() - 2L * 24L * 60L * 60L * 1000L; // more than 2 days ago
-                                                    mExecutors.diskWrite().execute(() -> {
-                                                        mRoomDb.articleDAO().insert(articleList);
-                                                        Log.d(TAG, "inserted: " + articleList.size() + " articles");
-                                                        mRoomDb.articleDAO().deleteOld(cutOffDate);
-                                                    });
-                                                    mExecutors.mainThread().execute(() -> {
-                                                        mRecyclerView.setVisibility(View.VISIBLE);
-                                                        mSwipeRefreshLayout.setRefreshing(false);
-                                                    });
-                                                }, () -> {
-                                                    mExecutors.mainThread().execute(() -> {
-                                                        mRecyclerView.setVisibility(View.VISIBLE);
-                                                        mSwipeRefreshLayout.setRefreshing(false);
-                                                    });
-                                                })
-                                        );
                                     }
                                 }
                             });
@@ -1090,7 +1115,6 @@ public class AcornActivity extends AppCompatActivity
                 resetView();
             });
         }
-        resetView();
     }
 
     private void getThemeData() {
@@ -1161,6 +1185,8 @@ public class AcornActivity extends AppCompatActivity
     }
 
     private void setUpInitialViewModelObserver() {
+        Log.d(TAG, "setUpInitialViewModelObserver");
+
         // Set up view model
         ArticleViewModelFactory factory = InjectorUtils.provideArticleViewModelFactory(this.getApplicationContext());
         mArticleViewModel = ViewModelProviders.of(this, factory).get(ArticleViewModel.class);
@@ -1177,20 +1203,19 @@ public class AcornActivity extends AppCompatActivity
                 (includes all loadMoreArticles lists), with no repeat articles on changes.
                 */
                 List<Article> currentList = mAdapter.getList();
+                List<String> currentIdList = mAdapter.getIdList();
                 for (int i = 0; i < articles.size(); i++) {
                     if (currentList.size() < i+1) {
                         //1
                         currentList.add(i, articles.get(i));
+                        Log.d(TAG, "added: " + currentList.size());
                     } else {
                         //2
                         currentList.set(i, articles.get(i));
+                        Log.d(TAG, "set: " + currentList.size());
                     }
                 }
-                mAdapter.setList(currentList, () -> {
-                    if (mLlmState != null) {
-                        mLinearLayoutManager.onRestoreInstanceState(mLlmState);
-                    }
-                });
+                mAdapter.setList(currentList);
             }
         };
         articleListLD.observeForever(articleListObserver);

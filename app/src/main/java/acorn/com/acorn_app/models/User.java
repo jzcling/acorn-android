@@ -40,6 +40,8 @@ public class User {
     private Integer savedItemsCount = 0;
     private Integer sharedItemsCount = 0;
     public boolean openedSinceLastReport;
+    public PremiumStatus premiumStatus = new PremiumStatus();
+    public String referredBy;
 
     public User() {}
 

@@ -11,48 +11,27 @@ import java.util.function.Consumer;
 
 import static acorn.com.acorn_app.ui.activities.AcornActivity.mUid;
 
-public class ShareUtils {
-    private static final String TAG = "ShareUtils";
+public class InviteUtils {
+    private static final String TAG = "InviteUtils";
 
-    public static String createShareUri(String articleId, String url, String sharerId) {
-        // Remove http:// and https:// from url
-        if (url.startsWith("http://")) {
-            url = url.substring(7);
-        } else if (url.startsWith("https://")) {
-            url = url.substring(8);
-        }
-
-//        Uri.Builder builder = new Uri.Builder();
-//        builder.scheme("https")
-//                .authority("acorncommunity.sg")
-//                .appendPath("article")
-//                .appendQueryParameter("id", articleId)
-//                .appendQueryParameter("url", url)
-//                .appendQueryParameter("sharerId", sharerId);
-//        return builder.build();
-
-        return "https://acorncommunity.sg/article" + "?id=" + articleId + "&url=" + url + "&sharerId=" + sharerId;
-    }
-
-    public static void createShortDynamicLink(String url, Consumer<String> onComplete) {
+    public static void createShortDynamicLink(String uid, Consumer<String> onComplete) {
+        String url = "https://acorncommunity.sg/?referrer=" + uid;
         FirebaseDynamicLinks.getInstance().createDynamicLink()
                 .setLink(Uri.parse(url))
-                .setDomainUriPrefix("https://acorncommunity.sg/share")
+                .setDomainUriPrefix("https://acorncommunity.sg/invite")
                 .setAndroidParameters(
                         new DynamicLink.AndroidParameters.Builder("acorn.com.acorn_app")
                                 .setMinimumVersion(46)
-                                .setFallbackUrl(Uri.parse(url))
                                 .build())
                 .setIosParameters(
                         new DynamicLink.IosParameters.Builder("sg.acorncommunity.acorn")
                                 .setAppStoreId("1435141923")
                                 .setMinimumVersion("1.2.5")
-                                .setFallbackUrl(Uri.parse(url))
                                 .build())
                 .setGoogleAnalyticsParameters(
                         new DynamicLink.GoogleAnalyticsParameters.Builder()
                                 .setSource(mUid)
-                                .setMedium("share")
+                                .setMedium("invite")
                                 .build())
                 .buildShortDynamicLink(ShortDynamicLink.Suffix.SHORT)
                 .addOnCompleteListener(task -> {
@@ -60,7 +39,7 @@ public class ShareUtils {
                         Uri shortLink = task.getResult().getShortLink();
                         onComplete.accept(shortLink.toString());
                     } else {
-                        Log.d(TAG, "Failed to get short share link");
+                        Log.d(TAG, "Failed to get short invite link");
                     }
                 });
     }

@@ -63,6 +63,12 @@ public class SavedArticleAdapter extends RecyclerView.Adapter<SavedArticleViewHo
         filterBySearchText(searchText);
     }
 
+    public void appendList(List<Article> addList, List<String> themeList, String searchText) {
+        mUnfilteredArticleList.addAll(addList);
+        filterByThemes(themeList);
+        filterBySearchText(searchText);
+    }
+
     public List<Article> getList() {
         return mFilteredArticleList;
     }

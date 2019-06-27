@@ -74,49 +74,49 @@ public class ArticleAdapter extends RecyclerView.Adapter<ArticleViewHolder> {
         return mArticleList.size();
     }
 
-    @Override
-    public void onViewAttachedToWindow(@NonNull ArticleViewHolder holder) {
-        super.onViewAttachedToWindow(holder);
-        if (mQuery.state == 3 || mQuery.state == 4) {
-            int adapterPos = holder.getAdapterPosition();
-            Article article = mArticleList.get(adapterPos);
-            DatabaseReference articleRef = FirebaseDatabase.getInstance()
-                    .getReference("article/" + article.getObjectID());
-            ValueEventListener searchArticleListener = articleRef.addValueEventListener(new ValueEventListener() {
-                @Override
-                public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
-                    if (dataSnapshot.getValue() != null) {
-                        Article snapArticle = dataSnapshot.getValue(Article.class);
-                        holder.bind(snapArticle);
-                    }
-                }
-
-                @Override
-                public void onCancelled(@NonNull DatabaseError databaseError) { }
-            });
-            mRefObservedList.put(articleRef, searchArticleListener);
-
-        }
-    }
-
-    @Override
-    public void onViewDetachedFromWindow(@NonNull ArticleViewHolder holder) {
-        super.onViewDetachedFromWindow(holder);
-        if (mQuery.state == 3 || mQuery.state == 4) {
-            Article article;
-            if (getItemCount() > 0 && holder.getAdapterPosition() != -1) {
-                article = mArticleList.get(holder.getAdapterPosition());
-                DatabaseReference articleRef = FirebaseDatabase.getInstance()
-                        .getReference("article/" + article.getObjectID());
-                ValueEventListener searchArticleListener = mRefObservedList.get(articleRef);
-                if (searchArticleListener != null) {
-                    articleRef.removeEventListener(searchArticleListener);
-                }
-                mRefObservedList.remove(articleRef);
-
-            }
-        }
-    }
+//    @Override
+//    public void onViewAttachedToWindow(@NonNull ArticleViewHolder holder) {
+//        super.onViewAttachedToWindow(holder);
+//        if (mQuery.state == 3 || mQuery.state == 4) {
+//            int adapterPos = holder.getAdapterPosition();
+//            Article article = mArticleList.get(adapterPos);
+//            DatabaseReference articleRef = FirebaseDatabase.getInstance()
+//                    .getReference("article/" + article.getObjectID());
+//            ValueEventListener searchArticleListener = articleRef.addValueEventListener(new ValueEventListener() {
+//                @Override
+//                public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+//                    if (dataSnapshot.getValue() != null) {
+//                        Article snapArticle = dataSnapshot.getValue(Article.class);
+//                        holder.bind(snapArticle);
+//                    }
+//                }
+//
+//                @Override
+//                public void onCancelled(@NonNull DatabaseError databaseError) { }
+//            });
+//            mRefObservedList.put(articleRef, searchArticleListener);
+//
+//        }
+//    }
+//
+//    @Override
+//    public void onViewDetachedFromWindow(@NonNull ArticleViewHolder holder) {
+//        super.onViewDetachedFromWindow(holder);
+//        if (mQuery.state == 3 || mQuery.state == 4) {
+//            Article article;
+//            if (getItemCount() > 0 && holder.getAdapterPosition() != -1) {
+//                article = mArticleList.get(holder.getAdapterPosition());
+//                DatabaseReference articleRef = FirebaseDatabase.getInstance()
+//                        .getReference("article/" + article.getObjectID());
+//                ValueEventListener searchArticleListener = mRefObservedList.get(articleRef);
+//                if (searchArticleListener != null) {
+//                    articleRef.removeEventListener(searchArticleListener);
+//                }
+//                mRefObservedList.remove(articleRef);
+//
+//            }
+//        }
+//    }
 
     public void setList(List<Article> newList, Runnable onComplete) {
         mArticleList = new ArrayList<>(newList);
@@ -129,8 +129,21 @@ public class ArticleAdapter extends RecyclerView.Adapter<ArticleViewHolder> {
         notifyDataSetChanged();
     }
 
+    public void appendList(List<Article> addList) {
+        mArticleList.addAll(addList);
+        notifyDataSetChanged();
+    }
+
     public List<Article> getList() {
         return mArticleList;
+    }
+
+    public List<String> getIdList() {
+        List<String> idList = new ArrayList<>();
+        for (Article article : mArticleList) {
+            idList.add(article.getObjectID());
+        }
+        return idList;
     }
 
     public Article getLastItem() {
@@ -142,7 +155,6 @@ public class ArticleAdapter extends RecyclerView.Adapter<ArticleViewHolder> {
         if (mRefObservedList.size() > 0) {
             for (DatabaseReference ref : mRefObservedList.keySet()) {
                 ref.removeEventListener(mRefObservedList.get(ref));
-
             }
             mRefObservedList.clear();
         }

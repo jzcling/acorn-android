@@ -102,11 +102,11 @@ public class HtmlUtils {
                 boolean hasSrc = false;
                 while (srcMatcher.find()) {
                     Log.d(TAG, srcMatcher.group(0));
-                    String[] srcset = srcMatcher.group(1).split("w,");
+                    String[] srcset = srcMatcher.group(1).split("[xw],");
                     int smallestAboveWidth = 10000;
                     String srcUrl = "";
                     for (String s : srcset) {
-                        int diff = (Integer.parseInt(s.trim().split(" ")[1].split("w")[0])) - width;
+                        int diff = (Integer.parseInt(s.trim().split(" ")[1].split("[xw]")[0])) - width;
                         if (diff > 0 && diff < smallestAboveWidth) {
                             smallestAboveWidth = diff;
                             srcUrl = s.trim().split(" ")[0];

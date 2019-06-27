@@ -1,11 +1,16 @@
 package acorn.com.acorn_app.data;
 
+import androidx.annotation.Nullable;
 import androidx.lifecycle.LiveData;
 
 import android.os.Handler;
 import androidx.annotation.NonNull;
 import android.util.Log;
 
+import com.google.android.gms.tasks.OnCompleteListener;
+import com.google.android.gms.tasks.Task;
+import com.google.android.gms.tasks.TaskCompletionSource;
+import com.google.android.gms.tasks.Tasks;
 import com.google.firebase.database.ChildEventListener;
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
@@ -29,19 +34,18 @@ public class ArticleListLiveData extends LiveData<List<Article>> {
     private Query query;
     private List<Query> queryList;
     public Map<Query, ValueEventListener> savedArticlesQueryList = new HashMap<>();
-    public Map<Query, ValueEventListener> nearbyArticlesQueryList = new HashMap<>();
+    private Map<Query, ValueEventListener> algoliaArticlesQueryList = new HashMap<>();
 
     // States: 0 = Recent, 1 = Trending, 2 = Saved articles, 3 = Search, 4 = Deals
     // -1 = mainTheme, -2 = source
-    private int state = 0;
-    private long startAt = 0;
-    private int limit = 10;
+    private int state = 3;
+    private List<Integer> searchStates = new ArrayList<>();
 
     private final MyChildEventListener childListener = new MyChildEventListener();
-    private final MyValueEventListener valueListener = new MyValueEventListener();
 
     private final List<String> mArticleIds = new ArrayList<>();
     private final List<Article> mArticleList = new ArrayList<>();
+    List<Article> articleList = new ArrayList<>();
 
     private boolean listenerRemovePending = false;
     private final Handler handler = new Handler();
@@ -51,59 +55,111 @@ public class ArticleListLiveData extends LiveData<List<Article>> {
             if (state == 2){
                 for (Query query : savedArticlesQueryList.keySet()) {
                     query.removeEventListener(savedArticlesQueryList.get(query));
+                    Log.d(TAG, "listener removed");
+                }
+            } else if (searchStates.contains(state)) {
+                for (Query query : algoliaArticlesQueryList.keySet()) {
+                    query.removeEventListener(algoliaArticlesQueryList.get(query));
                 }
             } else {
                 query.removeEventListener(childListener);
             }
+            Log.d(TAG, "all listeners removed");
             listenerRemovePending = false;
         }
     };
 
     public ArticleListLiveData(Query query) {
         this.query = query;
+        this.searchStates.add(-2);
+        this.searchStates.add(-1);
+        this.searchStates.add(3);
     }
 
-    public ArticleListLiveData(Query query, int state, int limit, long startAt) {
+    public ArticleListLiveData(Query query, int state) {
         this.query = query;
         this.state = state;
-        this.limit = limit;
-        this.startAt = startAt;
-    }
-
-    public ArticleListLiveData(List<Query> queryList, int state, int limit, long startAt) {
-        this.queryList = queryList;
-        this.state = state;
-        this.limit = limit;
-        this.startAt = startAt;
+        this.searchStates.add(-2);
+        this.searchStates.add(-1);
+        this.searchStates.add(3);
     }
 
     @Override
     protected void onActive() {
+        Log.d(TAG, "onActive");
         if (listenerRemovePending) {
             handler.removeCallbacks(removeListener);
-        }
-        else {
+        } else {
             if (state == 2) {
-                query.addListenerForSingleValueEvent(new ValueEventListener() {
+                query.addValueEventListener(new ValueEventListener() {
                     @Override
                     public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
-                        Map<String, Long> savedItems = (Map<String, Long>) dataSnapshot.getValue();
-                        if (savedItems == null || savedItems.size() == 0) {
-                            return;
+                        List<String> articleIds = new ArrayList<>(mArticleIds);
+                        for (DataSnapshot snap : dataSnapshot.getChildren()) {
+                            articleIds.remove(snap.getKey());
+                        }
+                        if (articleIds.size() > 0) {
+                            for (String id : articleIds) {
+                                int index = mArticleIds.indexOf(id);
+                                if (index > -1) {
+                                    mArticleIds.remove(index);
+                                    mArticleList.remove(index);
+                                    Query articleQuery = mDatabaseReference.child("article/" + id);
+                                    savedArticlesQueryList.remove(articleQuery);
+                                }
+                            }
                         }
 
-                        List<String> savedIdList = new ArrayList<>(savedItems.keySet());
+                        List<Task<Boolean>> taskList = new ArrayList<>();
+                        for (DataSnapshot snap : dataSnapshot.getChildren()) {
+                            String id = snap.getKey();
 
-                        int endIndex = (int) Math.min(startAt + limit, savedIdList.size());
-                        for (int i = (int) startAt; i < endIndex; i++) {
-                            Query articleQuery = mDatabaseReference.child("article/" + savedIdList.get(i));
-                            savedArticlesQueryList.put(articleQuery, valueListener);
-                            articleQuery.addValueEventListener(valueListener);
+                            TaskCompletionSource<Boolean> dbSource = new TaskCompletionSource<>();
+                            Task<Boolean> dbTask = dbSource.getTask();
+                            taskList.add(dbTask);
+
+                            Query articleQuery = mDatabaseReference.child("article/" + id);
+                            MyValueEventListener articleValueListener = new MyValueEventListener(dbSource);
+                            savedArticlesQueryList.put(articleQuery, articleValueListener);
+                            articleQuery.addValueEventListener(articleValueListener);
+                        }
+                        Tasks.whenAll(taskList).addOnCompleteListener(task -> setValue(mArticleList));
+                    }
+
+                    @Override
+                    public void onCancelled(@NonNull DatabaseError databaseError) {
+                        setValue(new ArrayList<>());
+                    }
+                });
+            } else if (searchStates.contains(state)) {
+                query.addValueEventListener(new ValueEventListener() {
+                    @Override
+                    public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+                        List<Task<Boolean>> taskList = new ArrayList<>();
+                        if (dataSnapshot.exists()) {
+                            for (DataSnapshot snap : dataSnapshot.getChildren()) {
+                                Article article = snap.getValue(Article.class);
+                                if (article != null) {
+                                    String id = article.getObjectID();
+
+                                    TaskCompletionSource<Boolean> dbSource = new TaskCompletionSource<>();
+                                    Task<Boolean> dbTask = dbSource.getTask();
+                                    taskList.add(dbTask);
+
+                                    Query articleQuery = mDatabaseReference.child("article/" + id);
+                                    MyValueEventListener articleValueListener = new MyValueEventListener(dbSource);
+                                    algoliaArticlesQueryList.put(articleQuery, articleValueListener);
+                                    articleQuery.addValueEventListener(articleValueListener);
+                                }
+                            }
+
+                            Tasks.whenAll(taskList).addOnCompleteListener(task -> setValue(mArticleList));
                         }
                     }
 
                     @Override
                     public void onCancelled(@NonNull DatabaseError databaseError) {
+                        setValue(new ArrayList<>());
                     }
                 });
             } else {
@@ -115,6 +171,7 @@ public class ArticleListLiveData extends LiveData<List<Article>> {
 
     @Override
     protected void onInactive() {
+        Log.d(TAG, "onInactive");
         handler.postDelayed(removeListener, 500);
         listenerRemovePending = true;
     }
@@ -201,31 +258,47 @@ public class ArticleListLiveData extends LiveData<List<Article>> {
     }
 
     private class MyValueEventListener implements ValueEventListener {
+        private TaskCompletionSource<Boolean> dbSource;
+
+        private MyValueEventListener(TaskCompletionSource<Boolean> dbSource) {
+            this.dbSource = dbSource;
+        }
 
         @Override
         public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
             Log.d(TAG, "onDataChanged");
             if (dataSnapshot.exists()) {
-                Log.d(TAG, "data exists");
                 Article article = dataSnapshot.getValue(Article.class);
                 String articleId = dataSnapshot.getKey();
-
-                int index = mArticleIds.indexOf(articleId);
-                if (index > -1) {
-                    mArticleIds.set(index, articleId);
-                    mArticleList.set(index, article);
+                if (article != null) {
+                    int index = mArticleIds.indexOf(articleId);
+                    if (index > -1) {
+                        mArticleIds.set(index, articleId);
+                        mArticleList.set(index, article);
+                    } else {
+                        mArticleIds.add(articleId);
+                        mArticleList.add(article);
+                    }
                 } else {
-                    mArticleIds.add(articleId);
-                    mArticleList.add(article);
+                    int index = mArticleIds.indexOf(articleId);
+                    if (index > -1) {
+                        // Remove data from the list
+                        mArticleIds.remove(index);
+                        mArticleList.remove(index);
+                    }
                 }
 
-                setValue(mArticleList);
+                if (!dbSource.trySetResult(true)) {
+                   setValue(mArticleList);
+                }
+            } else {
+                dbSource.trySetException(new Exception("No data exists"));
             }
         }
 
         @Override
         public void onCancelled(@NonNull DatabaseError databaseError) {
-
+            dbSource.trySetException(databaseError.toException());
         }
     }
 }

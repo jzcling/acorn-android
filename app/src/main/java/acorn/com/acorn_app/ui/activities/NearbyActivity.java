@@ -9,6 +9,8 @@ import android.content.IntentSender;
 import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.database.MatrixCursor;
+import android.location.Address;
+import android.location.Geocoder;
 import android.location.Location;
 import android.os.Bundle;
 import android.os.Parcelable;
@@ -53,10 +55,12 @@ import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.android.gms.tasks.Task;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 import acorn.com.acorn_app.R;
@@ -107,8 +111,8 @@ public class NearbyActivity extends AppCompatActivity {
     private Double mLatitude;
     private Double mLongitude;
     private String mAddress;
-    private Retrofit mRetrofit;
-    private CompositeDisposable mCompositeDisposable;
+//    private Retrofit mRetrofit;
+//    private CompositeDisposable mCompositeDisposable;
 
     // Data
     private NetworkDataSource mDataSource;
@@ -126,6 +130,11 @@ public class NearbyActivity extends AppCompatActivity {
     private List<String> permissionsToRequest;
     private List<String> permissionsRejected = new ArrayList<>();
     private List<String> permissions = new ArrayList<>();
+
+    //For filtering
+    private String[] themeList;
+    private boolean[] checkedStatus;
+    private List<String> mThemeFilterList = new ArrayList<>();
 
 
     @SuppressLint("MissingPermission")
@@ -147,9 +156,9 @@ public class NearbyActivity extends AppCompatActivity {
         mSwipeRefreshLayout = (SwipeRefreshLayout) findViewById(R.id.nearby_sr);
 
         mFusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
-        mRetrofit = getRetrofit(MAPS_API_URL);
         mDataSource = NetworkDataSource.getInstance(this, mExecutors);
-        mCompositeDisposable = new CompositeDisposable();
+//        mRetrofit = getRetrofit(MAPS_API_URL);
+//        mCompositeDisposable = new CompositeDisposable();
 
         final String[] from = new String[] {"stationName"};
         final int[] to = new int[] {android.R.id.text1};
@@ -178,6 +187,13 @@ public class NearbyActivity extends AppCompatActivity {
         }, (error) -> {
             createToast(this, "Error getting list of MRT Stations", Toast.LENGTH_SHORT);
         });
+
+        // Set up theme filters
+        themeList = getResources().getStringArray(R.array.theme_array);
+        checkedStatus = new boolean[themeList.length];
+        for (int i = 0; i < themeList.length; i++) {
+            checkedStatus[i] = false;
+        }
 
         mSwipeRefreshLayout.setOnRefreshListener(() -> {
             if (mLatitude != null && mLongitude != null && mAddress != null) {
@@ -209,6 +225,7 @@ public class NearbyActivity extends AppCompatActivity {
     public boolean onCreateOptionsMenu(Menu menu) {
         getMenuInflater().inflate(R.menu.app_bar_nearby, menu);
         MenuItem searchItem = (MenuItem) menu.findItem(R.id.action_search);
+        MenuItem filterItem = (MenuItem) menu.findItem(R.id.action_filter);
 
         // Set up search
         SearchView searchView = (SearchView) menu.findItem(R.id.action_search).getActionView();
@@ -281,6 +298,33 @@ public class NearbyActivity extends AppCompatActivity {
         return true;
     }
 
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        if (item.getItemId() == R.id.action_filter) {
+            android.app.AlertDialog.Builder builder = new android.app.AlertDialog.Builder(this);
+            builder.setTitle("Filter by themes")
+                    .setMultiChoiceItems(themeList, checkedStatus, ((dialog, which, isChecked) -> {
+                        checkedStatus[which] = isChecked;
+                    }));
+
+            builder.setNegativeButton("Cancel", (dialog, which) -> dialog.dismiss());
+            builder.setPositiveButton("Done", ((dialog, which) -> {
+                mThemeFilterList.clear();
+                for (int i = 0; i < themeList.length; i++) {
+                    if (checkedStatus[i]) {
+                        mThemeFilterList.add(themeList[i]);
+                    }
+                }
+                Log.d(TAG, "themeFilterList: " + mThemeFilterList);
+                mAdapter.filterByThemes(mThemeFilterList);
+            }));
+
+            android.app.AlertDialog dialog = builder.create();
+            dialog.show();
+        }
+        return super.onOptionsItemSelected(item);
+    }
+
     private void updateSearchSuggestions(String query) {
         final MatrixCursor c = new MatrixCursor(new String[]{ BaseColumns._ID, "stationName" });
         for (int i=0; i < mMrtStationNames.size(); i++) {
@@ -313,9 +357,9 @@ public class NearbyActivity extends AppCompatActivity {
 
     @Override
     protected void onDestroy() {
-        if (!mCompositeDisposable.isDisposed()) {
-            mCompositeDisposable.dispose();
-        }
+//        if (!mCompositeDisposable.isDisposed()) {
+//            mCompositeDisposable.dispose();
+//        }
         super.onDestroy();
     }
 
@@ -470,13 +514,13 @@ public class NearbyActivity extends AppCompatActivity {
                 });
     }
 
-    private Retrofit getRetrofit(String baseUrl) {
-        return new Retrofit.Builder()
-                .baseUrl(baseUrl)
-                .addConverterFactory(GsonConverterFactory.create())
-                .addCallAdapterFactory(RxJava2CallAdapterFactory.create())
-                .build();
-    }
+//    private Retrofit getRetrofit(String baseUrl) {
+//        return new Retrofit.Builder()
+//                .baseUrl(baseUrl)
+//                .addConverterFactory(GsonConverterFactory.create())
+//                .addCallAdapterFactory(RxJava2CallAdapterFactory.create())
+//                .build();
+//    }
 
     private void getReverseGeocode() {
         getLastLocation(location -> {
@@ -484,35 +528,53 @@ public class NearbyActivity extends AppCompatActivity {
             final String RESULT_TYPE = "street_address";
             final String LOCATION_TYPE = "ROOFTOP";
 
-            mDataSource.getMapsApiKey((key) -> {
-                MapsApiService mapsApiService = mRetrofit.create(MapsApiService.class);
-                String latlng = location.getLatitude() + "," + location.getLongitude();
-                mLatitude = location.getLatitude();
-                mLongitude = location.getLongitude();
-                Single<ReverseGeocode> reverseGeocode =
-                        mapsApiService.getReverseGeocode(key, latlng, RESULT_TYPE, LOCATION_TYPE);
-                reverseGeocode.subscribeOn(Schedulers.io())
-                        .observeOn(AndroidSchedulers.mainThread())
-                        .subscribe(new SingleObserver<ReverseGeocode>() {
-                            @Override
-                            public void onSubscribe(Disposable d) {
-                                mCompositeDisposable.add(d);
-                            }
+            mLatitude = location.getLatitude();
+            mLongitude = location.getLongitude();
+            Geocoder geocoder = new Geocoder(this, Locale.getDefault());
+            try {
+                List<Address> addresses = geocoder.getFromLocation(mLatitude, mLongitude, 1);
+                mAddress = "";
+                for (int i = 0; i <= addresses.get(0).getMaxAddressLineIndex(); i++) {
+                    Log.d(TAG, "address: " + addresses.get(0).getAddressLine(i));
+                    mAddress += addresses.get(0).getAddressLine(i);
+                }
+                mLocationTv.setText("Fetching articles near " + mAddress);
+                getNearbyArticles(mLatitude, mLongitude, RADIUS, mAddress);
+            } catch (IOException error) {
+                Log.d(TAG, "Error: " + error.getLocalizedMessage());
+                mLocationTv.setText("Error getting location");
+            }
 
-                            @Override
-                            public void onSuccess(ReverseGeocode reverseGeocode) {
-                                mAddress = reverseGeocode.getResults().get(0).getFormattedAddress();
-                                mLocationTv.setText("Fetching articles near " + mAddress);
-                                getNearbyArticles(mLatitude, mLongitude, RADIUS, mAddress);
-                            }
-
-                            @Override
-                            public void onError(Throwable e) {
-                                createToast(NearbyActivity.this, "Error getting location", Toast.LENGTH_SHORT);
-                                Log.d(TAG, "error getting reverse geocode: " + e.getLocalizedMessage());
-                            }
-                        });
-            });
+//            mDataSource.getMapsApiKey((key) -> {
+//                MapsApiService mapsApiService = mRetrofit.create(MapsApiService.class);
+//                String latlng = location.getLatitude() + "," + location.getLongitude();
+//                mLatitude = location.getLatitude();
+//                mLongitude = location.getLongitude();
+//
+//                Single<ReverseGeocode> reverseGeocode =
+//                        mapsApiService.getReverseGeocode(key, latlng, RESULT_TYPE, LOCATION_TYPE);
+//                reverseGeocode.subscribeOn(Schedulers.io())
+//                        .observeOn(AndroidSchedulers.mainThread())
+//                        .subscribe(new SingleObserver<ReverseGeocode>() {
+//                            @Override
+//                            public void onSubscribe(Disposable d) {
+//                                mCompositeDisposable.add(d);
+//                            }
+//
+//                            @Override
+//                            public void onSuccess(ReverseGeocode reverseGeocode) {
+//                                mAddress = reverseGeocode.getResults().get(0).getFormattedAddress();
+//                                mLocationTv.setText("Fetching articles near " + mAddress);
+//                                getNearbyArticles(mLatitude, mLongitude, RADIUS, mAddress);
+//                            }
+//
+//                            @Override
+//                            public void onError(Throwable e) {
+//                                createToast(NearbyActivity.this, "Error getting location", Toast.LENGTH_SHORT);
+//                                Log.d(TAG, "error getting reverse geocode: " + e.getLocalizedMessage());
+//                            }
+//                        });
+//            });
         });
     }
 

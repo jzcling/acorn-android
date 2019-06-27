@@ -152,22 +152,29 @@ public class NetworkDataSource {
     }
 
     public ArticleListLiveData getArticles(FbQuery query) {
-        DatabaseReference ref = mDatabaseReference.child(query.dbRef);
-        Query tempQuery = ref.orderByChild(query.orderByChild);
-        if (!query.strStartAt.equals("")) {
-            tempQuery = tempQuery.startAt(query.strStartAt).limitToFirst(query.limit);
-        } else if (query.numStartAt != Long.MAX_VALUE) {
-            tempQuery = tempQuery.startAt(query.numStartAt).limitToFirst(query.limit);
-        } else if (!query.strEqualTo.equals("")) {
-            tempQuery = tempQuery.equalTo(query.strEqualTo).limitToFirst(50);
-        } else if (query.numEqualTo != Long.MAX_VALUE) {
-            tempQuery = tempQuery.equalTo(query.numEqualTo).limitToFirst(50);
-        } else {
-            tempQuery = tempQuery.limitToFirst(query.limit);
+        Query articleQuery;
+        switch (query.state) {
+            case -2: // source
+            case -1: // mainTheme
+            case 3: // search
+                articleQuery = mDatabaseReference.child(query.dbRef)
+                        .orderByChild(query.orderByChild)
+                        .limitToFirst(query.limit);
+//                articleQuery.keepSynced(true);
+                return new ArticleListLiveData(articleQuery);
+            case 2: // saved
+                articleQuery = mDatabaseReference.child(USER_REF + "/" + mUid + "/savedItems")
+                        .orderByKey()
+                        .limitToFirst(query.limit);
+//                articleQuery.keepSynced(true);
+                return new ArticleListLiveData(articleQuery, query.state);
+            default:
+                articleQuery = mDatabaseReference.child(query.dbRef)
+                        .orderByChild(query.orderByChild)
+                        .limitToFirst(query.limit);
+//                articleQuery.keepSynced(true);
+                return new ArticleListLiveData(articleQuery);
         }
-        tempQuery.keepSynced(true);
-
-        return new ArticleListLiveData(tempQuery);
     }
 
     private void getRandomArticles(List<String> articleIds, Consumer<List<Article>> onComplete) {
@@ -211,7 +218,7 @@ public class NetworkDataSource {
 
     public ArticleListLiveData getSavedArticles(FbQuery query) {
         Query savedItemsQuery = mDatabaseReference.child(USER_REF + "/" + mUid + "/savedItems");
-        return new ArticleListLiveData(savedItemsQuery, query.state, query.limit, query.numStartAt);
+        return new ArticleListLiveData(savedItemsQuery, query.state);
     }
 
     public void getNearbyArticles(double lat, double lng, double radius,
@@ -267,24 +274,36 @@ public class NetworkDataSource {
     }
 
     public ArticleListLiveData getAdditionalArticles(FbQuery query, Object index, int indexType) {
-        if (query.state != 2) {
-            DatabaseReference ref = mDatabaseReference.child(query.dbRef);
-            Query tempQuery = ref.orderByChild(query.orderByChild)
-                    .limitToFirst(query.limit + 1);
-            if (indexType == 0) {
-                if (index instanceof String) tempQuery = tempQuery.startAt((String) index);
-                if (index instanceof Number)
-                    tempQuery = tempQuery.startAt(((Number) index).longValue());
-            } else if (indexType == 1) {
-                if (index instanceof String) tempQuery = tempQuery.equalTo((String) index);
-                if (index instanceof Number)
-                    tempQuery = tempQuery.equalTo(((Number) index).longValue());
-            }
-            return new ArticleListLiveData(tempQuery);
-        } else {
-            Query tempQuery = mDatabaseReference.child(USER_REF + "/" + mUid + "/savedItems");
-            query.numStartAt = ((Number) index).longValue();
-            return new ArticleListLiveData(tempQuery, query.state, query.limit, query.numStartAt.intValue());
+        Query articleQuery;
+        switch (query.state) {
+            case -2: // source
+            case -1: // mainTheme
+            case 3: // search
+                articleQuery = mDatabaseReference.child(query.dbRef)
+                        .orderByChild(query.orderByChild)
+                        .limitToFirst(query.limit + 1);
+                articleQuery = articleQuery.startAt((String) index);
+                return new ArticleListLiveData(articleQuery);
+            case 2: // saved
+                articleQuery = mDatabaseReference.child(USER_REF + "/" + mUid + "/savedItems")
+                        .orderByKey()
+                        .limitToFirst(query.limit + 1);
+                articleQuery = articleQuery.startAt((String) index);
+                return new ArticleListLiveData(articleQuery, query.state);
+            default:
+                articleQuery = mDatabaseReference.child(query.dbRef)
+                        .orderByChild(query.orderByChild)
+                        .limitToFirst(query.limit + 1);
+                if (indexType == 0) {
+                    if (index instanceof String) articleQuery = articleQuery.startAt((String) index);
+                    if (index instanceof Number)
+                        articleQuery = articleQuery.startAt(((Number) index).longValue());
+                } else if (indexType == 1) {
+                    if (index instanceof String) articleQuery = articleQuery.equalTo((String) index);
+                    if (index instanceof Number)
+                        articleQuery = articleQuery.equalTo(((Number) index).longValue());
+                }
+                return new ArticleListLiveData(articleQuery);
         }
     }
 
@@ -308,7 +327,6 @@ public class NetworkDataSource {
             String themeSearchFilter = filterStringBuilder.toString();
 
             DatabaseReference resultRef = mDatabaseReference.child(SEARCH_REF).child(themeSearchKey);
-            resultRef.keepSynced(true);
             resultRef.addListenerForSingleValueEvent(new ValueEventListener() {
                 @Override
                 public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
@@ -341,7 +359,6 @@ public class NetworkDataSource {
             mThemeSearchKey = mSharedPrefs.getString("themeSearchKey", "");
             mThemeSearchFilter = mSharedPrefs.getString("themeSearchFilter", "");
             DatabaseReference resultRef = mDatabaseReference.child(SEARCH_REF).child(mThemeSearchKey);
-            resultRef.keepSynced(true);
             resultRef.addListenerForSingleValueEvent(new ValueEventListener() {
                 @Override
                 public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
@@ -373,7 +390,6 @@ public class NetworkDataSource {
         mExecutors.networkIO().execute(() -> {
             String cleanedSearchKey = searchKey.replaceAll("[.#$\\[\\]]", "");
             DatabaseReference resultRef = mDatabaseReference.child(SEARCH_REF).child(cleanedSearchKey);
-            resultRef.keepSynced(true);
             resultRef.addListenerForSingleValueEvent(new ValueEventListener() {
                 @Override
                 public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
@@ -433,7 +449,6 @@ public class NetworkDataSource {
             String dealsSearchKey = "Deals";
             String dealsSearchFilter = "mainTheme: Deals";
             DatabaseReference resultRef = mDatabaseReference.child(SEARCH_REF).child("Deals");
-            resultRef.keepSynced(true);
             resultRef.addListenerForSingleValueEvent(new ValueEventListener() {
                 @Override
                 public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
@@ -515,7 +530,7 @@ public class NetworkDataSource {
     }
 
     // Download subscribed articles
-    public void downloadSubscribedArticles(int width, Consumer<List<dbArticle>> onComplete, Runnable onError) {
+    public void downloadSubscribedArticles(int imageWidth, Consumer<List<dbArticle>> onComplete, Runnable onError) {
         Log.d(TAG, "downloadSubscribedArticles started");
 
         List<dbArticle> articleList = new ArrayList<>();
@@ -546,14 +561,9 @@ public class NetworkDataSource {
                                         if (article != null) {
                                             if (article.htmlContent != null && !article.htmlContent.equals("")) {
                                                 article.htmlContent = HtmlUtils.cleanHtmlContent(article.htmlContent,
-                                                        article.getLink(), article.selector, article.getObjectID(), width);
+                                                        article.getLink(), article.selector, article.getObjectID(), imageWidth);
                                                 dbArticle localArticle = new dbArticle(mContext, article);
                                                 articleList.add(localArticle);
-//                                                mExecutors.diskWrite().execute(() -> {
-//                                                    ArticleRoomDatabase roomDb = ArticleRoomDatabase.getInstance(mContext);
-//                                                    roomDb.articleDAO().insert(localArticle);
-//                                                    Log.d(TAG, "article: " + article.getTitle());
-//                                                });
                                             }
                                         }
 
@@ -564,9 +574,7 @@ public class NetworkDataSource {
                                     }
 
                                     @Override
-                                    public void onCancelled(@NonNull DatabaseError databaseError) {
-
-                                    }
+                                    public void onCancelled(@NonNull DatabaseError databaseError) { }
                                 });
                             }
                         }
@@ -872,7 +880,6 @@ public class NetworkDataSource {
         } else {
             query = query.limitToFirst(limit);
         }
-        query.keepSynced(true);
 
         return new VideoListLiveData(query);
     }
@@ -934,12 +941,8 @@ public class NetworkDataSource {
 
 
     // Remove saved article
-    public void removeSavedArticle(String articleId, ArticleListLiveData articleListLD) {
-        DatabaseReference articleRef = FirebaseDatabase.getInstance()
-                .getReference("article/"+articleId);
-        articleRef.removeEventListener(
-                articleListLD.savedArticlesQueryList.get(articleRef));
-        articleListLD.savedArticlesQueryList.remove(articleRef);
+    public void removeSavedArticle(String articleId) {
+        DatabaseReference articleRef = mDatabaseReference.child("article/"+articleId);
 
         articleRef.runTransaction(new Transaction.Handler() {
             @NonNull

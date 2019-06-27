@@ -39,7 +39,8 @@ public class FbQuery implements Parcelable {
         } else if (state == 1) { // Trending
             orderByChild = "trendingIndex";
         } else if (state == 2) { // Saved articles
-            limit = 500;
+            limit = 20;
+            orderByChild = "trendingIndex";
         } else if (state == 4) { // Deals
             orderByChild = "trendingIndex";
         }
@@ -56,6 +57,11 @@ public class FbQuery implements Parcelable {
         this.state = state;
         this.dbRef = dbRef;
         this.orderByChild = orderByChild;
+    }
+
+    public FbQuery(int state, String dbRef) {
+        this.state = state;
+        this.dbRef = dbRef;
     }
 
     public FbQuery(int state, String dbRef, String orderByChild,

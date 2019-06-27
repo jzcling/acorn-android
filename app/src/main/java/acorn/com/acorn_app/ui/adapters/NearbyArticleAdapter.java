@@ -20,6 +20,8 @@ public class NearbyArticleAdapter extends RecyclerView.Adapter<NearbyArticleView
     private final Context mContext;
     private String mArticleType;
     private List<Article> mArticleList = new ArrayList<>();
+    private List<Article> mFilteredArticleList = new ArrayList<>();
+    private List<Article> mPreSearchFilteredArticleList = new ArrayList<>();
 
     public NearbyArticleAdapter(final Context context) {
         mContext = context;
@@ -27,7 +29,7 @@ public class NearbyArticleAdapter extends RecyclerView.Adapter<NearbyArticleView
 
     @Override
     public int getItemViewType(int position) {
-        Article article = mArticleList.get(position);
+        Article article = mFilteredArticleList.get(position);
         if (article.getType() == null || article.getType().equals("article")) {
             return 0;
         } else {
@@ -47,29 +49,53 @@ public class NearbyArticleAdapter extends RecyclerView.Adapter<NearbyArticleView
 
     @Override
     public void onBindViewHolder(@NonNull NearbyArticleViewHolder holder, int position) {
-        Article article = mArticleList.get(position);
+        Article article = mFilteredArticleList.get(position);
         holder.bind(article);
     }
 
     @Override
     public int getItemCount() {
-        return mArticleList.size();
+        return mFilteredArticleList.size();
+    }
+
+    public void setList(List<Article> newList, List<String> themeList) {
+        mArticleList = new ArrayList<>(newList);
+        filterByThemes(themeList);
+        notifyDataSetChanged();
     }
 
     public void setList(List<Article> newList) {
         mArticleList = new ArrayList<>(newList);
+        mFilteredArticleList = new ArrayList<>(newList);
         notifyDataSetChanged();
     }
 
     public List<Article> getList() {
-        return mArticleList;
+        return mFilteredArticleList;
     }
 
     public Article getLastItem() {
-        return mArticleList.get(mArticleList.size()-1);
+        return mFilteredArticleList.get(mFilteredArticleList.size()-1);
     }
 
     public void clear() {
-        mArticleList.clear();
+        mFilteredArticleList.clear();
+    }
+
+    public void filterByThemes(List<String> themeFilterList) {
+        mFilteredArticleList.clear();
+        if (themeFilterList.size() == 0) {
+            mFilteredArticleList.addAll(mArticleList);
+            notifyDataSetChanged();
+            return;
+        }
+        for (Article article: mArticleList) {
+            for (String theme: themeFilterList) {
+                if (article.getMainTheme().equals(theme)) {
+                    mFilteredArticleList.add(article);
+                }
+            }
+        }
+        notifyDataSetChanged();
     }
 }

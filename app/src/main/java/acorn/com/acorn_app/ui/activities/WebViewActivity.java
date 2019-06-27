@@ -24,6 +24,7 @@ import android.view.animation.AccelerateInterpolator;
 import android.view.animation.AlphaAnimation;
 import android.view.animation.Animation;
 import android.view.inputmethod.InputMethodManager;
+import android.webkit.CookieManager;
 import android.webkit.SslErrorHandler;
 import android.webkit.WebChromeClient;
 import android.webkit.WebView;
@@ -55,6 +56,9 @@ import acorn.com.acorn_app.utils.AppExecutors;
 import acorn.com.acorn_app.utils.DateUtils;
 import acorn.com.acorn_app.utils.HtmlUtils;
 import androidx.cardview.widget.CardView;
+
+import java.util.HashMap;
+import java.util.Map;
 
 import static acorn.com.acorn_app.data.NetworkDataSource.ARTICLE_REF;
 import static acorn.com.acorn_app.data.NetworkDataSource.NOTIFICATION_TOKENS;
@@ -143,6 +147,8 @@ public class WebViewActivity extends AppCompatActivity {
         webView.getSettings().setJavaScriptEnabled(true);
         webView.getSettings().setLoadsImagesAutomatically(true);
         webView.getSettings().setSupportZoom(true);
+        webView.getSettings().setDomStorageEnabled(true);
+        webView.getSettings().setUserAgentString("Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/51.0.2704.103 Safari/537.36");
         webView.setWebViewClient(new MyWebViewClient());
         webView.setWebChromeClient(new WebChromeClient() {
             @Override
@@ -244,13 +250,16 @@ public class WebViewActivity extends AppCompatActivity {
                     source = mDbArticle.source;
                     date = DateUtils.parseDate(mDbArticle.pubDate);
                     htmlContent = mDbArticle.htmlContent;
-//                    Log.d(TAG, "htmlContent: " + htmlContent);
+                    Log.d(TAG, "htmlContent: " + htmlContent);
                     if (htmlContent != null && !htmlContent.equals("")) {
+                        Log.d(TAG, "in db with html content");
                         loadFromLocalDb();
                     } else {
+                        Log.d(TAG, "in db but no html content");
                         loadFromFirebaseDb();
                     }
                 } else {
+                    Log.d(TAG, "not in db");
                     loadFromFirebaseDb();
                 }
             });
