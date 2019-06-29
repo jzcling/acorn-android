@@ -18,7 +18,7 @@ import acorn.com.acorn_app.ui.activities.ThemeSelectionActivity;
 
 import static acorn.com.acorn_app.ui.activities.AcornActivity.RC_THEME_PREF;
 import static acorn.com.acorn_app.ui.activities.AcornActivity.mUserThemePrefs;
-import static android.app.Activity.RESULT_OK;
+import static androidx.appcompat.app.AppCompatActivity.RESULT_OK;
 
 public class SettingsFragment extends PreferenceFragmentCompat {
     private static final String TAG = "SettingsFragment";

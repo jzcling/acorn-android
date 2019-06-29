@@ -1,8 +1,9 @@
 package acorn.com.acorn_app.ui.fragments;
 
 import android.app.Dialog;
-import android.app.DialogFragment;
 import android.os.Bundle;
+
+import androidx.fragment.app.DialogFragment;
 
 import acorn.com.acorn_app.ui.viewModels.NotificationViewModel;
 import acorn.com.acorn_app.utils.UiUtils;

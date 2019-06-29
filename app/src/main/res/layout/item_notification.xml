@@ -23,7 +23,7 @@
             app:layout_constraintTop_toTopOf="parent"
             app:layout_constraintBottom_toBottomOf="parent"
             android:layout_marginEnd="24dp"
-            android:src="@drawable/ic_delete" />
+            app:srcCompat="@drawable/ic_delete" />
 
         <TextView
             android:layout_width="wrap_content"
@@ -45,7 +45,7 @@
             app:layout_constraintTop_toTopOf="parent"
             app:layout_constraintBottom_toBottomOf="parent"
             android:layout_marginStart="24dp"
-            android:src="@drawable/ic_delete" />
+            app:srcCompat="@drawable/ic_delete" />
 
         <TextView
             android:layout_width="wrap_content"

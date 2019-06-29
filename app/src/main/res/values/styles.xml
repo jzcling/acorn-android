@@ -27,25 +27,25 @@
     <!-- Sign in button -->
     <style name="FirebaseUI.Button.AccountChooser.FacebookButton">
         <item name="drawableStartCompat">@drawable/fui_ic_facebook_22dp</item>
-        <item name="android:background">@drawable/fui_idp_button_background</item>
+        <item name="background">@drawable/fui_idp_button_background</item>
         <item name="android:textColor">#757575</item>
     </style>
     <style name="FirebaseUI.Button.AccountChooser.GoogleButton">
         <item name="drawableStartCompat">@drawable/fui_ic_googleg_color_24dp</item>
-        <item name="android:background">@drawable/fui_idp_button_background</item>
+        <item name="background">@drawable/fui_idp_button_background</item>
         <item name="android:textColor">#757575</item>
     </style>
     <style name="FirebaseUI.Button.AccountChooser.EmailButton">
         <item name="drawableStartCompat">@drawable/fui_ic_mail_24dp</item>
-        <item name="android:background">@drawable/fui_idp_button_background</item>
+        <item name="background">@drawable/fui_idp_button_background</item>
         <item name="android:textColor">#757575</item>
     </style>
 
     <!-- Image Dialog -->
     <style name="ImageDialogTheme" parent="@android:style/Theme.Dialog">
-        <item name="android:windowNoTitle">true</item>
+        <item name="windowNoTitle">true</item>
         <item name="android:windowFrame">@null</item>
-        <item name="android:background">@android:color/transparent</item>
+        <item name="background">@android:color/transparent</item>
         <item name="android:windowBackground">@android:color/transparent</item>
         <item name="android:windowIsFloating">true</item>
         <item name="android:backgroundDimEnabled">false</item>

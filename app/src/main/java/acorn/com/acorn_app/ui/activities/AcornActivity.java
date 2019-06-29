@@ -1,10 +1,5 @@
 package acorn.com.acorn_app.ui.activities;
 
-import android.app.AlertDialog;
-
-import androidx.cardview.widget.CardView;
-import androidx.lifecycle.Observer;
-import androidx.lifecycle.ViewModelProviders;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
@@ -14,45 +9,53 @@ import android.content.pm.Signature;
 import android.graphics.Color;
 import android.graphics.Point;
 import android.graphics.PorterDuff;
-import android.net.ConnectivityManager;
-import android.net.NetworkInfo;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Parcelable;
 import android.preference.PreferenceManager;
-import androidx.annotation.NonNull;
-import androidx.constraintlayout.widget.ConstraintLayout;
-
-import com.google.android.gms.tasks.OnCompleteListener;
-import com.google.android.gms.tasks.Task;
-import com.google.android.material.floatingactionbutton.FloatingActionButton;
-import com.google.android.material.navigation.NavigationView;
-import androidx.core.view.GravityCompat;
-import androidx.drawerlayout.widget.DrawerLayout;
-import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
-import androidx.appcompat.app.ActionBarDrawerToggle;
-import androidx.appcompat.app.AppCompatActivity;
-import androidx.appcompat.app.AppCompatDelegate;
-import androidx.recyclerview.widget.LinearLayoutManager;
-import androidx.recyclerview.widget.RecyclerView;
-import androidx.recyclerview.widget.SimpleItemAnimator;
-import androidx.appcompat.widget.Toolbar;
+import android.text.Html;
+import android.text.Spannable;
 import android.util.Base64;
 import android.util.Log;
 import android.view.Display;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
+import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
+
+import androidx.annotation.NonNull;
+import androidx.appcompat.app.ActionBarDrawerToggle;
+import androidx.appcompat.app.AlertDialog;
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.app.AppCompatDelegate;
+import androidx.appcompat.widget.Toolbar;
+import androidx.cardview.widget.CardView;
+import androidx.constraintlayout.widget.ConstraintLayout;
+import androidx.core.view.GravityCompat;
+import androidx.core.view.MenuItemCompat;
+import androidx.drawerlayout.widget.DrawerLayout;
+import androidx.lifecycle.Observer;
+import androidx.lifecycle.ViewModelProviders;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
+import androidx.recyclerview.widget.SimpleItemAnimator;
+import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
 import com.algolia.instantsearch.core.helpers.Searcher;
 import com.crashlytics.android.Crashlytics;
 import com.firebase.ui.auth.AuthUI;
 import com.firebase.ui.auth.ErrorCodes;
 import com.firebase.ui.auth.IdpResponse;
+import com.google.android.gms.tasks.Task;
+import com.google.android.gms.tasks.TaskCompletionSource;
+import com.google.android.gms.tasks.Tasks;
+import com.google.android.material.floatingactionbutton.FloatingActionButton;
+import com.google.android.material.navigation.NavigationView;
 import com.google.firebase.analytics.FirebaseAnalytics;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
@@ -66,8 +69,6 @@ import com.google.firebase.iid.FirebaseInstanceId;
 import com.google.firebase.messaging.FirebaseMessaging;
 import com.jaredrummler.android.device.DeviceName;
 import com.nex3z.notificationbadge.NotificationBadge;
-
-import org.w3c.dom.Text;
 
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -87,15 +88,20 @@ import acorn.com.acorn_app.models.Article;
 import acorn.com.acorn_app.models.FbQuery;
 import acorn.com.acorn_app.models.PremiumStatus;
 import acorn.com.acorn_app.models.User;
-import acorn.com.acorn_app.models.dbArticle;
 import acorn.com.acorn_app.ui.adapters.ArticleAdapter;
+import acorn.com.acorn_app.ui.adapters.ArticleViewHolder;
 import acorn.com.acorn_app.ui.fragments.NotificationsDialogFragment;
 import acorn.com.acorn_app.ui.viewModels.ArticleViewModel;
 import acorn.com.acorn_app.ui.viewModels.ArticleViewModelFactory;
 import acorn.com.acorn_app.ui.viewModels.NotificationViewModel;
+import acorn.com.acorn_app.ui.views.CollapsibleMenuItemView;
 import acorn.com.acorn_app.utils.AppExecutors;
 import acorn.com.acorn_app.utils.InjectorUtils;
 import acorn.com.acorn_app.utils.InviteUtils;
+import acorn.com.acorn_app.utils.UiUtils;
+import smartdevelop.ir.eram.showcaseviewlib.GuideView;
+import smartdevelop.ir.eram.showcaseviewlib.config.DismissType;
+import smartdevelop.ir.eram.showcaseviewlib.config.Gravity;
 
 import static acorn.com.acorn_app.data.NetworkDataSource.ALGOLIA_API_KEY;
 import static acorn.com.acorn_app.data.NetworkDataSource.SEARCH_REF;
@@ -121,6 +127,8 @@ public class AcornActivity extends AppCompatActivity
     // User status
     private DatabaseReference mUserStatusRef;
     private ValueEventListener mUserStatusListener;
+    private DatabaseReference mUserPremiumStatusRef;
+    private ValueEventListener mUserPremiumStatusListener;
     public static final String LEVEL_0 = "Budding Seed";
     public static final String LEVEL_1 = "Emerging Sprout";
     public static final String LEVEL_2 = "Thriving Sapling";
@@ -146,7 +154,7 @@ public class AcornActivity extends AppCompatActivity
     //Room database
     private ArticleRoomDatabase mRoomDb;
     private Context mContext;
-    
+
     //Data source
     private NetworkDataSource mDataSource;
     private final AppExecutors mExecutors = AppExecutors.getInstance();
@@ -170,7 +178,7 @@ public class AcornActivity extends AppCompatActivity
     public static String mUsername;
     public static String mUserToken;
     private String mUserStatus;
-    public PremiumStatus mUserPremiumStatus;
+    public Map<String, Long> mUserPremiumStatus;
     public static ArrayList<String> mUserThemePrefs;
     private long lastRecArticlesPushTime;
     private long lastRecArticlesScheduleTime;
@@ -197,7 +205,7 @@ public class AcornActivity extends AppCompatActivity
 
     //Notifications
     private NotificationBadge notificationBadge;
-    
+
     //Menu
     private Menu navMenu;
     private MenuItem mSearchButton;
@@ -216,7 +224,7 @@ public class AcornActivity extends AppCompatActivity
         mSharedPreferences = PreferenceManager.getDefaultSharedPreferences(this);
         mNotificationsPref = getSharedPreferences(getString(R.string.notif_pref_id), MODE_PRIVATE);
         dayNightValue = Integer.parseInt(mSharedPreferences.getString(
-                getString(R.string.pref_key_night_mode),"1"));
+                getString(R.string.pref_key_night_mode),"0"));
         commentNotifValue = mSharedPreferences.getBoolean(getString(R.string.pref_key_notif_comment), true);
         articleNotifValue = mSharedPreferences.getBoolean(getString(R.string.pref_key_notif_article), true);
         dealsNotifValue = mSharedPreferences.getBoolean(getString(R.string.pref_key_notif_deals), true);
@@ -230,6 +238,7 @@ public class AcornActivity extends AppCompatActivity
 
         mFirebaseAnalytics.logEvent(FirebaseAnalytics.Event.APP_OPEN, null);
 
+        // For facebook
         try {
             PackageInfo info = getPackageManager().getPackageInfo(getPackageName(), PackageManager.GET_SIGNATURES);
             for (Signature signature : info.signatures) {
@@ -283,25 +292,6 @@ public class AcornActivity extends AppCompatActivity
         // Set up swipe refresh
         mSwipeRefreshLayout.setOnRefreshListener(() -> handleIntent(getIntent()));
 
-        // check to see if user opened an invite link
-        Intent intent = getIntent();
-        String appLinkAction = intent.getAction();
-        Uri appLinkData = intent.getData();
-        if (Intent.ACTION_VIEW.equals(appLinkAction) && appLinkData != null) {
-            FirebaseDynamicLinks.getInstance().getDynamicLink(intent)
-                    .addOnSuccessListener(this, pendingDynamicLinkData -> {
-                        Uri deepLink;
-                        if (pendingDynamicLinkData != null) {
-                            deepLink = pendingDynamicLinkData.getLink();
-                            mReferredBy = deepLink.getQueryParameter("referrer");
-                            Log.d(TAG, deepLink.toString() + ", referrer: " + mReferredBy);
-                        }
-                    })
-                    .addOnFailureListener(this, e -> {
-                        Log.d(TAG, "Failed to get deep link: " + e);
-                    });
-        }
-
         setupUser(mFirebaseUser);
 
         // Set up mScrollFab
@@ -322,7 +312,34 @@ public class AcornActivity extends AppCompatActivity
 
         // Set up navigation mDrawer
         ActionBarDrawerToggle toggle = new ActionBarDrawerToggle(
-                this, mDrawer, toolbar, R.string.navigation_drawer_open, R.string.navigation_drawer_close);
+                this, mDrawer, toolbar, R.string.navigation_drawer_open, R.string.navigation_drawer_close) {
+            @Override
+            public void onDrawerOpened(View drawerView) {
+//                if (!mSharedPreferences.getBoolean(getString(R.string.pref_key_nearby_seen), false)) {
+//                    NavigationView navigationView = (NavigationView) findViewById(R.id.nav_view);
+//                    MenuItem item = navigationView.getMenu().findItem(R.id.nav_nearby);
+//                    LinearLayout view = (LinearLayout) item.getActionView();
+//
+//                    int[] location = new int[2];
+//                    view.getLocationOnScreen(location);
+//
+//                    View target = new View(AcornActivity.this);
+//                    target.setY(location[1]);
+//                    float density = getResources().getDisplayMetrics().density;
+//                    int height = (int) (density * 50);
+//                    target.setLayoutParams(new LinearLayout.LayoutParams(location[0], height));
+//                    navigationView.addView(target);
+//
+//                    String title = "Near Me";
+//                    String text = "Explore articles recommending restaurants and deals near you! " +
+//                            "Refer a friend to enjoy this premium feature!";
+//                    UiUtils.highlightView(AcornActivity.this, target, title, text);
+//
+//                    mSharedPreferences.edit().putBoolean(getString(R.string.pref_key_nearby_seen), true).apply();
+//                }
+                super.onDrawerOpened(drawerView);
+            }
+        };
         mDrawer.addDrawerListener(toggle);
         toggle.syncState();
 
@@ -332,7 +349,6 @@ public class AcornActivity extends AppCompatActivity
 
     @Override
     public void onBackPressed() {
-        DrawerLayout mDrawer = (DrawerLayout) findViewById(R.id.drawer_layout);
         if (mDrawer.isDrawerOpen(GravityCompat.START)) {
             mDrawer.closeDrawer(GravityCompat.START);
         } else {
@@ -342,6 +358,7 @@ public class AcornActivity extends AppCompatActivity
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
+        Log.d(TAG, "onCreateOptionsMenu");
         getMenuInflater().inflate(R.menu.app_bar_activity_acorn, menu);
 
         NavigationView navigationView = (NavigationView) findViewById(R.id.nav_view);
@@ -354,12 +371,12 @@ public class AcornActivity extends AppCompatActivity
         MenuItem signInMenuItem = (MenuItem) navMenu.findItem(R.id.nav_login);
         MenuItem signOutMenuItem = (MenuItem) navMenu.findItem(R.id.nav_logout);
 
-        MenuItem videosItem = (MenuItem) navMenu.findItem(R.id.nav_video_feed);
-        videosItem.getIcon().setColorFilter(Color.RED, PorterDuff.Mode.SRC_ATOP);
+        MenuItem nearbyItem = (MenuItem) navMenu.findItem(R.id.nav_nearby);
+        nearbyItem.getIcon().setColorFilter(Color.rgb(255,50,50), PorterDuff.Mode.SRC_ATOP);
 
         final MenuItem notificationItem = menu.findItem(R.id.action_notifications);
         mSearchButton = menu.findItem(R.id.action_search);
-        ConstraintLayout notificationView = (ConstraintLayout) notificationItem.getActionView();
+        ConstraintLayout notificationView = (ConstraintLayout) MenuItemCompat.getActionView(notificationItem);
         notificationBadge = (NotificationBadge) notificationView.findViewById(R.id.notification_badge);
         mNotifViewModel = ViewModelProviders.of(this).get(NotificationViewModel.class);
         mNotifViewModel.getNotificationList().observe(this,
@@ -385,16 +402,22 @@ public class AcornActivity extends AppCompatActivity
             mUserStatusTextView.setText("");
         }
 
-        float height = mUserPremiumStatusCardView.getHeight();
-        mUserPremiumStatusCardView.setRadius(height/2);
-        if (mUserPremiumStatus != null) {
-            if (mUserPremiumStatus.end > (new Date()).getTime()) {
-                mUserPremiumStatusTextView.setText("Premium");
-                mUserPremiumStatusCardView.setBackgroundColor(getColor(R.color.colorPrimary));
-            }
-        }
+//        if (mUserPremiumStatus != null) {
+//            Long end = mUserPremiumStatus.get("end");
+//            if (end != null && end > (new Date()).getTime()) {
+//                mUserPremiumStatusTextView.setText("Premium");
+//                mUserPremiumStatusCardView.setCardBackgroundColor(getColor(R.color.colorPrimary));
+//            }
+//        }
 
         return true;
+    }
+
+    @Override
+    public boolean onPrepareOptionsMenu(Menu menu) {
+        float height = mUserPremiumStatusCardView.getHeight();
+        mUserPremiumStatusCardView.setRadius(height/2);
+        return super.onPrepareOptionsMenu(menu);
     }
 
     @Override
@@ -406,7 +429,7 @@ public class AcornActivity extends AppCompatActivity
                 startActivity(new Intent(this, SearchActivity.class));
                 return true;
             case R.id.action_notifications:
-                new NotificationsDialogFragment().show(getFragmentManager(), "NotificationsDialog");
+                new NotificationsDialogFragment().show(getSupportFragmentManager(), "NotificationsDialog");
                 return true;
             case R.id.action_settings:
                 startActivityForResult(new Intent(this, SettingsActivity.class), RC_PREF);
@@ -429,8 +452,6 @@ public class AcornActivity extends AppCompatActivity
 
     @Override
     public boolean onNavigationItemSelected(@NonNull MenuItem item) {
-        DrawerLayout mDrawer = (DrawerLayout) findViewById(R.id.drawer_layout);
-
         int id = item.getItemId();
 
         switch (id) {
@@ -451,8 +472,9 @@ public class AcornActivity extends AppCompatActivity
                 startActivity(savedArticlesIntent);
                 break;
             case R.id.nav_nearby:
-                Intent nearbyArticlesIntent = new Intent(this, NearbyActivity.class);
-                startActivity(nearbyArticlesIntent);
+                createToast(this, "This feature is coming in the next few days! Stay tuned!", Toast.LENGTH_LONG);
+//                Intent nearbyArticlesIntent = new Intent(this, NearbyActivity.class);
+//                startActivity(nearbyArticlesIntent);
                 break;
             case R.id.nav_video_feed:
                 Intent videoFeedIntent = new Intent(this, VideoFeedActivity.class);
@@ -610,7 +632,7 @@ public class AcornActivity extends AppCompatActivity
         Log.d(TAG, "onStop");
         super.onStop();
         if (mUserStatusRef != null) mUserStatusRef.removeEventListener(mUserStatusListener);
-
+        if (mUserPremiumStatusRef != null) mUserPremiumStatusRef.removeEventListener(mUserPremiumStatusListener);
     }
 
     @Override
@@ -618,7 +640,7 @@ public class AcornActivity extends AppCompatActivity
         Log.d(TAG, "onStart");
         super.onStart();
         if (mUserStatusRef != null) mUserStatusRef.addValueEventListener(mUserStatusListener);
-
+        if (mUserPremiumStatusRef != null) mUserPremiumStatusRef.addValueEventListener(mUserPremiumStatusListener);
     }
 
     @Override
@@ -786,246 +808,310 @@ public class AcornActivity extends AppCompatActivity
     }
 
     private void setupUser(FirebaseUser user) {
-        NavigationView navigationView = (NavigationView) findViewById(R.id.nav_view);
-        View navHeaderLayout = navigationView.getHeaderView(0);
-        mUsernameTextView = (TextView) navHeaderLayout.findViewById(R.id.nav_user_name_text_view);
-        mUserStatusTextView = (TextView) navHeaderLayout.findViewById(R.id.nav_user_status_text_view);
-
-        if (mFirebaseUser == null) {
+        Log.d(TAG, "setupUser");
+        if (user == null) {
             launchLogin();
         } else {
+            TaskCompletionSource<User> userSource = new TaskCompletionSource<>();
+            Task<User> userTask = userSource.getTask();
+
             DatabaseReference userRef = mDatabaseReference.child("user/" + user.getUid());
+            setupUserStatusListeners(userRef);
+//            userRef.keepSynced(true);
             userRef.addListenerForSingleValueEvent(new ValueEventListener() {
                 @Override
                 public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
                     User retrievedUser = dataSnapshot.getValue(User.class);
-                    FirebaseInstanceId.getInstance().getInstanceId()
-                            .addOnSuccessListener(instanceIdResult -> {
-                                String userToken = instanceIdResult.getToken();
-                                if (retrievedUser == null) {
-                                    isFirstTimeLogin = true;
-                                    if (!user.isEmailVerified()) {
-                                        user.sendEmailVerification();
-                                    } else {
-                                        isUserAuthenticated = true;
-                                    }
-                                    String uid = user.getUid();
-                                    String displayName = user.getDisplayName();
-                                    String email = user.getEmail();
-                                    String device = DeviceName.getDeviceName();
-                                    Long creationTimeStamp = user.getMetadata().getCreationTimestamp();
-                                    Long lastSignInTimeStamp = user.getMetadata().getLastSignInTimestamp();
-
-                                    User newUser = new User(uid, displayName, userToken, email, device,
-                                            creationTimeStamp, lastSignInTimeStamp);
-                                    if (isUserAuthenticated) newUser.isEmailVerified = true;
-                                    newUser.openedSinceLastReport = true;
-                                    userRef.setValue(newUser);
-
-                                    mUid = newUser.getUid();
-                                    mUsername = newUser.getDisplayName();
-                                    mUserToken = newUser.getToken();
-                                    mUserPremiumStatus = newUser.premiumStatus;
-                                    mUserStatus = LEVEL_0;
-                                    lastRecArticlesPushTime = 0L;
-                                    lastRecArticlesScheduleTime = 0L;
-                                    lastRecDealsPushTime = 0L;
-                                    lastRecDealsScheduleTime = 0L;
-
-                                    if (mUsernameTextView != null) {
-                                        mUsernameTextView.setText(mUsername);
-                                        mUsernameTextView.setOnClickListener(v -> startActivity(new Intent(AcornActivity.this, UserActivity.class)));
-                                    }
-                                    if (mUserStatusTextView != null) {
-                                        mUserStatusTextView.setText(mUserStatus);
-                                        mUserStatusTextView.setOnClickListener(v -> startActivity(new Intent(AcornActivity.this, UserActivity.class)));
-                                    }
-
-                                    if (mUserPremiumStatusCardView != null && mUserPremiumStatusTextView != null) {
-                                        if (mUserPremiumStatus.end > (new Date()).getTime()) {
-                                            mUserPremiumStatusTextView.setText("Premium");
-                                            mUserPremiumStatusCardView.setBackgroundColor(getColor(R.color.colorPrimary));
-                                        }
-                                    }
-
-                                    mUserThemePrefs = new ArrayList<>();
-                                    Intent editThemeIntent = new Intent(AcornActivity.this, ThemeSelectionActivity.class);
-                                    editThemeIntent.putStringArrayListExtra("themePrefs", mUserThemePrefs);
-                                    startActivityForResult(editThemeIntent, RC_THEME_PREF);
-                                    buildThemeKeyAndFilter(mUserThemePrefs);
-
-                                    if (mSavedInstanceState != null) {
-                                        mQuery = mSavedInstanceState.getParcelable("Query");
-                                        if (mQuery == null) {
-                                            String hitsRef = SEARCH_REF + "/" + mThemeSearchKey + "/hits";
-                                            mQuery = new FbQuery(3, hitsRef, "trendingIndex");
-                                        }
-                                    } else {
-                                        String hitsRef = SEARCH_REF + "/" + mThemeSearchKey + "/hits";
-                                        mQuery = new FbQuery(3, hitsRef, "trendingIndex");
-                                    }
-
-                                    getThemeData();
-
-                                    // set up search button
-                                    mDataSource.setupAlgoliaClient(() -> {
-                                        mSearcher = Searcher.create(ALGOLIA_APP_ID, ALGOLIA_API_KEY, ALGOLIA_INDEX_NAME);
-                                        if (mSearchButton != null) mSearchButton.setEnabled(true);
-                                    });
-
-                                    // Set up Crashlytics identifier
-                                    Crashlytics.setUserIdentifier(mUid);
-                                    Crashlytics.setUserName(mUsername);
-                                    Crashlytics.setUserEmail(email);
-
-                                    // Set up Firebase Analytics identifier
-                                    mFirebaseAnalytics.setUserId(mUid);
-
-                                } else {
-
-                                    if (!user.isEmailVerified() && !retrievedUser.isEmailVerified) {
-                                        AlertDialog.Builder builder = new AlertDialog.Builder(AcornActivity.this);
-                                        builder.setMessage("Please verify your email address")
-                                                .setNeutralButton("Re-send verification email", (dialog, which) -> {
-                                                    user.sendEmailVerification();
-                                                });
-                                        AlertDialog alertDialog = builder.create();
-                                        alertDialog.show();
-                                    } else {
-                                        isUserAuthenticated = true;
-                                    }
-
-                                    retrievedUser.setDisplayName(user.getDisplayName());
-                                    retrievedUser.setEmail(user.getEmail());
-                                    retrievedUser.setDevice(DeviceName.getDeviceName());
-                                    retrievedUser.setLastSignInTimeStamp(user.getMetadata().getLastSignInTimestamp());
-                                    retrievedUser.setToken(userToken);
-                                    retrievedUser.openedSinceLastReport = true;
-                                    if (isUserAuthenticated) retrievedUser.isEmailVerified = true;
-
-                                    userRef.updateChildren(retrievedUser.toMap());
-
-                                    mUid = retrievedUser.getUid();
-                                    mUsername = retrievedUser.getDisplayName();
-                                    mUserToken = retrievedUser.getToken();
-                                    mUserPremiumStatus = retrievedUser.premiumStatus;
-                                    mUserStatus = setUserStatus(retrievedUser.getStatus());
-                                    mUserThemePrefs = retrievedUser.getSubscriptions();
-                                    if (mUserThemePrefs.size() < 1) {
-                                        mUserThemePrefs = new ArrayList<>();
-                                        String[] themeArray = getResources().getStringArray(R.array.theme_array);
-                                        Collections.addAll(mUserThemePrefs, themeArray);
-                                    }
-                                    Log.d(TAG, "themesPrefs: " + mUserThemePrefs.toString());
-                                    lastRecArticlesPushTime = retrievedUser.getLastRecArticlesPushTime();
-                                    lastRecArticlesScheduleTime = retrievedUser.getLastRecArticlesScheduleTime();
-                                    lastRecDealsPushTime = retrievedUser.getLastRecDealsPushTime();
-                                    lastRecDealsScheduleTime = retrievedUser.getLastRecDealsScheduleTime();
-
-                                    buildThemeKeyAndFilter(mUserThemePrefs);
-
-                                    if (mSavedInstanceState != null) {
-                                        mQuery = mSavedInstanceState.getParcelable("Query");
-                                        if (mQuery == null) {
-                                            String hitsRef = SEARCH_REF + "/" + mThemeSearchKey + "/hits";
-                                            mQuery = new FbQuery(3, hitsRef, "trendingIndex");
-                                        }
-                                    } else {
-                                        String hitsRef = SEARCH_REF + "/" + mThemeSearchKey + "/hits";
-                                        mQuery = new FbQuery(3, hitsRef, "trendingIndex");
-                                    }
-
-                                    getThemeData();
-
-                                    // set up search button
-                                    mDataSource.setupAlgoliaClient(() -> {
-                                        mSearcher = Searcher.create(ALGOLIA_APP_ID, ALGOLIA_API_KEY, ALGOLIA_INDEX_NAME);
-                                        if (mSearchButton != null) mSearchButton.setEnabled(true);
-                                    });
-
-                                    // Set up Crashlytics identifier
-                                    Crashlytics.setUserIdentifier(mUid);
-                                    Crashlytics.setUserName(mUsername);
-                                    Crashlytics.setUserEmail(retrievedUser.getEmail());
-
-                                    // Set up Firebase Analytics identifier
-                                    mFirebaseAnalytics.setUserId(mUid);
-
-                                    if (mUsernameTextView != null) {
-                                        mUsernameTextView.setText(mUsername);
-                                        mUsernameTextView.setOnClickListener(v -> startActivity(new Intent(AcornActivity.this, UserActivity.class)));
-                                    }
-                                    if (mUserStatusTextView != null) {
-                                        mUserStatusTextView.setText(mUserStatus);
-                                        mUserStatusTextView.setOnClickListener(v -> startActivity(new Intent(AcornActivity.this, UserActivity.class)));
-                                    }
-
-                                    if (mUserPremiumStatusCardView != null && mUserPremiumStatusTextView != null) {
-                                        if (mUserPremiumStatus.end > (new Date()).getTime()) {
-                                            mUserPremiumStatusTextView.setText("Premium");
-                                            mUserPremiumStatusCardView.setBackgroundColor(getColor(R.color.colorPrimary));
-                                        }
-                                    }
-                                }
-
-                                // put uid in sharedPrefs
-                                mSharedPreferences.edit().putString("uid", mUid).apply();
-
-                                // subscribe to app topic for manual articles push
-                                FirebaseMessaging.getInstance().subscribeToTopic("acorn");
-
-                                if (savedArticlesReminderNotifValue) {
-                                    // subscribe to saved articles reminder push
-                                    FirebaseMessaging.getInstance().subscribeToTopic("savedArticlesReminderPush");
-                                }
-
-                                // Schedule recommended articles push service unless explicitly disabled by user
-                                if (articleNotifValue) {
-                                    long now = (new Date()).getTime();
-                                    long timeElapsedSinceLastPush = now - lastRecArticlesPushTime;
-
-                                    if (!mSharedPreferences.getBoolean("isRecArticlesScheduled", false) ||
-                                            (timeElapsedSinceLastPush > 24L * 60L * 60L * 1000L && // if last push time is longer than a day
-                                                    lastRecArticlesScheduleTime < lastRecArticlesPushTime)) { // and last scheduled time is before last push time
-                                        mDataSource.scheduleRecArticlesPush();
-                                        mSharedPreferences.edit().putBoolean("isRecArticlesScheduled", true).apply();
-                                    }
-                                }
-
-                                // Schedule recommended deals push service unless explicitly disabled by user
-                                if (dealsNotifValue) {
-                                    long now = (new Date()).getTime();
-                                    long timeElapsedSinceLastPush = now - lastRecDealsPushTime;
-
-                                    if (!mSharedPreferences.getBoolean("isRecDealsScheduled", false) ||
-                                            (timeElapsedSinceLastPush > 24L * 60L * 60L * 1000L && // if last push time is longer than a day
-                                                    lastRecDealsScheduleTime < lastRecDealsPushTime)) { // and last scheduled time is before last push time
-                                        mDataSource.scheduleRecDealsPush();
-                                        mSharedPreferences.edit().putBoolean("isRecDealsScheduled", true).apply();
-                                    }
-                                }
-                            });
+                    userSource.trySetResult(retrievedUser);
                 }
 
                 @Override
-                public void onCancelled(@NonNull DatabaseError databaseError) { }
+                public void onCancelled(@NonNull DatabaseError databaseError) {
+                    userSource.trySetException(databaseError.toException());
+                }
             });
 
-            mUserStatusListener = new ValueEventListener() {
-                @Override
-                public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
-                    Integer userStatus = dataSnapshot.getValue(Integer.class);
-                    if (userStatus == null) userStatus = 0;
-                    mUserStatus = setUserStatus(userStatus);
-                    mUserStatusTextView.setText(mUserStatus);
+            TaskCompletionSource<String> tokenSource = new TaskCompletionSource<>();
+            Task<String> tokenTask = tokenSource.getTask();
+
+            FirebaseInstanceId.getInstance().getInstanceId().addOnSuccessListener(instanceIdResult -> {
+                tokenSource.trySetResult(instanceIdResult.getToken());
+            }).addOnFailureListener(tokenSource::trySetException);
+
+            Tasks.whenAll(userTask, tokenTask).addOnSuccessListener(aVoid -> {
+                User retrievedUser = userTask.getResult();
+                String userToken = tokenTask.getResult();
+
+                if (retrievedUser == null) {
+                    isFirstTimeLogin = true;
+                    if (!user.isEmailVerified()) {
+                        user.sendEmailVerification();
+                    } else {
+                        isUserAuthenticated = true;
+                    }
+                    String uid = user.getUid();
+                    String displayName = user.getDisplayName();
+                    String email = user.getEmail();
+                    String device = DeviceName.getDeviceName();
+                    Long creationTimeStamp = user.getMetadata().getCreationTimestamp();
+                    Long lastSignInTimeStamp = user.getMetadata().getLastSignInTimestamp();
+
+                    User newUser = new User(uid, displayName, userToken, email, device,
+                            creationTimeStamp, lastSignInTimeStamp);
+                    if (isUserAuthenticated) newUser.isEmailVerified = true;
+                    newUser.openedSinceLastReport = true;
+                    userRef.setValue(newUser);
+
+                    mUid = newUser.getUid();
+                    mUsername = newUser.getDisplayName();
+                    mUserToken = newUser.getToken();
+                    mUserPremiumStatus = new HashMap<>();
+                    mUserStatus = LEVEL_0;
+                    lastRecArticlesPushTime = 0L;
+                    lastRecArticlesScheduleTime = 0L;
+                    lastRecDealsPushTime = 0L;
+                    lastRecDealsScheduleTime = 0L;
+
+                    if (mUsernameTextView != null) {
+                        mUsernameTextView.setText(mUsername);
+                        mUsernameTextView.setOnClickListener(v -> startActivity(new Intent(AcornActivity.this, UserActivity.class)));
+                    }
+                    if (mUserStatusTextView != null) {
+                        mUserStatusTextView.setText(mUserStatus);
+                        mUserStatusTextView.setOnClickListener(v -> startActivity(new Intent(AcornActivity.this, UserActivity.class)));
+                    }
+
+                    mUserThemePrefs = new ArrayList<>();
+                    Intent editThemeIntent = new Intent(AcornActivity.this, ThemeSelectionActivity.class);
+                    editThemeIntent.putStringArrayListExtra("themePrefs", mUserThemePrefs);
+                    startActivityForResult(editThemeIntent, RC_THEME_PREF);
+                    buildThemeKeyAndFilter(mUserThemePrefs);
+
+                    if (mSavedInstanceState != null) {
+                        mQuery = mSavedInstanceState.getParcelable("Query");
+                        if (mQuery == null) {
+                            String hitsRef = SEARCH_REF + "/" + mThemeSearchKey + "/hits";
+                            mQuery = new FbQuery(3, hitsRef, "trendingIndex");
+                        }
+                    } else {
+                        String hitsRef = SEARCH_REF + "/" + mThemeSearchKey + "/hits";
+                        mQuery = new FbQuery(3, hitsRef, "trendingIndex");
+                    }
+
+                    getThemeData();
+
+                    // set up search button
+                    mDataSource.setupAlgoliaClient(() -> {
+                        mSearcher = Searcher.create(ALGOLIA_APP_ID, ALGOLIA_API_KEY, ALGOLIA_INDEX_NAME);
+                        if (mSearchButton != null) mSearchButton.setEnabled(true);
+                    });
+
+                    // Set up Crashlytics identifier
+                    Crashlytics.setUserIdentifier(mUid);
+                    Crashlytics.setUserName(mUsername);
+                    Crashlytics.setUserEmail(email);
+
+                    // Set up Firebase Analytics identifier
+                    mFirebaseAnalytics.setUserId(mUid);
+
+                    // Set up default settings
+                    mSharedPreferences.edit().putBoolean(getString(R.string.pref_key_notif_comment), true)
+                            .putBoolean(getString(R.string.pref_key_notif_article), true)
+                            .putBoolean(getString(R.string.pref_key_notif_deals), true)
+                            .putBoolean(getString(R.string.pref_key_notif_saved_articles_reminder), true)
+                            .putString(getString(R.string.pref_key_night_mode), "0")
+                            .apply();
+
+                    // Check if referred by someone
+                    checkReferral();
+                } else {
+
+                    if (!user.isEmailVerified() && !retrievedUser.isEmailVerified) {
+                        AlertDialog.Builder builder = new AlertDialog.Builder(AcornActivity.this);
+                        builder.setMessage("Please verify your email address")
+                                .setNeutralButton("Re-send verification email", (dialog, which) -> {
+                                    user.sendEmailVerification();
+                                });
+                        AlertDialog alertDialog = builder.create();
+                        alertDialog.show();
+                    } else {
+                        isUserAuthenticated = true;
+                    }
+
+                    retrievedUser.setDisplayName(user.getDisplayName());
+                    retrievedUser.setEmail(user.getEmail());
+                    retrievedUser.setDevice(DeviceName.getDeviceName());
+                    retrievedUser.setLastSignInTimeStamp(user.getMetadata().getLastSignInTimestamp());
+                    retrievedUser.setToken(userToken);
+                    retrievedUser.openedSinceLastReport = true;
+                    if (isUserAuthenticated) retrievedUser.isEmailVerified = true;
+
+                    userRef.updateChildren(retrievedUser.toMap());
+
+                    mUid = retrievedUser.getUid();
+                    mUsername = retrievedUser.getDisplayName();
+                    mUserToken = retrievedUser.getToken();
+                    mUserPremiumStatus = retrievedUser.premiumStatus;
+                    Log.d(TAG, "premiumStatus: " + mUserPremiumStatus.toString());
+                    mUserStatus = setUserStatus(retrievedUser.getStatus());
+                    mUserThemePrefs = retrievedUser.getSubscriptions();
+                    if (mUserThemePrefs.size() < 1) {
+                        mUserThemePrefs = new ArrayList<>();
+                        String[] themeArray = getResources().getStringArray(R.array.theme_array);
+                        Collections.addAll(mUserThemePrefs, themeArray);
+                    }
+                    Log.d(TAG, "themesPrefs: " + mUserThemePrefs.toString());
+                    lastRecArticlesPushTime = retrievedUser.getLastRecArticlesPushTime();
+                    lastRecArticlesScheduleTime = retrievedUser.getLastRecArticlesScheduleTime();
+                    lastRecDealsPushTime = retrievedUser.getLastRecDealsPushTime();
+                    lastRecDealsScheduleTime = retrievedUser.getLastRecDealsScheduleTime();
+
+                    buildThemeKeyAndFilter(mUserThemePrefs);
+
+                    if (mSavedInstanceState != null) {
+                        mQuery = mSavedInstanceState.getParcelable("Query");
+                        if (mQuery == null) {
+                            String hitsRef = SEARCH_REF + "/" + mThemeSearchKey + "/hits";
+                            mQuery = new FbQuery(3, hitsRef, "trendingIndex");
+                        }
+                    } else {
+                        String hitsRef = SEARCH_REF + "/" + mThemeSearchKey + "/hits";
+                        mQuery = new FbQuery(3, hitsRef, "trendingIndex");
+                    }
+
+                    getThemeData();
+
+                    // set up search button
+                    mDataSource.setupAlgoliaClient(() -> {
+                        mSearcher = Searcher.create(ALGOLIA_APP_ID, ALGOLIA_API_KEY, ALGOLIA_INDEX_NAME);
+                        if (mSearchButton != null) mSearchButton.setEnabled(true);
+                    });
+
+                    // Set up Crashlytics identifier
+                    Crashlytics.setUserIdentifier(mUid);
+                    Crashlytics.setUserName(mUsername);
+                    Crashlytics.setUserEmail(retrievedUser.getEmail());
+
+                    // Set up Firebase Analytics identifier
+                    mFirebaseAnalytics.setUserId(mUid);
+
+                    if (mUsernameTextView != null) {
+                        mUsernameTextView.setText(mUsername);
+                        mUsernameTextView.setOnClickListener(v -> startActivity(new Intent(AcornActivity.this, UserActivity.class)));
+                    }
+                    if (mUserStatusTextView != null) {
+                        mUserStatusTextView.setText(mUserStatus);
+                        mUserStatusTextView.setOnClickListener(v -> startActivity(new Intent(AcornActivity.this, UserActivity.class)));
+                    }
+
+                    if (mUserPremiumStatusCardView != null && mUserPremiumStatusTextView != null) {
+                        Long end = mUserPremiumStatus.get("end");
+                        if (end != null && end > (new Date()).getTime()) {
+                            mUserPremiumStatusTextView.setText("Premium");
+                            mUserPremiumStatusCardView.setCardBackgroundColor(getColor(R.color.colorPrimary));
+                        }
+                    }
+
+                    // Set up default settings if not set
+                    if (!mSharedPreferences.contains(getString(R.string.pref_key_notif_comment)))
+                        mSharedPreferences.edit().putBoolean(getString(R.string.pref_key_notif_comment), true).apply();
+                    if (!mSharedPreferences.contains(getString(R.string.pref_key_notif_article)))
+                        mSharedPreferences.edit().putBoolean(getString(R.string.pref_key_notif_article), true).apply();
+                    if (!mSharedPreferences.contains(getString(R.string.pref_key_notif_deals)))
+                        mSharedPreferences.edit().putBoolean(getString(R.string.pref_key_notif_deals), true).apply();
+                    if (!mSharedPreferences.contains(getString(R.string.pref_key_notif_saved_articles_reminder)))
+                        mSharedPreferences.edit().putBoolean(getString(R.string.pref_key_notif_saved_articles_reminder), true).apply();
+                    if (!mSharedPreferences.contains(getString(R.string.pref_key_night_mode)))
+                        mSharedPreferences.edit().putString(getString(R.string.pref_key_night_mode), "0").apply();
                 }
 
-                @Override
-                public void onCancelled(@NonNull DatabaseError databaseError) {}
-            };
-            mUserStatusRef = userRef.child("status");
-            mUserStatusRef.addValueEventListener(mUserStatusListener);
+                // put uid in sharedPrefs
+                mSharedPreferences.edit().putString("uid", mUid).apply();
+
+                // subscribe to app topic for manual articles push
+                FirebaseMessaging.getInstance().subscribeToTopic("acorn");
+
+                if (savedArticlesReminderNotifValue) {
+                    // subscribe to saved articles reminder push
+                    FirebaseMessaging.getInstance().subscribeToTopic("savedArticlesReminderPush");
+                }
+
+                // Schedule recommended articles push service unless explicitly disabled by user
+                if (articleNotifValue) {
+                    long now = (new Date()).getTime();
+                    long timeElapsedSinceLastPush = now - lastRecArticlesPushTime;
+
+                    if (!mSharedPreferences.getBoolean("isRecArticlesScheduled", false) ||
+                            (timeElapsedSinceLastPush > 24L * 60L * 60L * 1000L && // if last push time is longer than a day
+                                    lastRecArticlesScheduleTime < lastRecArticlesPushTime)) { // and last scheduled time is before last push time
+                        mDataSource.scheduleRecArticlesPush();
+                        mSharedPreferences.edit().putBoolean("isRecArticlesScheduled", true).apply();
+                    }
+                }
+
+                // Schedule recommended deals push service unless explicitly disabled by user
+                if (dealsNotifValue) {
+                    long now = (new Date()).getTime();
+                    long timeElapsedSinceLastPush = now - lastRecDealsPushTime;
+
+                    if (!mSharedPreferences.getBoolean("isRecDealsScheduled", false) ||
+                            (timeElapsedSinceLastPush > 24L * 60L * 60L * 1000L && // if last push time is longer than a day
+                                    lastRecDealsScheduleTime < lastRecDealsPushTime)) { // and last scheduled time is before last push time
+                        mDataSource.scheduleRecDealsPush();
+                        mSharedPreferences.edit().putBoolean("isRecDealsScheduled", true).apply();
+                    }
+                }
+            }).addOnFailureListener(e -> {
+                createToast(this, "Failed to get your user profile", Toast.LENGTH_SHORT);
+            });
         }
+    }
+
+    private void setupUserStatusListeners(DatabaseReference userRef) {
+        Log.d(TAG, "setupUserStatusListeners");
+        NavigationView navigationView = (NavigationView) findViewById(R.id.nav_view);
+        View navHeaderLayout = navigationView.getHeaderView(0);
+        mUsernameTextView = (TextView) navHeaderLayout.findViewById(R.id.nav_user_name_text_view);
+        mUserStatusTextView = (TextView) navHeaderLayout.findViewById(R.id.nav_user_status_text_view);
+        mUserPremiumStatusCardView = (CardView) navHeaderLayout.findViewById(R.id.nav_user_premium_status_card_view);
+        mUserPremiumStatusTextView = (TextView) navHeaderLayout.findViewById(R.id.nav_user_premium_status_text_view);
+
+        mUserStatusListener = new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+                Integer userStatus = dataSnapshot.getValue(Integer.class);
+                if (userStatus == null) userStatus = 0;
+                mUserStatus = setUserStatus(userStatus);
+                mUserStatusTextView.setText(mUserStatus);
+            }
+
+            @Override
+            public void onCancelled(@NonNull DatabaseError databaseError) {}
+        };
+        mUserStatusRef = userRef.child("status");
+        mUserStatusRef.addValueEventListener(mUserStatusListener);
+
+        mUserPremiumStatusListener = new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+                PremiumStatus premiumStatus = dataSnapshot.getValue(PremiumStatus.class);
+                if (premiumStatus != null) {
+                    Log.d(TAG, "premiumStatus: " + premiumStatus.toString());
+                    Long end = premiumStatus.end;
+                    if (end != null && end > (new Date()).getTime()) {
+                        if (mUserPremiumStatusCardView != null && mUserPremiumStatusTextView != null) {
+                            mUserPremiumStatusTextView.setText("Premium");
+                            mUserPremiumStatusCardView.setCardBackgroundColor(getColor(R.color.colorPrimary));
+                        }
+                    }
+                }
+            }
+
+            @Override
+            public void onCancelled(@NonNull DatabaseError databaseError) { }
+        };
+        mUserPremiumStatusRef = userRef.child("premiumStatus");
+        mUserPremiumStatusRef.addValueEventListener(mUserPremiumStatusListener);
     }
 
     private String setUserStatus(int userStatus) {
@@ -1220,11 +1306,11 @@ public class AcornActivity extends AppCompatActivity
         };
         articleListLD.observeForever(articleListObserver);
         mObservedList.put(articleListLD, articleListObserver);
-//        if (mLlmState != null) {
-//            new Handler().postDelayed(() -> {
-//                mLinearLayoutManager.onRestoreInstanceState(mLlmState);
-//            },100);
-//        }
+        if (mLlmState != null) {
+            new Handler().postDelayed(() -> {
+                mLinearLayoutManager.onRestoreInstanceState(mLlmState);
+            },100);
+        }
 
     }
 
@@ -1234,5 +1320,27 @@ public class AcornActivity extends AppCompatActivity
         display.getSize(size);
         Log.d(TAG, "width: " + size.x);
         return size.x;
+    }
+
+    private void checkReferral() {
+        // check to see if user opened an invite link
+        Intent intent = getIntent();
+        String appLinkAction = intent.getAction();
+        Uri appLinkData = intent.getData();
+        if (Intent.ACTION_VIEW.equals(appLinkAction) && appLinkData != null) {
+            FirebaseDynamicLinks.getInstance().getDynamicLink(intent)
+                    .addOnSuccessListener(this, pendingDynamicLinkData -> {
+                        Uri deepLink;
+                        if (pendingDynamicLinkData != null) {
+                            deepLink = pendingDynamicLinkData.getLink();
+                            mReferredBy = deepLink.getQueryParameter("referrer");
+                            Log.d(TAG, deepLink.toString() + ", referrer: " + mReferredBy);
+                            mDataSource.setReferrer(mFirebaseUser.getUid(), mReferredBy);
+                        }
+                    })
+                    .addOnFailureListener(this, e -> {
+                        Log.d(TAG, "Failed to get deep link: " + e);
+                    });
+        }
     }
 }

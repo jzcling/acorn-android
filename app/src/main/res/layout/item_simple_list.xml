@@ -5,5 +5,5 @@
     android:paddingStart="24dp"
     android:paddingEnd="24dp"
     android:gravity="center_vertical"
-    android:textAppearance="?android:attr/textAppearanceListItem"
-    android:background="?android:attr/listChoiceBackgroundIndicator" />
+    android:textAppearance="?attr/textAppearanceListItem"
+    android:background="?attr/listChoiceBackgroundIndicator" />

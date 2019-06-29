@@ -50,6 +50,8 @@
     <string name="pref_key_notif_article">articleNotifPref</string>
     <string name="pref_key_notif_deals">dealsNotifPref</string>
     <string name="pref_key_notif_saved_articles_reminder">savedArticlesReminderNotifPref</string>
+    <string name="pref_key_nearby_seen">nearbySeenPref</string>
+    <string name="pref_key_saved_seen">savedSeenPref</string>
     <string name="pref_cat_general_settings">GENERAL</string>
     <string name="pref_cat_notif_settings">NOTIFICATIONS</string>
     <string name="pref_cat_user_account_settings">MANAGE ACCOUNT</string>

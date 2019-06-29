@@ -1,18 +1,8 @@
 package acorn.com.acorn_app.ui.activities;
 
-import android.app.AlertDialog;
-import androidx.lifecycle.ViewModelProviders;
 import android.content.Intent;
 import android.content.res.ColorStateList;
 import android.os.Bundle;
-import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
-import androidx.appcompat.app.AppCompatActivity;
-import androidx.recyclerview.widget.GridLayoutManager;
-import androidx.recyclerview.widget.LinearLayoutManager;
-import androidx.recyclerview.widget.RecyclerView;
-import androidx.appcompat.widget.Toolbar;
-
 import android.view.HapticFeedbackConstants;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -20,6 +10,16 @@ import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.CheckBox;
 import android.widget.Toast;
+
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import androidx.appcompat.app.AlertDialog;
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.widget.Toolbar;
+import androidx.lifecycle.ViewModelProviders;
+import androidx.recyclerview.widget.GridLayoutManager;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
 
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
@@ -33,8 +33,8 @@ import java.util.Collections;
 import java.util.List;
 
 import acorn.com.acorn_app.R;
-import acorn.com.acorn_app.ui.viewModels.UserThemeViewModel;
 import acorn.com.acorn_app.models.User;
+import acorn.com.acorn_app.ui.viewModels.UserThemeViewModel;
 
 import static acorn.com.acorn_app.ui.activities.AcornActivity.isFirstTimeLogin;
 import static acorn.com.acorn_app.ui.activities.AcornActivity.mUid;

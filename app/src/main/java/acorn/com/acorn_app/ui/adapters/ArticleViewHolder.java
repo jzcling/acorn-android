@@ -59,7 +59,7 @@ public class ArticleViewHolder extends RecyclerView.ViewHolder {
     private CheckBox upVoteView;
     private CheckBox downVoteView;
     private CheckBox commentView;
-    private CheckBox favView;
+    public CheckBox favView;
     private CheckBox shareView;
     private ImageButton optionsButton;
 

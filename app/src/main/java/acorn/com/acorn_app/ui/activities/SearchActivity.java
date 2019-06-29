@@ -2,29 +2,28 @@ package acorn.com.acorn_app.ui.activities;
 
 import android.content.Intent;
 import android.os.Bundle;
+import android.view.Menu;
+import android.view.MenuItem;
+import android.widget.Toast;
+
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.ActionMenuView;
 import androidx.appcompat.widget.SearchView;
 import androidx.appcompat.widget.Toolbar;
-import android.view.Menu;
-import android.view.MenuItem;
-import android.widget.Toast;
+import androidx.core.view.MenuItemCompat;
 
 import com.algolia.instantsearch.core.events.ErrorEvent;
 import com.algolia.instantsearch.core.helpers.Searcher;
 import com.algolia.instantsearch.ui.helpers.InstantSearch;
 import com.algolia.instantsearch.ui.views.Hits;
 import com.algolia.instantsearch.ui.views.SearchBox;
-import com.google.firebase.analytics.FirebaseAnalytics;
 
 import org.greenrobot.eventbus.EventBus;
 import org.greenrobot.eventbus.Subscribe;
 import org.json.JSONObject;
 
 import acorn.com.acorn_app.R;
-
-import static acorn.com.acorn_app.ui.AcornApplication.mFirebaseAnalytics;
 
 
 public class SearchActivity extends AppCompatActivity {
@@ -79,7 +78,7 @@ public class SearchActivity extends AppCompatActivity {
         //mSearcher.search(getIntent()); // Show results for empty query (on app launch) / voice query (from intent)
 
         final MenuItem itemSearch = amvMenu.findItem(R.id.action_search);
-        mSearchBox = (SearchBox) itemSearch.getActionView();
+        mSearchBox = (SearchBox) MenuItemCompat.getActionView(itemSearch);
         mSearchBox.requestFocus();
 
         return true;

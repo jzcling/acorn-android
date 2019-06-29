@@ -1,14 +1,10 @@
 package acorn.com.acorn_app.utils;
 
-import android.app.AlertDialog;
 import android.app.Dialog;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.graphics.Rect;
 import android.os.Handler;
-import androidx.recyclerview.widget.LinearLayoutManager;
-import androidx.recyclerview.widget.RecyclerView;
-import androidx.recyclerview.widget.ItemTouchHelper;
 import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.LayoutInflater;
@@ -16,6 +12,11 @@ import android.view.TouchDelegate;
 import android.view.View;
 import android.widget.TextView;
 import android.widget.Toast;
+
+import androidx.appcompat.app.AlertDialog;
+import androidx.recyclerview.widget.ItemTouchHelper;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
 
 import com.bumptech.glide.Glide;
 import com.bumptech.glide.request.RequestOptions;
@@ -30,6 +31,9 @@ import acorn.com.acorn_app.R;
 import acorn.com.acorn_app.models.Notif;
 import acorn.com.acorn_app.ui.adapters.NotificationAdapter;
 import acorn.com.acorn_app.ui.adapters.NotificationViewHolder;
+import smartdevelop.ir.eram.showcaseviewlib.GuideView;
+import smartdevelop.ir.eram.showcaseviewlib.config.DismissType;
+import smartdevelop.ir.eram.showcaseviewlib.config.Gravity;
 
 public class UiUtils implements NotificationItemTouchHelper.RecyclerItemTouchHelperListener {
     private static final String TAG = "UiUtils";
@@ -53,6 +57,17 @@ public class UiUtils implements NotificationItemTouchHelper.RecyclerItemTouchHel
             handler.postDelayed(toast::cancel, timeLength);
         }
         toast.show();
+    }
+
+    public static void highlightView(Context context, View view, String title, String string) {
+        new GuideView.Builder(context)
+                .setTitle(title)
+                .setContentText(string)
+                .setTargetView(view)
+                .setDismissType(DismissType.anywhere)
+                .setGravity(Gravity.auto)
+                .build()
+                .show();
     }
 
     public static void increaseTouchArea(View child) {

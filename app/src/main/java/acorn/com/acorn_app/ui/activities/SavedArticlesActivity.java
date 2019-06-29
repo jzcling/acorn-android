@@ -1,19 +1,9 @@
 package acorn.com.acorn_app.ui.activities;
 
-import android.app.AlertDialog;
-import androidx.lifecycle.Observer;
-import androidx.lifecycle.ViewModelProviders;
 import android.content.Context;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Parcelable;
-import androidx.annotation.Nullable;
-import androidx.appcompat.app.AppCompatActivity;
-import androidx.recyclerview.widget.LinearLayoutManager;
-import androidx.recyclerview.widget.RecyclerView;
-import androidx.appcompat.widget.SearchView;
-import androidx.appcompat.widget.Toolbar;
-import androidx.recyclerview.widget.ItemTouchHelper;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -22,8 +12,17 @@ import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.EditText;
 
-import com.google.firebase.database.Query;
-import com.google.firebase.database.ValueEventListener;
+import androidx.annotation.Nullable;
+import androidx.appcompat.app.AlertDialog;
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.widget.SearchView;
+import androidx.appcompat.widget.Toolbar;
+import androidx.core.view.MenuItemCompat;
+import androidx.lifecycle.Observer;
+import androidx.lifecycle.ViewModelProviders;
+import androidx.recyclerview.widget.ItemTouchHelper;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -121,7 +120,7 @@ public class SavedArticlesActivity extends AppCompatActivity
         MenuItem filterItem = (MenuItem) menu.findItem(R.id.action_filter);
 
         // Set up search
-        SearchView searchView = (SearchView) menu.findItem(R.id.action_search).getActionView();
+        SearchView searchView = (SearchView) MenuItemCompat.getActionView(menu.findItem(R.id.action_search));
         EditText searchEditText = (EditText) searchView.findViewById(R.id.search_src_text);
         searchEditText.setOnEditorActionListener((v, actionId, event) -> {
             mSearchText = searchEditText.getText().toString().trim().toLowerCase();
@@ -138,7 +137,7 @@ public class SavedArticlesActivity extends AppCompatActivity
             return false;
         });
 
-        searchItem.setOnActionExpandListener(new MenuItem.OnActionExpandListener() {
+        MenuItemCompat.setOnActionExpandListener(searchItem, new MenuItemCompat.OnActionExpandListener() {
             @Override
             public boolean onMenuItemActionExpand(MenuItem item) {
                 filterItem.setVisible(false);

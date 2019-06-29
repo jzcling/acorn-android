@@ -24,6 +24,7 @@ import android.preference.PreferenceManager;
 
 import acorn.com.acorn_app.models.Address;
 import acorn.com.acorn_app.models.MrtStation;
+import acorn.com.acorn_app.models.PremiumStatus;
 import acorn.com.acorn_app.models.Video;
 import acorn.com.acorn_app.utils.DateUtils;
 import androidx.annotation.NonNull;
@@ -177,7 +178,7 @@ public class NetworkDataSource {
         }
     }
 
-    private void getRandomArticles(List<String> articleIds, Consumer<List<Article>> onComplete) {
+    private void filterNearbyArticles(Map<String, Long> articleIds, Consumer<List<Article>> onComplete) {
         if (articleIds.size() == 0) {
             onComplete.accept(new ArrayList<>());
             return;
@@ -185,13 +186,25 @@ public class NetworkDataSource {
 
         List<Article> articles = new ArrayList<>();
 
-        //Log.d(TAG, "first id: " + articleIds.get(0));
-        Collections.shuffle(articleIds);
-        //Log.d(TAG, "shuffled first id: " + articleIds.get(0));
+        List<String> datedArticleIds = new ArrayList<>();
+        List<String> undatedArticleIds = new ArrayList<>();
+        for (Map.Entry<String, Long> entry : articleIds.entrySet()) {
+            if (entry.getValue() > 1) {
+                datedArticleIds.add(entry.getKey());
+            } else {
+                undatedArticleIds.add(entry.getKey());
+            }
+        }
+
+        // dated articles will go on top, undated articles will be randomised
+        Collections.shuffle(undatedArticleIds);
+        List<String> orderedArticleIds = new ArrayList<>(datedArticleIds);
+        orderedArticleIds.addAll(undatedArticleIds);
+
         int articleLimit = Math.min(50, articleIds.size());
         List<String> doneList = new ArrayList<>();
         for (int i = 0; i < articleLimit; i++) {
-            String articleId = articleIds.get(i);
+            String articleId = orderedArticleIds.get(i);
             Query query = mDatabaseReference.child(ARTICLE_REF).child(articleId);
             query.addListenerForSingleValueEvent(new ValueEventListener() {
                 @Override
@@ -230,10 +243,11 @@ public class NetworkDataSource {
 
         // get covering cell ids
         S2RegionCoverer coverer = new S2RegionCoverer();
+        coverer.setMaxCells(5);
         S2CellUnion covering = coverer.getCovering(cap);
 
         // get all addresses and associated articles in covering cells
-        List<String> articleIds = new ArrayList<>();
+        Map<String, Long> articleIds = new HashMap<>();
         List<Long> doneList = new ArrayList<>();
         for (S2CellId id : covering) {
             String minRange = String.valueOf(id.rangeMin().id());
@@ -251,8 +265,27 @@ public class NetworkDataSource {
                             Address address = snap.getValue(Address.class);
                             if (address != null) {
                                 for (String id : address.article.keySet()) {
-                                    if (!articleIds.contains(id)) {
-                                        articleIds.add(id);
+                                    Long reminderDate = address.article.get(id);
+                                    Long cutoff = DateUtils.getThirtyDaysAgoMidnight();
+                                    if (reminderDate != null) {
+                                        if ((cutoff != null && reminderDate > cutoff) || reminderDate == 1L) {
+                                            /*
+                                            these are all the articles with no reminderDate or
+                                            reminderDate less than thirty dates later,
+                                            i.e. first date appearing in title is before 30 days
+                                            from now. this is so we avoid removing articles with
+                                            dates from x to y where reminder date is x - 1 but
+                                            event is still valid as y has not reached. the implication
+                                            is that there will be deals/events that expired up to
+                                            30 days ago
+                                            */
+                                            articleIds.put(id, reminderDate);
+                                        } else {
+                                            // remove all events that expired more than 30 days ago
+                                            Log.d(TAG, "reminderDate: " + reminderDate);
+                                            mDatabaseReference.child(ADDRESS_REF).child(address.objectID)
+                                                    .child("article").child(id).removeValue();
+                                        }
                                     }
                                 }
                             }
@@ -263,7 +296,7 @@ public class NetworkDataSource {
 
                     if (doneList.size() >= covering.size()) {
                         Log.d(TAG, "articleIds size: " + articleIds.size());
-                        getRandomArticles(articleIds, onComplete);
+                        filterNearbyArticles(articleIds, onComplete);
                     }
                 }
 
@@ -1202,5 +1235,11 @@ public class NetworkDataSource {
         } else {
             mDatabaseReference.child(PREFERENCES_REF).child(type).child(mUid).removeValue();
         }
+    }
+
+
+    // Set user referrer
+    public void setReferrer(String uid, String referrer) {
+        mDatabaseReference.child(USER_REF).child(uid).child("referredBy").setValue(referrer);
     }
 }

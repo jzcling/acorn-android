@@ -4,6 +4,9 @@ import android.content.Context;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.recyclerview.widget.RecyclerView;
+
+import android.content.SharedPreferences;
+import android.preference.PreferenceManager;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -21,6 +24,7 @@ import java.util.Map;
 
 import acorn.com.acorn_app.R;
 import acorn.com.acorn_app.models.Article;
+import acorn.com.acorn_app.utils.UiUtils;
 
 import static acorn.com.acorn_app.ui.activities.AcornActivity.mQuery;
 
@@ -30,6 +34,8 @@ public class ArticleAdapter extends RecyclerView.Adapter<ArticleViewHolder> {
     private String mArticleType;
     private final OnLongClickListener longClickListener;
     private List<Article> mArticleList = new ArrayList<>();
+    private ArticleViewHolder mFirstViewHolder;
+    private boolean isFirstViewHolder = true;
 
     private final Map<DatabaseReference, ValueEventListener> mRefObservedList = new HashMap<>();
 
@@ -67,6 +73,20 @@ public class ArticleAdapter extends RecyclerView.Adapter<ArticleViewHolder> {
     public void onBindViewHolder(@NonNull ArticleViewHolder holder, int position) {
         Article article = mArticleList.get(position);
         holder.bind(article);
+
+        if (position == 0) {
+            SharedPreferences sharedPrefs = PreferenceManager.getDefaultSharedPreferences(mContext);
+            if (!sharedPrefs.getBoolean(mContext.getString(R.string.pref_key_saved_seen), false)) {
+                View target = holder.favView;
+
+                String title = "Save";
+                String text = "Too busy to read? Save articles for later! You can even get reminder " +
+                        "notifications for events or deals a day before they happen!";
+                UiUtils.highlightView(mContext, target, title, text);
+
+                sharedPrefs.edit().putBoolean(mContext.getString(R.string.pref_key_saved_seen), true).apply();
+            }
+        }
     }
 
     @Override
@@ -162,5 +182,9 @@ public class ArticleAdapter extends RecyclerView.Adapter<ArticleViewHolder> {
 
     public interface OnLongClickListener {
         void onLongClick(Article article, int id, String text);
+    }
+
+    public ArticleViewHolder getFirstViewHolder() {
+        return mFirstViewHolder;
     }
 }

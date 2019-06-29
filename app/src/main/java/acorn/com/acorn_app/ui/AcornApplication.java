@@ -16,7 +16,7 @@ public class AcornApplication extends Application {
     public void onCreate() {
         SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
         int nightModePref = Integer.parseInt(
-                prefs.getString(getString(R.string.pref_key_night_mode), "1"));
+                prefs.getString(getString(R.string.pref_key_night_mode), "0"));
         AppCompatDelegate.setDefaultNightMode(nightModePref);
         super.onCreate();
         FirebaseDatabase.getInstance().setPersistenceEnabled(true);

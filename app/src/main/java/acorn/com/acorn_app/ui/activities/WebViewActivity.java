@@ -4,17 +4,8 @@ import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.Intent;
 import android.graphics.Point;
-import android.net.ConnectivityManager;
-import android.net.NetworkInfo;
 import android.net.Uri;
 import android.os.Bundle;
-import android.os.Handler;
-import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
-import com.google.android.material.floatingactionbutton.FloatingActionButton;
-import androidx.appcompat.app.AppCompatActivity;
-import androidx.appcompat.widget.SearchView;
-import androidx.appcompat.widget.Toolbar;
 import android.util.Log;
 import android.view.Display;
 import android.view.Menu;
@@ -24,8 +15,6 @@ import android.view.animation.AccelerateInterpolator;
 import android.view.animation.AlphaAnimation;
 import android.view.animation.Animation;
 import android.view.inputmethod.InputMethodManager;
-import android.webkit.CookieManager;
-import android.webkit.SslErrorHandler;
 import android.webkit.WebChromeClient;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
@@ -34,6 +23,15 @@ import android.widget.EditText;
 import android.widget.ProgressBar;
 import android.widget.Toast;
 
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.widget.SearchView;
+import androidx.appcompat.widget.Toolbar;
+import androidx.cardview.widget.CardView;
+import androidx.core.view.MenuItemCompat;
+
+import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.firebase.analytics.FirebaseAnalytics;
 import com.google.firebase.database.ChildEventListener;
 import com.google.firebase.database.DataSnapshot;
@@ -55,10 +53,6 @@ import acorn.com.acorn_app.ui.views.ObservableWebView;
 import acorn.com.acorn_app.utils.AppExecutors;
 import acorn.com.acorn_app.utils.DateUtils;
 import acorn.com.acorn_app.utils.HtmlUtils;
-import androidx.cardview.widget.CardView;
-
-import java.util.HashMap;
-import java.util.Map;
 
 import static acorn.com.acorn_app.data.NetworkDataSource.ARTICLE_REF;
 import static acorn.com.acorn_app.data.NetworkDataSource.NOTIFICATION_TOKENS;
@@ -272,7 +266,7 @@ public class WebViewActivity extends AppCompatActivity {
         getMenuInflater().inflate(R.menu.app_bar_webview, menu);
 
         // Set up search
-        SearchView searchView = (SearchView) menu.findItem(R.id.action_search).getActionView();
+        SearchView searchView = (SearchView) MenuItemCompat.getActionView(menu.findItem(R.id.action_search));
         EditText searchText = (EditText) searchView.findViewById(R.id.search_src_text);
         FloatingActionButton searchFab = (FloatingActionButton) findViewById(R.id.search_fab);
 

@@ -42,12 +42,13 @@ public class UserActivity extends AppCompatActivity {
     private static final String TAG = "UserActivity";
     private static final int TARGET_POINTS_MULTIPLIER = 3;
 
-    private static User mUser;
+    private User mUser;
 
     // Firebase
     private FirebaseDatabase mDatabase;
     private DatabaseReference mDatabaseReference;
-    private static DatabaseReference mUserRef;
+    private DatabaseReference mUserRef;
+    private ValueEventListener mUserRefListener;
 
     // Main user views
     private TextView mDisplayNameView;
@@ -99,7 +100,7 @@ public class UserActivity extends AppCompatActivity {
         mTheme3View = findViewById(R.id.user_themes3);
 
         // Get user data
-        mUserRef.addListenerForSingleValueEvent(new ValueEventListener() {
+        mUserRefListener = new ValueEventListener() {
             @Override
             public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
                 mUser = dataSnapshot.getValue(User.class);
@@ -118,6 +119,9 @@ public class UserActivity extends AppCompatActivity {
                     mStatusImageView.setBackground(getDrawable(R.drawable.user_oak));
                     mStatusView.setText(LEVEL_3);
                 }
+
+                Log.d(TAG, "name: " + mUser.getDisplayName());
+
                 mUpvoteCountView.setText(String.valueOf(mUser.getUpvotedItemsCount()));
                 mDownvoteCountView.setText(String.valueOf(mUser.getDownvotedItemsCount()));
                 mCommentCountView.setText(String.valueOf(mUser.getCommentedItemsCount()));
@@ -138,7 +142,8 @@ public class UserActivity extends AppCompatActivity {
                             .sorted(Collections.reverseOrder(Map.Entry.comparingByValue()))
                             .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue, (e1, e2) -> e2, LinkedHashMap::new));
                     List<String> themes = new ArrayList<>(sortedOpenedThemes.keySet());
-                    Log.d(TAG, sortedOpenedThemes.toString());
+                    Log.d(TAG, "premiumStatus: " + mUser.premiumStatus.toString());
+//                    Log.d(TAG, sortedOpenedThemes.toString());
                     
                     if (themes.size() < 2) {
                         mTheme2View.setVisibility(View.GONE);
@@ -160,12 +165,19 @@ public class UserActivity extends AppCompatActivity {
             public void onCancelled(@NonNull DatabaseError databaseError) {
                 createToast(UserActivity.this, databaseError.toString(), Toast.LENGTH_SHORT);
             }
-        });
+        };
+        mUserRef.addValueEventListener(mUserRefListener);
     }
 
     @Override
     public boolean onSupportNavigateUp() {
         onBackPressed();
         return true;
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        mUserRef.removeEventListener(mUserRefListener);
     }
 }

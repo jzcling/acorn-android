@@ -87,4 +87,18 @@ public class DateUtils {
         }
         return null;
     }
+
+    public static Long getThirtyDaysLaterMidnight() {
+        if (getThisMidnight() != null) {
+            return (getThisMidnight() + (30L * 24L * 60L * 60L * 1000L));
+        }
+        return null;
+    }
+
+    public static Long getThirtyDaysAgoMidnight() {
+        if (getThisMidnight() != null) {
+            return (getThisMidnight() - (30L * 24L * 60L * 60L * 1000L));
+        }
+        return null;
+    }
 }

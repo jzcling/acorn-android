@@ -5,7 +5,7 @@ import java.util.Map;
 
 public class Address {
     public String objectID;
-    public Map<String, Integer> article = new HashMap<>();
+    public Map<String, Long> article = new HashMap<>();
     public String address;
     public String formattedAddress;
     public Map<String, Double> location;

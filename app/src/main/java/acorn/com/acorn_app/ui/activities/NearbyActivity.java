@@ -19,9 +19,7 @@ import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
-import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputMethodManager;
-import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -32,10 +30,9 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.SearchView;
 import androidx.appcompat.widget.Toolbar;
 import androidx.core.util.Consumer;
+import androidx.core.view.MenuItemCompat;
 import androidx.cursoradapter.widget.CursorAdapter;
 import androidx.cursoradapter.widget.SimpleCursorAdapter;
-import androidx.lifecycle.Observer;
-import androidx.lifecycle.ViewModelProviders;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
@@ -58,32 +55,14 @@ import com.google.android.gms.tasks.Task;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
 import acorn.com.acorn_app.R;
-import acorn.com.acorn_app.data.ArticleListLiveData;
 import acorn.com.acorn_app.data.NetworkDataSource;
-import acorn.com.acorn_app.models.Article;
-import acorn.com.acorn_app.models.FbQuery;
-import acorn.com.acorn_app.models.ReverseGeocode;
-import acorn.com.acorn_app.services.MapsApiService;
 import acorn.com.acorn_app.ui.adapters.NearbyArticleAdapter;
-import acorn.com.acorn_app.ui.viewModels.ArticleViewModel;
-import acorn.com.acorn_app.ui.viewModels.ArticleViewModelFactory;
 import acorn.com.acorn_app.utils.AppExecutors;
-import acorn.com.acorn_app.utils.InjectorUtils;
-import io.reactivex.Single;
-import io.reactivex.SingleObserver;
-import io.reactivex.android.schedulers.AndroidSchedulers;
-import io.reactivex.disposables.CompositeDisposable;
-import io.reactivex.disposables.Disposable;
-import io.reactivex.schedulers.Schedulers;
-import retrofit2.Retrofit;
-import retrofit2.adapter.rxjava2.RxJava2CallAdapterFactory;
-import retrofit2.converter.gson.GsonConverterFactory;
 
 import static acorn.com.acorn_app.utils.UiUtils.createToast;
 
@@ -228,7 +207,7 @@ public class NearbyActivity extends AppCompatActivity {
         MenuItem filterItem = (MenuItem) menu.findItem(R.id.action_filter);
 
         // Set up search
-        SearchView searchView = (SearchView) menu.findItem(R.id.action_search).getActionView();
+        SearchView searchView = (SearchView) MenuItemCompat.getActionView(menu.findItem(R.id.action_search));
         searchView.setSuggestionsAdapter(mSearchAdapter);
         searchView.setOnSuggestionListener(new SearchView.OnSuggestionListener() {
             @Override
@@ -301,7 +280,7 @@ public class NearbyActivity extends AppCompatActivity {
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
         if (item.getItemId() == R.id.action_filter) {
-            android.app.AlertDialog.Builder builder = new android.app.AlertDialog.Builder(this);
+            AlertDialog.Builder builder = new AlertDialog.Builder(this);
             builder.setTitle("Filter by themes")
                     .setMultiChoiceItems(themeList, checkedStatus, ((dialog, which, isChecked) -> {
                         checkedStatus[which] = isChecked;
@@ -319,7 +298,7 @@ public class NearbyActivity extends AppCompatActivity {
                 mAdapter.filterByThemes(mThemeFilterList);
             }));
 
-            android.app.AlertDialog dialog = builder.create();
+            AlertDialog dialog = builder.create();
             dialog.show();
         }
         return super.onOptionsItemSelected(item);
@@ -599,7 +578,11 @@ public class NearbyActivity extends AppCompatActivity {
     private void getNearbyArticles(double lat, double lng, double radius, String address) {
         mDataSource.getNearbyArticles(lat, lng, radius, (articles -> {
             mAdapter.setList(articles);
-            mLocationTv.setText("Showing articles near " + address);
+            if (articles.size() > 0) {
+                mLocationTv.setText("Showing articles near " + address);
+            } else {
+                mLocationTv.setText("Could not find any articles near " + address);
+            }
             mSwipeRefreshLayout.setRefreshing(false);
         }));
     }

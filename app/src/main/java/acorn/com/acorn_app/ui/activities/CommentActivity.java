@@ -11,16 +11,6 @@ import android.os.Bundle;
 import android.os.Environment;
 import android.os.Handler;
 import android.provider.MediaStore;
-import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
-import com.google.android.material.floatingactionbutton.FloatingActionButton;
-import androidx.core.content.FileProvider;
-import androidx.appcompat.app.AppCompatActivity;
-import androidx.cardview.widget.CardView;
-import androidx.recyclerview.widget.LinearLayoutManager;
-import androidx.recyclerview.widget.RecyclerView;
-import androidx.appcompat.widget.SearchView;
-import androidx.appcompat.widget.Toolbar;
 import android.text.Editable;
 import android.text.InputFilter;
 import android.text.SpannableString;
@@ -45,11 +35,22 @@ import android.widget.PopupWindow;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.widget.SearchView;
+import androidx.appcompat.widget.Toolbar;
+import androidx.cardview.widget.CardView;
+import androidx.core.content.FileProvider;
+import androidx.core.view.MenuItemCompat;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
+
 import com.bumptech.glide.Glide;
 import com.firebase.ui.database.FirebaseRecyclerAdapter;
 import com.firebase.ui.database.FirebaseRecyclerOptions;
 import com.firebase.ui.database.SnapshotParser;
-import com.google.firebase.analytics.FirebaseAnalytics;
+import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.firebase.database.ChildEventListener;
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
@@ -469,7 +470,7 @@ public class CommentActivity extends AppCompatActivity implements View.OnTouchLi
         }
 
         // Set up search
-        SearchView searchView = (SearchView) menu.findItem(R.id.action_search).getActionView();
+        SearchView searchView = (SearchView) MenuItemCompat.getActionView(menu.findItem(R.id.action_search));
         EditText searchEditText = (EditText) searchView.findViewById(R.id.search_src_text);
         MenuItem searchChevronUp = mOptionsMenu.findItem(R.id.action_search_up);
         MenuItem searchChevronDown = mOptionsMenu.findItem(R.id.action_search_down);
@@ -518,7 +519,7 @@ public class CommentActivity extends AppCompatActivity implements View.OnTouchLi
         MenuItem searchItem = (MenuItem) mOptionsMenu.findItem(R.id.action_search);
         if (mAdapter.getItemCount() == 0) { searchItem.setEnabled(false); }
         MenuItem articleChevron = mOptionsMenu.findItem(R.id.action_expand);
-        searchItem.setOnActionExpandListener(new MenuItem.OnActionExpandListener() {
+        MenuItemCompat.setOnActionExpandListener(searchItem, new MenuItemCompat.OnActionExpandListener() {
             @Override
             public boolean onMenuItemActionExpand(MenuItem item) {
                 if (mArticleView.getVisibility() == View.VISIBLE) {

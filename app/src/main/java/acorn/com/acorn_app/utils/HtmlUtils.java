@@ -106,13 +106,16 @@ public class HtmlUtils {
                     int smallestAboveWidth = 10000;
                     String srcUrl = "";
                     for (String s : srcset) {
-                        int diff = (Integer.parseInt(s.trim().split(" ")[1].split("[xw]")[0])) - width;
-                        if (diff > 0 && diff < smallestAboveWidth) {
-                            smallestAboveWidth = diff;
-                            srcUrl = s.trim().split(" ")[0];
-                            srcUrl = srcUrl.replaceAll("amp;", "")
-                                    .replaceAll("#038;", "");
-                            hasSrc = true;
+                        String[] sSplit = s.trim().split(" ");
+                        if (sSplit.length > 1) {
+                            int diff = (Integer.parseInt(sSplit[1].split("[xw]")[0])) - width;
+                            if (diff > 0 && diff < smallestAboveWidth) {
+                                smallestAboveWidth = diff;
+                                srcUrl = s.trim().split(" ")[0];
+                                srcUrl = srcUrl.replaceAll("amp;", "")
+                                        .replaceAll("#038;", "");
+                                hasSrc = true;
+                            }
                         }
                     }
                     if (hasSrc) {
