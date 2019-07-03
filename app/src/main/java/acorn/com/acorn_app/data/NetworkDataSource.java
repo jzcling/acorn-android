@@ -1244,7 +1244,7 @@ public class NetworkDataSource {
         updates.put("/" + uid + "/referredBy", referrer);
 
         Long premiumStart = (new Date()).getTime();
-        Long premiumEnd = premiumStart + (90L * 24L * 60L * 60L * 1000);
+        Long premiumEnd = premiumStart + (90L * 24L * 60L * 60L * 1000L);
         updates.put("/" + referrer + "/referredUsers/" + uid, premiumStart);
         updates.put("/" + referrer + "/premiumStatus/start", premiumStart);
         updates.put("/" + referrer + "/premiumStatus/end", premiumEnd);
