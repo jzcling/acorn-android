@@ -263,6 +263,17 @@ public class AcornActivity extends AppCompatActivity
         mRoomDb = ArticleRoomDatabase.getInstance(this);
         mContext = this;
 
+        // Handle dynamic links
+        Intent intent = getIntent();
+        String appLinkAction = intent.getAction();
+        Uri appLinkData = intent.getData();
+        if (Intent.ACTION_VIEW.equals(appLinkAction) && appLinkData != null) {
+            Log.d(TAG, "handle intent");
+            handleDynamicLink(intent);
+        } else {
+            Log.d(TAG, "no dynamic link");
+        }
+
         // Initiate views
         mRecyclerView = (RecyclerView) findViewById(R.id.card_recycler_view);
         mSwipeRefreshLayout = (SwipeRefreshLayout) findViewById(R.id.swiperefresh);
@@ -315,28 +326,28 @@ public class AcornActivity extends AppCompatActivity
                 this, mDrawer, toolbar, R.string.navigation_drawer_open, R.string.navigation_drawer_close) {
             @Override
             public void onDrawerOpened(View drawerView) {
-//                if (!mSharedPreferences.getBoolean(getString(R.string.pref_key_nearby_seen), false)) {
-//                    NavigationView navigationView = (NavigationView) findViewById(R.id.nav_view);
-//                    MenuItem item = navigationView.getMenu().findItem(R.id.nav_nearby);
-//                    LinearLayout view = (LinearLayout) item.getActionView();
-//
-//                    int[] location = new int[2];
-//                    view.getLocationOnScreen(location);
-//
-//                    View target = new View(AcornActivity.this);
-//                    target.setY(location[1]);
-//                    float density = getResources().getDisplayMetrics().density;
-//                    int height = (int) (density * 50);
-//                    target.setLayoutParams(new LinearLayout.LayoutParams(location[0], height));
-//                    navigationView.addView(target);
-//
-//                    String title = "Near Me";
-//                    String text = "Explore articles recommending restaurants and deals near you! " +
-//                            "Refer a friend to enjoy this premium feature!";
-//                    UiUtils.highlightView(AcornActivity.this, target, title, text);
-//
-//                    mSharedPreferences.edit().putBoolean(getString(R.string.pref_key_nearby_seen), true).apply();
-//                }
+                if (!mSharedPreferences.getBoolean(getString(R.string.pref_key_nearby_seen), false)) {
+                    NavigationView navigationView = (NavigationView) findViewById(R.id.nav_view);
+                    MenuItem item = navigationView.getMenu().findItem(R.id.nav_nearby);
+                    LinearLayout view = (LinearLayout) item.getActionView();
+
+                    int[] location = new int[2];
+                    view.getLocationOnScreen(location);
+
+                    View target = new View(AcornActivity.this);
+                    target.setY(location[1]);
+                    float density = getResources().getDisplayMetrics().density;
+                    int height = (int) (density * 50);
+                    target.setLayoutParams(new LinearLayout.LayoutParams(location[0], height));
+                    navigationView.addView(target);
+
+                    String title = "Near Me";
+                    String text = "Explore articles recommending restaurants and deals near you! " +
+                            "Refer a friend to enjoy this premium feature!";
+                    UiUtils.highlightView(AcornActivity.this, target, title, text);
+
+                    mSharedPreferences.edit().putBoolean(getString(R.string.pref_key_nearby_seen), true).apply();
+                }
                 super.onDrawerOpened(drawerView);
             }
         };
@@ -472,9 +483,13 @@ public class AcornActivity extends AppCompatActivity
                 startActivity(savedArticlesIntent);
                 break;
             case R.id.nav_nearby:
-                createToast(this, "This feature is coming in the next few days! Stay tuned!", Toast.LENGTH_LONG);
-//                Intent nearbyArticlesIntent = new Intent(this, NearbyActivity.class);
-//                startActivity(nearbyArticlesIntent);
+                if (mUserPremiumStatus == null || mUserPremiumStatusTextView.getText() != "Premium") {
+                    createToast(this, "Refer a friend using the Share app invite " +
+                            "function on the top right of the main page!", Toast.LENGTH_LONG);
+                } else {
+                    Intent nearbyArticlesIntent = new Intent(this, NearbyActivity.class);
+                    startActivity(nearbyArticlesIntent);
+                }
                 break;
             case R.id.nav_video_feed:
                 Intent videoFeedIntent = new Intent(this, VideoFeedActivity.class);
@@ -512,7 +527,13 @@ public class AcornActivity extends AppCompatActivity
     protected void onNewIntent(Intent intent) {
         Log.d(TAG, "onNewIntent");
         super.onNewIntent(intent);
-        handleIntent(intent);
+        String appLinkAction = intent.getAction();
+        Uri appLinkData = intent.getData();
+        if (Intent.ACTION_VIEW.equals(appLinkAction) && appLinkData != null) {
+            handleDynamicLink(intent);
+        } else {
+            handleIntent(intent);
+        }
     }
 
     @Override
@@ -679,6 +700,31 @@ public class AcornActivity extends AppCompatActivity
         }, 100);
     }
 
+    private void handleDynamicLink(Intent intent) {
+        FirebaseDynamicLinks.getInstance().getDynamicLink(intent)
+                .addOnSuccessListener(this, pendingDynamicLinkData -> {
+                    Uri deepLink;
+                    if (pendingDynamicLinkData != null) {
+                        deepLink = pendingDynamicLinkData.getLink();
+                        Log.d(TAG, deepLink.toString() + ", " + deepLink.getLastPathSegment());
+                        String lastSegment = deepLink.getLastPathSegment();
+                        if (lastSegment != null && lastSegment.equals("article")) {
+                            String articleId = deepLink.getQueryParameter("id");
+                            String sharerId = deepLink.getQueryParameter("sharerId");
+                            Intent webviewActivity = new Intent(this, WebViewActivity.class);
+                            webviewActivity.putExtra("id", articleId);
+                            startActivity(webviewActivity);
+                        } else {
+                            mReferredBy = deepLink.getQueryParameter("referrer");
+                            Log.d(TAG, deepLink.toString() + ", referrer: " + mReferredBy);
+                        }
+                    }
+                })
+                .addOnFailureListener(this, e -> {
+                    Log.d(TAG, "Failed to get deep link: " + e);
+                });
+    }
+
     private void handleIntent(Intent intent) {
         Log.d(TAG, "handle intent");
 
@@ -781,8 +827,8 @@ public class AcornActivity extends AppCompatActivity
 
         setUpInitialViewModelObserver();
 
-        mRecyclerView.setVisibility(View.VISIBLE);
-        mSwipeRefreshLayout.setRefreshing(false);
+//        mRecyclerView.setVisibility(View.VISIBLE);
+//        mSwipeRefreshLayout.setRefreshing(false);
     }
 
     private void launchLogin() {
@@ -1301,7 +1347,12 @@ public class AcornActivity extends AppCompatActivity
                         Log.d(TAG, "set: " + currentList.size());
                     }
                 }
-                mAdapter.setList(currentList);
+                mAdapter.setList(currentList, () -> {
+                    if (mRecyclerView.getVisibility() != View.VISIBLE) {
+                        mRecyclerView.setVisibility(View.VISIBLE);
+                        mSwipeRefreshLayout.setRefreshing(false);
+                    }
+                });
             }
         };
         articleListLD.observeForever(articleListObserver);

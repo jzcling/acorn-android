@@ -42,6 +42,7 @@ public class User {
     public boolean openedSinceLastReport;
     public final Map<String, Long> premiumStatus = new HashMap<>();
     public String referredBy;
+    public final Map<String, Long> referredUsers = new HashMap<>();
 
     public User() {}
 

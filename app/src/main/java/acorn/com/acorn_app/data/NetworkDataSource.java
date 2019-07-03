@@ -1240,6 +1240,15 @@ public class NetworkDataSource {
 
     // Set user referrer
     public void setReferrer(String uid, String referrer) {
-        mDatabaseReference.child(USER_REF).child(uid).child("referredBy").setValue(referrer);
+        Map<String, Object> updates = new HashMap<>();
+        updates.put("/" + uid + "/referredBy", referrer);
+
+        Long premiumStart = (new Date()).getTime();
+        Long premiumEnd = premiumStart + (90L * 24L * 60L * 60L * 1000);
+        updates.put("/" + referrer + "/referredUsers/" + uid, premiumStart);
+        updates.put("/" + referrer + "/premiumStatus/start", premiumStart);
+        updates.put("/" + referrer + "/premiumStatus/end", premiumEnd);
+
+        mDatabaseReference.child(USER_REF).updateChildren(updates);
     }
 }
