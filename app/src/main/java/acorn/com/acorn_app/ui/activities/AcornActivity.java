@@ -222,6 +222,7 @@ public class AcornActivity extends AppCompatActivity
     public final String REC_ARTICLES_NOTIFICATION = "recArticlesNotificationValue";
     public final String REC_DEALS_NOTIFICATION = "recDealsNotificationValue";
     public final String SAVED_ARTICLES_REMINDER_NOTIFICATION = "savedArticlesReminderNotificationValue";
+    public final String LOCATION_NOTIFICATION = "locationNotificationValue";
 
     //Notifications
     private NotificationBadge notificationBadge;
@@ -672,11 +673,13 @@ public class AcornActivity extends AppCompatActivity
                             mLocationPermissionsUtils.checkLocationSettings(() -> {
                                 mGeofenceUtils.mPendingGeofenceTask = GeofenceUtils.PendingGeofenceTask.ADD;
                                 mGeofenceUtils.performPendingGeofenceTask();
+                                mDataSource.ToggleNotifications(LOCATION_NOTIFICATION, locationNotifValue);
                             });
 //                        });
                     } else {
                         mGeofenceUtils.mPendingGeofenceTask = GeofenceUtils.PendingGeofenceTask.REMOVE;
                         mGeofenceUtils.performPendingGeofenceTask();
+                        mDataSource.ToggleNotifications(LOCATION_NOTIFICATION, locationNotifValue);
                     }
                 }
             }
