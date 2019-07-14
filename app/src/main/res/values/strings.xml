@@ -15,6 +15,7 @@
     <string name="nav_themes">Edit Subscribed Themes</string>
     <string name="nav_settings">Settings</string>
     <string name="nav_login">Sign In</string>
+    <string name="nav_invite">Share App Invite</string>
     <string name="nav_logout">Log Out</string>
     <string name="nav_header_desc">Navigation header</string>
 
@@ -22,12 +23,12 @@
     <string name="action_search">Search</string>
     <string name="action_notifications">Notifications</string>
     <string name="action_settings">Settings</string>
-    <string name="action_share_app">Share app invite</string>
-    <string name="action_expand">Expand article</string>
-    <string name="action_follow">Follow article</string>
-    <string name="action_unfollow">Unfollow article</string>
-    <string name="action_search_up">Find up</string>
-    <string name="action_search_down">Find down</string>
+    <string name="action_share_app">Share App Invite</string>
+    <string name="action_expand">Expand Article</string>
+    <string name="action_follow">Follow Article</string>
+    <string name="action_unfollow">Unfollow Article</string>
+    <string name="action_search_up">Find Up</string>
+    <string name="action_search_down">Find Down</string>
     <string name="action_filter">Filter</string>
 
     <!-- Search -->
@@ -50,8 +51,10 @@
     <string name="pref_key_notif_article">articleNotifPref</string>
     <string name="pref_key_notif_deals">dealsNotifPref</string>
     <string name="pref_key_notif_saved_articles_reminder">savedArticlesReminderNotifPref</string>
+    <string name="pref_key_notif_location">locationNotifPref</string>
     <string name="pref_key_nearby_seen">nearbySeenPref</string>
     <string name="pref_key_saved_seen">savedSeenPref</string>
+    <string name="pref_key_loc_permissions_asked">locationPermissionsAskedPref</string>
     <string name="pref_cat_general_settings">GENERAL</string>
     <string name="pref_cat_notif_settings">NOTIFICATIONS</string>
     <string name="pref_cat_user_account_settings">MANAGE ACCOUNT</string>
@@ -61,6 +64,7 @@
     <string name="pref_title_notif_article">Recommended articles</string>
     <string name="pref_title_notif_deals">Recommended deals</string>
     <string name="pref_title_notif_saved_articles_reminder">Saved articles reminder</string>
+    <string name="pref_title_notif_location">Location based notifications</string>
     <string name="pref_title_change_password">Change password</string>
     <string name="pref_title_change_email">Change email address</string>
     <string name="pref_title_delete_account">Delete account</string>
@@ -134,6 +138,8 @@
     <string name="article_notification_channel_name" translatable="true">Recommended Articles</string>
     <string name="deals_notification_channel_id" translatable="false">fcm_deals_channel</string>
     <string name="deals_notification_channel_name" translatable="true">Recommended Deals</string>
+    <string name="geofence_notification_channel_id" translatable="false">geofence_mrt_channel</string>
+    <string name="geofence_notification_channel_name" translatable="true">Geofence MRT</string>
     <string name="notif_clear_button">Clear all</string>
     <string name="notif_empty_text">You have no new notifications!</string>
     <string name="notif_delete">DELETE</string>
@@ -168,4 +174,35 @@
     <string name="post_send">Post</string>
     <string name="post_text_hint">Write something…</string>
     <string name="post_theme_title">Theme</string>
+
+    <!-- Geofence-->
+    <string name="geofence_not_available">Geofence service is not available now</string>
+    <string name="geofence_too_many_geofences">Your app has registered too many geofences</string>
+    <string name="geofence_too_many_pending_intents">
+        You have provided too many PendingIntents to the addGeofences() call
+    </string>
+    <string name="unknown_geofence_error">
+        Unknown error: the Geofence service is not available now
+    </string>
+    <string name="geofence_transition_invalid_type">
+        Geofence transition error: invalid transition type %1$d
+    </string>
+
+    <string name="geofences_added">Geofences added</string>
+    <string name="geofences_removed">Geofences removed</string>
+
+    <!-- Geofence Transition type strings -->
+    <string name="geofence_transition_entered">Entered</string>
+    <string name="geofence_transition_exited">Exited</string>
+    <string name="geofence_transition_dwelled">Dwelled</string>
+    <string name="unknown_geofence_transition">Unknown Transition</string>
+    <string name="geofence_transition_notification_text">
+        Click notification to return to app
+    </string>
+
+    <string name="insufficient_permissions">Insufficient permissions.</string>
+    <string name="permission_rationale">Location permission is needed for core functionality</string>
+    <string name="permission_denied_explanation">Permission was denied, but is needed for core
+        functionality.</string>
+    <string name="settings">Settings</string>
 </resources>

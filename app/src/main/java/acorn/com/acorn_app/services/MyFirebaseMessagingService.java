@@ -100,7 +100,8 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
         String COMMENT_CHANNEL_NAME = getString(R.string.comment_notification_channel_name);
         commentSummaryNotificationBuilder =
                 new NotificationCompat.Builder(this, COMMENT_CHANNEL_ID)
-                        .setSmallIcon(R.drawable.ic_launcher)
+                        .setSmallIcon(R.drawable.ic_notif_acorn)
+                        .setColor(getColor(R.color.colorPrimary))
                         .setAutoCancel(true)
                         .setOnlyAlertOnce(true)
                         .setGroup(COMMENT_GROUP_NAME)
@@ -113,7 +114,8 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
 
         commentNotificationBuilder =
                 new NotificationCompat.Builder(this, COMMENT_CHANNEL_ID)
-                        .setSmallIcon(R.drawable.ic_launcher)
+                        .setSmallIcon(R.drawable.ic_notif_acorn)
+                        .setColor(getColor(R.color.colorPrimary))
                         .setAutoCancel(true)
                         .setGroup(COMMENT_GROUP_NAME)
                         .setGroupAlertBehavior(GROUP_ALERT_SUMMARY);
@@ -135,7 +137,8 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
 
         manualArticleNotificationBuilder =
                 new NotificationCompat.Builder(this, MANUAL_ARTICLE_CHANNEL_ID)
-                        .setSmallIcon(R.drawable.ic_launcher)
+                        .setSmallIcon(R.drawable.ic_notif_acorn)
+                        .setColor(getColor(R.color.colorPrimary))
                         .setAutoCancel(true)
                         .setGroup(MANUAL_ARTICLE_GROUP_NAME)
                         .setGroupAlertBehavior(GROUP_ALERT_SUMMARY)
@@ -169,12 +172,14 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
                         .setPriority(PRIORITY_HIGH)
                         .setCategory(CATEGORY_RECOMMENDATION)
                         .setVisibility(VISIBILITY_PUBLIC)
-                        .setSmallIcon(R.drawable.ic_launcher)
+                        .setSmallIcon(R.drawable.ic_notif_acorn)
+                        .setColor(getColor(R.color.colorPrimary))
                         .setAutoCancel(true);
 
         savedReminderNotificationBuilder =
                 new NotificationCompat.Builder(this, SAVED_REMINDER_CHANNEL_ID)
-                        .setSmallIcon(R.drawable.ic_launcher)
+                        .setSmallIcon(R.drawable.ic_notif_acorn)
+                        .setColor(getColor(R.color.colorPrimary))
                         .setAutoCancel(true)
                         .setGroup(SAVED_REMINDER_GROUP_NAME)
                         .setGroupAlertBehavior(GROUP_ALERT_SUMMARY)
@@ -285,7 +290,7 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
                 .setContentText(contentText)
                 .setContentIntent(individualPendingIntent);
 
-        mNotificationManager.notify(comments.size(), commentNotificationBuilder.build());
+        mNotificationManager.notify(100+comments.size(), commentNotificationBuilder.build());
         mNotificationManager.notify(COMMENT_NOTIFICATION_ID, commentSummaryNotificationBuilder.build());
     }
 

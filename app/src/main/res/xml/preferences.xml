@@ -29,6 +29,9 @@
         <SwitchPreferenceCompat
             app:key="@string/pref_key_notif_saved_articles_reminder"
             app:title="@string/pref_title_notif_saved_articles_reminder" />
+        <SwitchPreferenceCompat
+            app:key="@string/pref_key_notif_location"
+            app:title="@string/pref_title_notif_location" />
     </PreferenceCategory>
     <!--<PreferenceCategory-->
         <!--app:title="@string/pref_cat_user_account_settings"-->

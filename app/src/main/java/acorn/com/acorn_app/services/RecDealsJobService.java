@@ -156,7 +156,8 @@ public class RecDealsJobService extends JobService {
 
             NotificationCompat.Builder notificationBuilder =
                     new NotificationCompat.Builder(this, CHANNEL_ID)
-                            .setSmallIcon(R.drawable.ic_launcher)
+                            .setSmallIcon(R.drawable.ic_notif_acorn)
+                            .setColor(getColor(R.color.colorPrimary))
                             .setLargeIcon(bitmap)
                             .setContentTitle(article.getTitle())
                             .setContentText(contentText)
@@ -178,7 +179,8 @@ public class RecDealsJobService extends JobService {
                         .setCategory(CATEGORY_RECOMMENDATION)
                         .setVisibility(VISIBILITY_PUBLIC)
                         .setStyle(inboxStyle)
-                        .setSmallIcon(R.drawable.ic_launcher)
+                        .setSmallIcon(R.drawable.ic_notif_acorn)
+                        .setColor(getColor(R.color.colorPrimary))
                         .setAutoCancel(true)
                         .setContentIntent(pendingIntent)
                         .setNumber(dealsList.size());

@@ -1,6 +1,7 @@
 package acorn.com.acorn_app.utils;
 
 import java.text.SimpleDateFormat;
+import java.util.Comparator;
 import java.util.Date;
 import java.util.TimeZone;
 
@@ -98,6 +99,13 @@ public class DateUtils {
     public static Long getThirtyDaysAgoMidnight() {
         if (getThisMidnight() != null) {
             return (getThisMidnight() - (30L * 24L * 60L * 60L * 1000L));
+        }
+        return null;
+    }
+
+    public static Long getFourteenDaysAgoMidnight() {
+        if (getThisMidnight() != null) {
+            return (getThisMidnight() - (14L * 24L * 60L * 60L * 1000L));
         }
         return null;
     }

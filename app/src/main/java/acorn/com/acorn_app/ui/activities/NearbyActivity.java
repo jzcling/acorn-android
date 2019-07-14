@@ -75,7 +75,7 @@ public class NearbyActivity extends AppCompatActivity {
     private static final long FASTEST_INTERVAL = 5000;
     private static final int ALL_PERMISSIONS_RESULT = 1011;
     private static final String MAPS_API_URL = "https://maps.googleapis.com/maps/api/";
-    private static final double RADIUS = 2000;
+    public static final double RADIUS = 2000;
 
     // Views
     private TextView mLocationTv;
@@ -98,9 +98,10 @@ public class NearbyActivity extends AppCompatActivity {
     private final AppExecutors mExecutors = AppExecutors.getInstance();
 
     // Search
-    private Map<String, Map<String, Double>> mMrtStationMap;
+    private Map<String, Map<String, Object>> mMrtStationMap;
     private List<String> mMrtStationNames;
     private SimpleCursorAdapter mSearchAdapter;
+    private SearchView mSearchView;
 
     //For restoring state
     private static Parcelable mLlmState;
@@ -207,14 +208,14 @@ public class NearbyActivity extends AppCompatActivity {
         MenuItem filterItem = (MenuItem) menu.findItem(R.id.action_filter);
 
         // Set up search
-        SearchView searchView = (SearchView) MenuItemCompat.getActionView(menu.findItem(R.id.action_search));
-        searchView.setSuggestionsAdapter(mSearchAdapter);
-        searchView.setOnSuggestionListener(new SearchView.OnSuggestionListener() {
+        mSearchView = (SearchView) MenuItemCompat.getActionView(menu.findItem(R.id.action_search));
+        mSearchView.setSuggestionsAdapter(mSearchAdapter);
+        mSearchView.setOnSuggestionListener(new SearchView.OnSuggestionListener() {
             @Override
             public boolean onSuggestionSelect(int position) {
                 Cursor cursor = (Cursor) mSearchAdapter.getItem(position);
                 String txt = cursor.getString(cursor.getColumnIndex("stationName"));
-                searchView.setQuery(txt, true);
+                mSearchView.setQuery(txt, true);
                 return true;
             }
 
@@ -222,11 +223,11 @@ public class NearbyActivity extends AppCompatActivity {
             public boolean onSuggestionClick(int position) {
                 Cursor cursor = (Cursor) mSearchAdapter.getItem(position);
                 String txt = cursor.getString(cursor.getColumnIndex("stationName"));
-                searchView.setQuery(txt, true);
+                mSearchView.setQuery(txt, true);
                 return true;
             }
         });
-        searchView.setOnQueryTextListener(new SearchView.OnQueryTextListener() {
+        mSearchView.setOnQueryTextListener(new SearchView.OnQueryTextListener() {
             @Override
             public boolean onQueryTextSubmit(String query) {
                 String address = "";
@@ -249,21 +250,8 @@ public class NearbyActivity extends AppCompatActivity {
                     imm.hideSoftInputFromWindow(view.getWindowToken(), 0);
                 }
 
-                mSwipeRefreshLayout.setRefreshing(true);
-                mAdapter.clear();
-                Map<String, Double> location = mMrtStationMap.get(address);
-                if (location != null) {
-                    mLatitude = location.get("latitude");
-                    mLongitude = location.get("longitude");
-                    mAddress = address;
-                    if (mLatitude != null && mLongitude != null) {
-                        mLocationTv.setText("Fetching articles near " + mAddress);
-                        getNearbyArticles(mLatitude, mLongitude, RADIUS, mAddress);
-                    }
-                } else {
-                    mSwipeRefreshLayout.setRefreshing(false);
-                    createToast(NearbyActivity.this, "Could not get location for " + query, Toast.LENGTH_SHORT);
-                }
+                getNearbyArticlesForMrt(address);
+
                 return true;
             }
 
@@ -325,7 +313,9 @@ public class NearbyActivity extends AppCompatActivity {
             createToast(this, "Please update Google Play Services to enable this feature", Toast.LENGTH_SHORT);
             finish();
         }
-        CheckLocationSettings();
+        if (!mLocationTv.getText().toString().contains("Showing articles near")) {
+            CheckLocationSettings();
+        }
     }
 
     @Override
@@ -441,40 +431,59 @@ public class NearbyActivity extends AppCompatActivity {
                 .addLocationRequest(mLocationRequest);
         LocationServices.getSettingsClient(this)
                 .checkLocationSettings(builder.build())
-                .addOnCompleteListener(new OnCompleteListener<LocationSettingsResponse>() {
-                    @Override
-                    public void onComplete(@NonNull Task<LocationSettingsResponse> task) {
-                        try {
-                            LocationSettingsResponse response = task.getResult(ApiException.class);
-                            getReverseGeocode();
-                        } catch (ApiException exception) {
-                            switch (exception.getStatusCode()) {
-                                case LocationSettingsStatusCodes.RESOLUTION_REQUIRED:
-                                    // Location settings are not satisfied. But could be fixed by showing the
-                                    // user a dialog.
-                                    try {
-                                        // Cast to a resolvable exception.
-                                        ResolvableApiException resolvable = (ResolvableApiException) exception;
-                                        // Show the dialog by calling startResolutionForResult(),
-                                        // and check the result in onActivityResult().
-                                        resolvable.startResolutionForResult(
-                                                NearbyActivity.this,
-                                                REQUEST_CHECK_SETTINGS);
-                                    } catch (IntentSender.SendIntentException e) {
-                                        // Ignore the error.
-                                    } catch (ClassCastException e) {
-                                        // Ignore, should be an impossible error.
-                                    }
-                                    break;
-                                case LocationSettingsStatusCodes.SETTINGS_CHANGE_UNAVAILABLE:
-                                    // Location settings are not satisfied. However, we have no way to fix the
-                                    // settings so we won't show the dialog.
-                                    createToast(NearbyActivity.this,
-                                            "Please enable location services to use this feature",
-                                            Toast.LENGTH_SHORT);
-                                    finish();
-                                    break;
+                .addOnCompleteListener(task -> {
+                    try {
+                        LocationSettingsResponse response = task.getResult(ApiException.class);
+
+                        // check if any intent provides an address, if not find articles near user
+                        Intent intent = getIntent();
+                        String stationName = intent.getStringExtra("stationName");
+                        if (stationName != null) {
+                            mAddress = stationName;
+                            if (mMrtStationMap != null) {
+                                getNearbyArticlesForMrt(mAddress);
+                            } else {
+                                // Set up mrt station list
+                                mDataSource.getMrtStations((mrtStations) -> {
+                                    mMrtStationMap = mrtStations;
+                                    mMrtStationNames = new ArrayList<>(mrtStations.keySet());
+                                    Collections.sort(mMrtStationNames);
+
+                                    getNearbyArticlesForMrt(mAddress);
+                                }, (error) -> {
+                                    createToast(this, "Error getting list of MRT Stations", Toast.LENGTH_SHORT);
+                                });
                             }
+                        } else {
+                            getReverseGeocode();
+                        }
+                    } catch (ApiException exception) {
+                        switch (exception.getStatusCode()) {
+                            case LocationSettingsStatusCodes.RESOLUTION_REQUIRED:
+                                // Location settings are not satisfied. But could be fixed by showing the
+                                // user a dialog.
+                                try {
+                                    // Cast to a resolvable exception.
+                                    ResolvableApiException resolvable = (ResolvableApiException) exception;
+                                    // Show the dialog by calling startResolutionForResult(),
+                                    // and check the result in onActivityResult().
+                                    resolvable.startResolutionForResult(
+                                            NearbyActivity.this,
+                                            REQUEST_CHECK_SETTINGS);
+                                } catch (IntentSender.SendIntentException e) {
+                                    // Ignore the error.
+                                } catch (ClassCastException e) {
+                                    // Ignore, should be an impossible error.
+                                }
+                                break;
+                            case LocationSettingsStatusCodes.SETTINGS_CHANGE_UNAVAILABLE:
+                                // Location settings are not satisfied. However, we have no way to fix the
+                                // settings so we won't show the dialog.
+                                createToast(NearbyActivity.this,
+                                        "Please enable location services to use this feature",
+                                        Toast.LENGTH_SHORT);
+                                finish();
+                                break;
                         }
                     }
                 });
@@ -555,6 +564,24 @@ public class NearbyActivity extends AppCompatActivity {
 //                        });
 //            });
         });
+    }
+
+    private void getNearbyArticlesForMrt(String name) {
+        mSwipeRefreshLayout.setRefreshing(true);
+        mAdapter.clear();
+        Map<String, Object> location = mMrtStationMap.get(name);
+        if (location != null) {
+            mLatitude = (Double) location.get("latitude");
+            mLongitude = (Double) location.get("longitude");
+            mAddress = name;
+            if (mLatitude != null && mLongitude != null) {
+                mLocationTv.setText("Fetching articles near " + mAddress);
+                getNearbyArticles(mLatitude, mLongitude, RADIUS, mAddress);
+            }
+        } else {
+            mSwipeRefreshLayout.setRefreshing(false);
+            mLocationTv.setText("Could not get location for " + name);
+        }
     }
 
     @Override

@@ -20,7 +20,12 @@
         app:showAsAction="never" />
     <item
         android:id="@+id/action_share_app"
-        android:orderInCategory="3"
+        android:orderInCategory="4"
         android:title="@string/action_share_app"
         app:showAsAction="never" />
+    <!--<item-->
+        <!--android:id="@+id/action_temp"-->
+        <!--android:orderInCategory="5"-->
+        <!--android:title="geofence"-->
+        <!--app:showAsAction="never" />-->
 </menu>

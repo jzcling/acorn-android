@@ -5,15 +5,22 @@ import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.preference.PreferenceActivity;
 import android.preference.PreferenceFragment;
-import android.preference.PreferenceManager;
 
+import androidx.annotation.NonNull;
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.app.AppCompatDelegate;
+import androidx.preference.PreferenceManager;
+import androidx.preference.SwitchPreferenceCompat;
 
+import android.util.Log;
 import android.view.MenuItem;
 
 import acorn.com.acorn_app.R;
 import acorn.com.acorn_app.ui.fragments.SettingsFragment;
+import acorn.com.acorn_app.utils.LocationPermissionsUtils;
+
+import static acorn.com.acorn_app.ui.fragments.SettingsFragment.locationPreference;
 
 /**
  * A {@link PreferenceActivity} that presents a set of application settings. On
@@ -30,10 +37,16 @@ public class SettingsActivity extends AppCompatActivity {
     private static final String TAG = "SettingsActivity";
     private int dayNightValue;
 
+    public static LocationPermissionsUtils mLocationPermissionsUtils;
+    private SharedPreferences mSharedPreferences;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
         dayNightValue = Integer.parseInt(prefs.getString(getString(R.string.pref_key_night_mode), "0"));
+
+        mLocationPermissionsUtils = new LocationPermissionsUtils(this);
+        mSharedPreferences = PreferenceManager.getDefaultSharedPreferences(this);
 
         AppCompatDelegate.setDefaultNightMode(dayNightValue);
         super.onCreate(savedInstanceState);
@@ -71,5 +84,42 @@ public class SettingsActivity extends AppCompatActivity {
     public void onBackPressed() {
         finish();
         super.onBackPressed();
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions,
+                                           @NonNull int[] grantResults) {
+        switch(requestCode) {
+            case LocationPermissionsUtils.LOCATION_PERMISSIONS_RC:
+                for (String perm : mLocationPermissionsUtils.permissionsToRequest) {
+                    if (!mLocationPermissionsUtils.hasPermission(perm)) {
+                        mLocationPermissionsUtils.permissionsRejected.add(perm);
+                    }
+                }
+
+                if (mLocationPermissionsUtils.permissionsRejected.size() > 0) {
+                    Log.d(TAG, "permissions rejected");
+                    if (shouldShowRequestPermissionRationale(mLocationPermissionsUtils.permissionsRejected.get(0))) {
+                        Log.d(TAG, "show rationale");
+                        new AlertDialog.Builder(this)
+                                .setMessage("Please enable locations permissions to receive recommendations near you.")
+                                .setPositiveButton("OK", (dialogInterface, i) ->
+                                        requestPermissions(mLocationPermissionsUtils.permissionsRejected
+                                                        .toArray(new String[mLocationPermissionsUtils.permissionsRejected.size()]),
+                                                LocationPermissionsUtils.LOCATION_PERMISSIONS_RC))
+                                .setNegativeButton("Cancel", (dialog, which) -> {
+                                    mSharedPreferences.edit()
+                                            .putBoolean(getString(R.string.pref_key_notif_location), false)
+                                            .apply();
+                                    if (locationPreference != null) {
+                                        locationPreference.performClick();
+                                    }
+                                }).create().show();
+                        return;
+                    }
+                }
+
+                break;
+        }
     }
 }

@@ -58,7 +58,10 @@ public class SplashActivity extends AppCompatActivity {
             }
         }
 
-        startActivity(new Intent(this, AcornActivity.class));
-        finish();
+        Handler handler = new Handler();
+        handler.postDelayed(() -> {
+            startActivity(new Intent(this, AcornActivity.class));
+            finish();
+        }, 2000);
     }
 }

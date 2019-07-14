@@ -59,8 +59,8 @@ public class RecArticlesJobService extends JobService {
             mExecutors.networkIO().execute(
                     () -> mDataSource.getThemeData(
                             () -> mDataSource.getRecommendedArticles(hitsRef,
-                                    () -> mExecutors.networkIO().execute(() -> {
-                                        sendRecArticlesNotification();
+                                    (articleList) -> mExecutors.networkIO().execute(() -> {
+                                        sendRecArticlesNotification(articleList);
                                         mDataSource.recordLastRecArticlesPushTime();
                                         jobFinished(params, true);
                                     })
@@ -78,13 +78,12 @@ public class RecArticlesJobService extends JobService {
         return true;
     }
 
-    private void sendRecArticlesNotification() {
+    private void sendRecArticlesNotification(List<Article> articleList) {
         final String GROUP_NAME = "recommendedArticles";
         final int ARTICLE_NOTIFICATION_ID = 9002;
         final int PENDINGINTENT_RC = 502;
         final String CHANNEL_ID = getString(R.string.article_notification_channel_id);
         final String CHANNEL_NAME = getString(R.string.article_notification_channel_name);
-        final List<Article> articleList = NetworkDataSource.mRecArticleList;
 
         SharedPreferences sharedPrefs = getSharedPreferences(getString(R.string.notif_pref_id), MODE_PRIVATE);
 
@@ -161,7 +160,8 @@ public class RecArticlesJobService extends JobService {
 
             NotificationCompat.Builder notificationBuilder =
                     new NotificationCompat.Builder(this, CHANNEL_ID)
-                            .setSmallIcon(R.drawable.ic_launcher)
+                            .setSmallIcon(R.drawable.ic_notif_acorn)
+                            .setColor(getColor(R.color.colorPrimary))
                             .setLargeIcon(bitmap)
                             .setContentTitle(article.getTitle())
                             .setContentText(contentText)
@@ -183,7 +183,8 @@ public class RecArticlesJobService extends JobService {
                         .setCategory(CATEGORY_RECOMMENDATION)
                         .setVisibility(VISIBILITY_PUBLIC)
                         .setStyle(inboxStyle)
-                        .setSmallIcon(R.drawable.ic_launcher)
+                        .setSmallIcon(R.drawable.ic_notif_acorn)
+                        .setColor(getColor(R.color.colorPrimary))
                         .setAutoCancel(true)
                         .setContentIntent(pendingIntent)
                         .setNumber(articleList.size());

@@ -1,6 +1,10 @@
 package acorn.com.acorn_app.ui.activities;
 
+import android.Manifest;
+import android.app.Dialog;
+import android.app.PendingIntent;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageInfo;
@@ -14,6 +18,7 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Parcelable;
 import android.preference.PreferenceManager;
+import android.provider.Settings;
 import android.text.Html;
 import android.text.Spannable;
 import android.util.Base64;
@@ -36,6 +41,7 @@ import androidx.appcompat.app.AppCompatDelegate;
 import androidx.appcompat.widget.Toolbar;
 import androidx.cardview.widget.CardView;
 import androidx.constraintlayout.widget.ConstraintLayout;
+import androidx.core.app.ActivityCompat;
 import androidx.core.view.GravityCompat;
 import androidx.core.view.MenuItemCompat;
 import androidx.drawerlayout.widget.DrawerLayout;
@@ -51,11 +57,18 @@ import com.crashlytics.android.Crashlytics;
 import com.firebase.ui.auth.AuthUI;
 import com.firebase.ui.auth.ErrorCodes;
 import com.firebase.ui.auth.IdpResponse;
+import com.google.android.gms.location.Geofence;
+import com.google.android.gms.location.GeofencingClient;
+import com.google.android.gms.location.GeofencingRequest;
+import com.google.android.gms.location.LocationServices;
+import com.google.android.gms.maps.model.LatLng;
+import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.Task;
 import com.google.android.gms.tasks.TaskCompletionSource;
 import com.google.android.gms.tasks.Tasks;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.android.material.navigation.NavigationView;
+import com.google.android.material.snackbar.Snackbar;
 import com.google.firebase.analytics.FirebaseAnalytics;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
@@ -80,6 +93,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import acorn.com.acorn_app.BuildConfig;
 import acorn.com.acorn_app.R;
 import acorn.com.acorn_app.data.ArticleListLiveData;
 import acorn.com.acorn_app.data.ArticleRoomDatabase;
@@ -88,6 +102,8 @@ import acorn.com.acorn_app.models.Article;
 import acorn.com.acorn_app.models.FbQuery;
 import acorn.com.acorn_app.models.PremiumStatus;
 import acorn.com.acorn_app.models.User;
+import acorn.com.acorn_app.services.GeofenceBroadcastReceiver;
+import acorn.com.acorn_app.services.GeofenceTransitionsJobIntentService;
 import acorn.com.acorn_app.ui.adapters.ArticleAdapter;
 import acorn.com.acorn_app.ui.adapters.ArticleViewHolder;
 import acorn.com.acorn_app.ui.fragments.NotificationsDialogFragment;
@@ -96,8 +112,12 @@ import acorn.com.acorn_app.ui.viewModels.ArticleViewModelFactory;
 import acorn.com.acorn_app.ui.viewModels.NotificationViewModel;
 import acorn.com.acorn_app.ui.views.CollapsibleMenuItemView;
 import acorn.com.acorn_app.utils.AppExecutors;
+import acorn.com.acorn_app.utils.GeofenceConstants;
+import acorn.com.acorn_app.utils.GeofenceErrorMessages;
+import acorn.com.acorn_app.utils.GeofenceUtils;
 import acorn.com.acorn_app.utils.InjectorUtils;
 import acorn.com.acorn_app.utils.InviteUtils;
+import acorn.com.acorn_app.utils.LocationPermissionsUtils;
 import acorn.com.acorn_app.utils.UiUtils;
 import smartdevelop.ir.eram.showcaseviewlib.GuideView;
 import smartdevelop.ir.eram.showcaseviewlib.config.DismissType;
@@ -110,7 +130,7 @@ import static acorn.com.acorn_app.utils.UiUtils.createToast;
 
 public class AcornActivity extends AppCompatActivity
         implements NavigationView.OnNavigationItemSelectedListener,
-        ArticleAdapter.OnLongClickListener {
+        ArticleAdapter.OnLongClickListener, OnCompleteListener<Void> {
 
     private static final String TAG = "AcornActivity";
 
@@ -214,6 +234,12 @@ public class AcornActivity extends AppCompatActivity
     public static Searcher mSearcher;
     private static final String ALGOLIA_APP_ID = "O96PPLSF19";
     private static final String ALGOLIA_INDEX_NAME = "article";
+
+    // Location Permissions
+    private LocationPermissionsUtils mLocationPermissionsUtils;
+
+    // Geofence
+    private GeofenceUtils mGeofenceUtils;
 
     private Bundle mSavedInstanceState;
 
@@ -356,6 +382,11 @@ public class AcornActivity extends AppCompatActivity
 
         NavigationView navigationView = (NavigationView) findViewById(R.id.nav_view);
         navigationView.setNavigationItemSelectedListener(this);
+
+        // Geofence
+        mLocationPermissionsUtils = new LocationPermissionsUtils(this);
+        mGeofenceUtils = GeofenceUtils.getInstance(this, mDataSource, this);
+        Log.d(TAG, this.getLocalClassName());
     }
 
     @Override
@@ -413,14 +444,6 @@ public class AcornActivity extends AppCompatActivity
             mUserStatusTextView.setText("");
         }
 
-//        if (mUserPremiumStatus != null) {
-//            Long end = mUserPremiumStatus.get("end");
-//            if (end != null && end > (new Date()).getTime()) {
-//                mUserPremiumStatusTextView.setText("Premium");
-//                mUserPremiumStatusCardView.setCardBackgroundColor(getColor(R.color.colorPrimary));
-//            }
-//        }
-
         return true;
     }
 
@@ -443,6 +466,7 @@ public class AcornActivity extends AppCompatActivity
                 new NotificationsDialogFragment().show(getSupportFragmentManager(), "NotificationsDialog");
                 return true;
             case R.id.action_settings:
+                mGeofenceUtils.mPreChangeValue = mGeofenceUtils.getGeofencesAdded();
                 startActivityForResult(new Intent(this, SettingsActivity.class), RC_PREF);
                 return true;
             case R.id.action_share_app:
@@ -456,6 +480,11 @@ public class AcornActivity extends AppCompatActivity
                     startActivity(Intent.createChooser(shareIntent, "Share app with"));
                 });
                 return true;
+//            case R.id.action_temp:
+////                mPendingGeofenceTask = mSharedPreferences.getBoolean(GeofenceConstants.GEOFENCES_ADDED_KEY, false) ?
+////                        PendingGeofenceTask.REMOVE : PendingGeofenceTask.ADD;
+////                performPendingGeofenceTask();
+//                return true;
         }
 
         return super.onOptionsItemSelected(item);
@@ -484,7 +513,7 @@ public class AcornActivity extends AppCompatActivity
                 break;
             case R.id.nav_nearby:
                 if (mUserPremiumStatus == null || mUserPremiumStatusTextView.getText() != "Premium") {
-                    createToast(this, "Refer a friend using the Share app invite " +
+                    createToast(this, "Refer a friend using the Share App Invite " +
                             "function on the top right of the main page!", Toast.LENGTH_LONG);
                 } else {
                     Intent nearbyArticlesIntent = new Intent(this, NearbyActivity.class);
@@ -502,6 +531,17 @@ public class AcornActivity extends AppCompatActivity
                 break;
             case R.id.nav_settings:
                 startActivityForResult(new Intent(this, SettingsActivity.class), RC_PREF);
+                break;
+            case R.id.nav_invite:
+                InviteUtils.createShortDynamicLink(mUid, (link) -> {
+                    Intent shareIntent = new Intent();
+                    shareIntent.setType("text/plain");
+                    shareIntent.putExtra(Intent.EXTRA_TEXT,
+                            "Don't miss out on the latest news, deals, events and life hacks! " +
+                                    "Download Acorn: Your Favourite Blogs in a Nutshell now! " + link);
+                    shareIntent.setAction(Intent.ACTION_SEND);
+                    startActivity(Intent.createChooser(shareIntent, "Share app with"));
+                });
                 break;
             case R.id.nav_login:
                 launchLogin();
@@ -616,6 +656,29 @@ public class AcornActivity extends AppCompatActivity
                         getString(R.string.pref_key_notif_saved_articles_reminder), false);
                 Log.d(TAG, "savedArticlesReminderNotifValue: " + savedArticlesReminderNotifValue);
                 mDataSource.ToggleNotifications(SAVED_ARTICLES_REMINDER_NOTIFICATION, savedArticlesReminderNotifValue);
+
+                boolean locationNotifValue = mGeofenceUtils.getGeofencesAdded();
+                Log.d(TAG, "locationNotifValue: " + locationNotifValue);
+                if (mGeofenceUtils.mPreChangeValue != locationNotifValue) {
+                    if (locationNotifValue) {
+                        if (!mLocationPermissionsUtils.CheckPlayServices()) {
+                            createToast(this, "Please update Google Play Services to enable this feature", Toast.LENGTH_SHORT);
+                            mSharedPreferences.edit()
+                                    .putBoolean(getString(R.string.pref_key_notif_location), mGeofenceUtils.mPreChangeValue)
+                                    .apply();
+                            return;
+                        }
+//                        mLocationPermissionsUtils.requestLocationPermissions(() -> {
+                            mLocationPermissionsUtils.checkLocationSettings(() -> {
+                                mGeofenceUtils.mPendingGeofenceTask = GeofenceUtils.PendingGeofenceTask.ADD;
+                                mGeofenceUtils.performPendingGeofenceTask();
+                            });
+//                        });
+                    } else {
+                        mGeofenceUtils.mPendingGeofenceTask = GeofenceUtils.PendingGeofenceTask.REMOVE;
+                        mGeofenceUtils.performPendingGeofenceTask();
+                    }
+                }
             }
         } else if (requestCode == RC_THEME_PREF) {
             if (resultCode == RESULT_OK) {
@@ -677,7 +740,6 @@ public class AcornActivity extends AppCompatActivity
         if (mObservedList.size() > 0) {
             for (ArticleListLiveData liveData : mObservedList.keySet()) {
                 liveData.removeObserver(mObservedList.get(liveData));
-
             }
             mObservedList.clear();
         }
@@ -710,13 +772,13 @@ public class AcornActivity extends AppCompatActivity
                         String lastSegment = deepLink.getLastPathSegment();
                         if (lastSegment != null && lastSegment.equals("article")) {
                             String articleId = deepLink.getQueryParameter("id");
-                            String sharerId = deepLink.getQueryParameter("sharerId");
+                            mReferredBy = deepLink.getQueryParameter("sharerId");
                             Intent webviewActivity = new Intent(this, WebViewActivity.class);
                             webviewActivity.putExtra("id", articleId);
                             startActivity(webviewActivity);
                         } else {
                             mReferredBy = deepLink.getQueryParameter("referrer");
-                            Log.d(TAG, deepLink.toString() + ", referrer: " + mReferredBy);
+                            Log.d(TAG, "handleDynamicLink: " + deepLink.toString() + ", referrer: " + mReferredBy);
                         }
                     }
                 })
@@ -836,15 +898,16 @@ public class AcornActivity extends AppCompatActivity
                 AuthUI.getInstance()
                         .createSignInIntentBuilder()
                         .setAvailableProviders(Arrays.asList(
-                                new AuthUI.IdpConfig.EmailBuilder().build(),
                                 new AuthUI.IdpConfig.GoogleBuilder().build(),
-                                new AuthUI.IdpConfig.FacebookBuilder().build()))
+                                new AuthUI.IdpConfig.FacebookBuilder().build(),
+                                new AuthUI.IdpConfig.EmailBuilder().build()))
                         .setLogo(R.drawable.ic_acorn)
                         .build(),
                 RC_SIGN_IN);
     }
 
     private void logout() {
+        mReferredBy = null;
         AuthUI.getInstance()
                 .signOut(this)
                 .addOnCompleteListener(task -> {
@@ -931,26 +994,6 @@ public class AcornActivity extends AppCompatActivity
                     Intent editThemeIntent = new Intent(AcornActivity.this, ThemeSelectionActivity.class);
                     editThemeIntent.putStringArrayListExtra("themePrefs", mUserThemePrefs);
                     startActivityForResult(editThemeIntent, RC_THEME_PREF);
-                    buildThemeKeyAndFilter(mUserThemePrefs);
-
-                    if (mSavedInstanceState != null) {
-                        mQuery = mSavedInstanceState.getParcelable("Query");
-                        if (mQuery == null) {
-                            String hitsRef = SEARCH_REF + "/" + mThemeSearchKey + "/hits";
-                            mQuery = new FbQuery(3, hitsRef, "trendingIndex");
-                        }
-                    } else {
-                        String hitsRef = SEARCH_REF + "/" + mThemeSearchKey + "/hits";
-                        mQuery = new FbQuery(3, hitsRef, "trendingIndex");
-                    }
-
-                    getThemeData();
-
-                    // set up search button
-                    mDataSource.setupAlgoliaClient(() -> {
-                        mSearcher = Searcher.create(ALGOLIA_APP_ID, ALGOLIA_API_KEY, ALGOLIA_INDEX_NAME);
-                        if (mSearchButton != null) mSearchButton.setEnabled(true);
-                    });
 
                     // Set up Crashlytics identifier
                     Crashlytics.setUserIdentifier(mUid);
@@ -1073,6 +1116,10 @@ public class AcornActivity extends AppCompatActivity
 
                 // put uid in sharedPrefs
                 mSharedPreferences.edit().putString("uid", mUid).apply();
+
+                // get locations and set up mrt geofences
+                if (!mSharedPreferences.getBoolean(getString(R.string.pref_key_loc_permissions_asked), false))
+                    showLocationPermissionsRequest();
 
                 // subscribe to app topic for manual articles push
                 FirebaseMessaging.getInstance().subscribeToTopic("acorn");
@@ -1375,23 +1422,121 @@ public class AcornActivity extends AppCompatActivity
 
     private void checkReferral() {
         // check to see if user opened an invite link
-        Intent intent = getIntent();
-        String appLinkAction = intent.getAction();
-        Uri appLinkData = intent.getData();
-        if (Intent.ACTION_VIEW.equals(appLinkAction) && appLinkData != null) {
-            FirebaseDynamicLinks.getInstance().getDynamicLink(intent)
-                    .addOnSuccessListener(this, pendingDynamicLinkData -> {
-                        Uri deepLink;
-                        if (pendingDynamicLinkData != null) {
-                            deepLink = pendingDynamicLinkData.getLink();
-                            mReferredBy = deepLink.getQueryParameter("referrer");
-                            Log.d(TAG, deepLink.toString() + ", referrer: " + mReferredBy);
-                            mDataSource.setReferrer(mFirebaseUser.getUid(), mReferredBy);
-                        }
-                    })
-                    .addOnFailureListener(this, e -> {
-                        Log.d(TAG, "Failed to get deep link: " + e);
-                    });
+//        Intent intent = getIntent();
+//        String appLinkAction = intent.getAction();
+//        Uri appLinkData = intent.getData();
+//        if (Intent.ACTION_VIEW.equals(appLinkAction) && appLinkData != null) {
+//            FirebaseDynamicLinks.getInstance().getDynamicLink(intent)
+//                    .addOnSuccessListener(this, pendingDynamicLinkData -> {
+//                        Uri deepLink;
+//                        if (pendingDynamicLinkData != null) {
+//                            deepLink = pendingDynamicLinkData.getLink();
+//                            mReferredBy = deepLink.getQueryParameter("referrer");
+//                            Log.d(TAG, "checkReferral: " + deepLink.toString() + ", user: " +
+//                                    mFirebaseUser.getUid() + ", referrer: " + mReferredBy);
+//                            mDataSource.setReferrer(mFirebaseUser.getUid(), mReferredBy);
+//                        }
+//                    })
+//                    .addOnFailureListener(this, e -> {
+//                        Log.d(TAG, "Failed to get deep link: " + e);
+//                    });
+//        }
+
+        if (mReferredBy != null) {
+            Log.d(TAG, "checkReferral: user: " + mFirebaseUser.getUid() + ", referrer: " + mReferredBy);
+            mDataSource.setReferrer(mFirebaseUser.getUid(), mReferredBy);
         }
     }
+
+    @Override
+    public void onComplete(@NonNull Task<Void> task) {
+        mGeofenceUtils.mPendingGeofenceTask = GeofenceUtils.PendingGeofenceTask.NONE;
+        if (task.isSuccessful()) {
+            mGeofenceUtils.updateGeofencesAdded(!mGeofenceUtils.mPreChangeValue);
+
+            int messageId = mGeofenceUtils.getGeofencesAdded() ? R.string.geofences_added :
+                    R.string.geofences_removed;
+            Log.d(TAG, getString(messageId));
+        } else {
+            mSharedPreferences.edit()
+                    .putBoolean(getString(R.string.pref_key_notif_location), mGeofenceUtils.mPreChangeValue)
+                    .apply();
+            // Get the status code for the error and log it using a user-friendly message.
+            String errorMessage = GeofenceErrorMessages.getErrorString(this, task.getException());
+            Log.w(TAG, errorMessage);
+        }
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions,
+                                           @NonNull int[] grantResults) {
+        switch(requestCode) {
+            case LocationPermissionsUtils.LOCATION_PERMISSIONS_RC:
+                for (String perm : mLocationPermissionsUtils.permissionsToRequest) {
+                    if (!mLocationPermissionsUtils.hasPermission(perm)) {
+                        mLocationPermissionsUtils.permissionsRejected.add(perm);
+                    }
+                }
+
+                if (mLocationPermissionsUtils.permissionsRejected.size() > 0) {
+                    if (shouldShowRequestPermissionRationale(mLocationPermissionsUtils.permissionsRejected.get(0))) {
+                        new AlertDialog.Builder(this)
+                                .setMessage("Please enable locations permissions to receive recommendations near you.")
+                                .setPositiveButton("OK", (dialogInterface, i) ->
+                                        requestPermissions(mLocationPermissionsUtils.permissionsRejected
+                                                .toArray(new String[mLocationPermissionsUtils.permissionsRejected.size()]),
+                                                LocationPermissionsUtils.LOCATION_PERMISSIONS_RC))
+                                .setNegativeButton("Cancel", (dialog, which) -> {
+                                    mSharedPreferences.edit()
+                                            .putBoolean(getString(R.string.pref_key_notif_location), false)
+                                            .apply();
+                                }).create().show();
+                        return;
+                    }
+                }
+                mSharedPreferences.edit()
+                        .putBoolean(getString(R.string.pref_key_notif_location), !mGeofenceUtils.mPreChangeValue)
+                        .apply();
+
+                mGeofenceUtils.mPreChangeValue = false;
+                mGeofenceUtils.mPendingGeofenceTask = GeofenceUtils.PendingGeofenceTask.ADD;
+                mGeofenceUtils.performPendingGeofenceTask();
+
+                break;
+        }
+    }
+
+    private void showLocationPermissionsRequest() {
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle("Location Based Notifications");
+        builder.setMessage("Would you like to receive notifications recommending deals, events and restaurants near you?");
+        builder.setNegativeButton("No", (dialog, which) -> {
+            Log.d(TAG, "geofence no selected");
+            mSharedPreferences.edit()
+                    .putBoolean(getString(R.string.pref_key_notif_location), false)
+                    .apply();
+            dialog.dismiss();
+        });
+        builder.setPositiveButton("Yes", ((dialog, which) -> {
+            Log.d(TAG, "geofence yes selected");
+            if (!mLocationPermissionsUtils.CheckPlayServices()) {
+                createToast(this, "Please update Google Play Services to enable this feature", Toast.LENGTH_SHORT);
+                return;
+            }
+            mLocationPermissionsUtils.requestLocationPermissions(() -> {
+                mLocationPermissionsUtils.checkLocationSettings(() -> {
+                    mGeofenceUtils.mPendingGeofenceTask = GeofenceUtils.PendingGeofenceTask.ADD;
+                    mGeofenceUtils.performPendingGeofenceTask();
+                });
+            });
+        }));
+
+        builder.setOnDismissListener(dialog -> mSharedPreferences.edit()
+                .putBoolean(getString(R.string.pref_key_loc_permissions_asked), true)
+                .apply());
+
+        AlertDialog dialog = builder.create();
+        dialog.show();
+    }
+
 }

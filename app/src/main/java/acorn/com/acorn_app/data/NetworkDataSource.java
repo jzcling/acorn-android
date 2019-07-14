@@ -67,12 +67,14 @@ import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
+import java.util.stream.Collectors;
 
 import acorn.com.acorn_app.R;
 import acorn.com.acorn_app.models.Article;
@@ -108,9 +110,6 @@ public class NetworkDataSource {
     public static final String YOUTUBE_API_KEY_REF = "youtubeKey";
     public static final String MAPS_API_KEY_REF = "mapsKey";
     public static final String REPORT_REF = "reported";
-
-    // Recommended articles
-    public static List<Article> mRecArticleList;
 
     // Saved articles lists
     private List<String> mSavedArticlesIdList = new ArrayList<>();
@@ -179,6 +178,11 @@ public class NetworkDataSource {
     }
 
     private void filterNearbyArticles(Map<String, Long> articleIds, Consumer<List<Article>> onComplete) {
+        filterNearbyArticles(articleIds, false, 50, onComplete);
+    }
+
+    private void filterNearbyArticles(Map<String, Long> articleIds, boolean todayOnly, int limit,
+                                      Consumer<List<Article>> onComplete) {
         if (articleIds.size() == 0) {
             onComplete.accept(new ArrayList<>());
             return;
@@ -186,22 +190,43 @@ public class NetworkDataSource {
 
         List<Article> articles = new ArrayList<>();
 
-        List<String> datedArticleIds = new ArrayList<>();
+        Map<String, Long> datedArticleIds = new HashMap<>();
         List<String> undatedArticleIds = new ArrayList<>();
         for (Map.Entry<String, Long> entry : articleIds.entrySet()) {
             if (entry.getValue() > 1) {
-                datedArticleIds.add(entry.getKey());
+                long now = (new Date()).getTime();
+                long absDiff = Math.abs(now - entry.getValue());
+                if (todayOnly) {
+                    try {
+                        long thisMidnight = DateUtils.getThisMidnight();
+                        long nextMidnight = DateUtils.getNextMidnight();
+                        if (entry.getValue() >= thisMidnight && entry.getValue() < nextMidnight) {
+                            datedArticleIds.put(entry.getKey(), absDiff);
+                        }
+                    } catch (Exception e) {
+                        Log.d(TAG, e.getLocalizedMessage());
+                    }
+                } else {
+                    datedArticleIds.put(entry.getKey(), absDiff);
+                }
             } else {
                 undatedArticleIds.add(entry.getKey());
             }
         }
 
+        // sort datedArticles by proximity to today
+        Map<String, Long> sortedDatedArticles = datedArticleIds.entrySet().stream()
+                .sorted(Map.Entry.comparingByValue())
+                .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue, (e1, e2) -> e2, LinkedHashMap::new));
+        Log.d(TAG, sortedDatedArticles.toString());
+        List<String> sortedDatedArticleIds = new ArrayList<>(sortedDatedArticles.keySet());
+
         // dated articles will go on top, undated articles will be randomised
         Collections.shuffle(undatedArticleIds);
-        List<String> orderedArticleIds = new ArrayList<>(datedArticleIds);
+        List<String> orderedArticleIds = new ArrayList<>(sortedDatedArticleIds);
         orderedArticleIds.addAll(undatedArticleIds);
 
-        int articleLimit = Math.min(50, articleIds.size());
+        int articleLimit = Math.min(limit, articleIds.size());
         List<String> doneList = new ArrayList<>();
         for (int i = 0; i < articleLimit; i++) {
             String articleId = orderedArticleIds.get(i);
@@ -236,6 +261,11 @@ public class NetworkDataSource {
 
     public void getNearbyArticles(double lat, double lng, double radius,
                                   Consumer<List<Article>> onComplete) {
+        getNearbyArticles(lat, lng, radius, false, 50, onComplete);
+    }
+
+    public void getNearbyArticles(double lat, double lng, double radius, boolean todayOnly,
+                                  int limit, Consumer<List<Article>> onComplete) {
         // get sphere cap centred at location
         S2Point point = S2LatLng.fromDegrees(lat, lng).toPoint();
         S1Angle angle = S1Angle.radians(radius / S2LatLng.EARTH_RADIUS_METERS);
@@ -244,7 +274,7 @@ public class NetworkDataSource {
         // get covering cell ids
         S2RegionCoverer coverer = new S2RegionCoverer();
         coverer.setMaxCells(5);
-        S2CellUnion covering = coverer.getCovering(cap);
+        S2CellUnion covering = coverer.getInteriorCovering(cap);
 
         // get all addresses and associated articles in covering cells
         Map<String, Long> articleIds = new HashMap<>();
@@ -266,14 +296,14 @@ public class NetworkDataSource {
                             if (address != null) {
                                 for (String id : address.article.keySet()) {
                                     Long reminderDate = address.article.get(id);
-                                    Long cutoff = DateUtils.getThirtyDaysAgoMidnight();
+                                    Long cutoff = DateUtils.getFourteenDaysAgoMidnight();
                                     if (reminderDate != null) {
                                         if ((cutoff != null && reminderDate > cutoff) || reminderDate == 1L) {
                                             /*
                                             these are all the articles with no reminderDate or
-                                            reminderDate less than thirty dates later,
-                                            i.e. first date appearing in title is before 30 days
-                                            from now. this is so we avoid removing articles with
+                                            reminderDate greater than thirty dates ago,
+                                            i.e. first date appearing in title is greater than 30 days
+                                            ago. this is so we avoid removing articles with
                                             dates from x to y where reminder date is x - 1 but
                                             event is still valid as y has not reached. the implication
                                             is that there will be deals/events that expired up to
@@ -282,7 +312,7 @@ public class NetworkDataSource {
                                             articleIds.put(id, reminderDate);
                                         } else {
                                             // remove all events that expired more than 30 days ago
-                                            Log.d(TAG, "reminderDate: " + reminderDate);
+                                            Log.d(TAG, "addressId: " + address.objectID + ", reminderDate: " + reminderDate);
                                             mDatabaseReference.child(ADDRESS_REF).child(address.objectID)
                                                     .child("article").child(id).removeValue();
                                         }
@@ -296,7 +326,7 @@ public class NetworkDataSource {
 
                     if (doneList.size() >= covering.size()) {
                         Log.d(TAG, "articleIds size: " + articleIds.size());
-                        filterNearbyArticles(articleIds, onComplete);
+                        filterNearbyArticles(articleIds, todayOnly, limit, onComplete);
                     }
                 }
 
@@ -736,10 +766,10 @@ public class NetworkDataSource {
 
 
     // Recommended Articles
-    public void getRecommendedArticles(String hitsRef, Runnable onSuccess) {
+    public void getRecommendedArticles(String hitsRef, Consumer<List<Article>> onSuccess) {
         int limit = 3;
         mExecutors.networkIO().execute(() -> {
-            mRecArticleList = new ArrayList<>();
+            List<Article> articleList = new ArrayList<>();
             Query query = mDatabaseReference.child(hitsRef)
                     .orderByChild("trendingIndex")
                     .limitToFirst(limit);
@@ -747,9 +777,9 @@ public class NetworkDataSource {
                 @Override
                 public void onChildAdded(@NonNull DataSnapshot dataSnapshot, @Nullable String s) {
                     Article article = dataSnapshot.getValue(Article.class);
-                    mRecArticleList.add(article);
-                    if (mRecArticleList.size() == limit) {
-                        onSuccess.run();
+                    articleList.add(article);
+                    if (articleList.size() == limit) {
+                        onSuccess.accept(articleList);
                         query.removeEventListener(this);
                     }
                 }
@@ -874,10 +904,37 @@ public class NetworkDataSource {
     }
 
 
+    public void getMrtStationByName(String locale, Consumer<Map<String, Map<String, Object>>> onComplete) {
+        String name = locale + " MRT Station";
+        Map<String, Map<String, Object>> mrtStationMap = new HashMap<>();
+        Query mrtRef = mDatabaseReference.child("mrtStation").orderByChild("stationName").equalTo(name);
+        mrtRef.addListenerForSingleValueEvent(new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+                if (dataSnapshot.exists()) {
+                    for (DataSnapshot snap : dataSnapshot.getChildren()) {
+                        MrtStation station = snap.getValue(MrtStation.class);
+                        if (station != null && mrtStationMap.get(station.stationLocale) == null) {
+                            Map<String, Object> location = new HashMap<>();
+                            location.put("latitude", station.latitude);
+                            location.put("longitude", station.longitude);
+                            location.put("geofence", station.geofence);
+                            mrtStationMap.put(station.stationLocale, location);
+                        }
+                    }
+                    onComplete.accept(mrtStationMap);
+                }
+            }
+
+            @Override
+            public void onCancelled(@NonNull DatabaseError databaseError) {}
+        });
+    }
+
     // get mrt stations list
-    public void getMrtStations(Consumer<Map<String, Map<String, Double>>> onComplete,
+    public void getMrtStations(Consumer<Map<String, Map<String, Object>>> onComplete,
                                @Nullable Consumer<DatabaseError> onError) {
-        Map<String, Map<String, Double>> mrtStationMap = new HashMap<>();
+        Map<String, Map<String, Object>> mrtStationMap = new HashMap<>();
         Query mrtRef = mDatabaseReference.child("mrtStation").orderByChild("type").equalTo("MRT");
         mrtRef.addListenerForSingleValueEvent(new ValueEventListener() {
             @Override
@@ -886,9 +943,10 @@ public class NetworkDataSource {
                     for (DataSnapshot snap : dataSnapshot.getChildren()) {
                         MrtStation station = snap.getValue(MrtStation.class);
                         if (station != null && mrtStationMap.get(station.stationLocale) == null) {
-                            Map<String, Double> location = new HashMap<>();
+                            Map<String, Object> location = new HashMap<>();
                             location.put("latitude", station.latitude);
                             location.put("longitude", station.longitude);
+                            location.put("geofence", station.geofence);
                             mrtStationMap.put(station.stationLocale, location);
                         }
                     }
@@ -898,7 +956,9 @@ public class NetworkDataSource {
 
             @Override
             public void onCancelled(@NonNull DatabaseError databaseError) {
-                onError.accept(databaseError);
+                if (onError != null) {
+                    onError.accept(databaseError);
+                }
             }
         });
     }
@@ -1243,12 +1303,7 @@ public class NetworkDataSource {
         Map<String, Object> updates = new HashMap<>();
         updates.put("/" + uid + "/referredBy", referrer);
 
-        Long premiumStart = (new Date()).getTime();
-        Long premiumEnd = premiumStart + (90L * 24L * 60L * 60L * 1000L);
-        updates.put("/" + referrer + "/referredUsers/" + uid, premiumStart);
-        updates.put("/" + referrer + "/premiumStatus/start", premiumStart);
-        updates.put("/" + referrer + "/premiumStatus/end", premiumEnd);
-
+        Log.d(TAG, "updates: " + updates);
         mDatabaseReference.child(USER_REF).updateChildren(updates);
     }
 }
