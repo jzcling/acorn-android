@@ -22,13 +22,16 @@ import android.provider.Settings;
 import android.text.Html;
 import android.text.Spannable;
 import android.util.Base64;
+import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.Display;
+import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -1511,8 +1514,10 @@ public class AcornActivity extends AppCompatActivity
 
     private void showLocationPermissionsRequest() {
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
-        builder.setTitle("Location Based Notifications");
-        builder.setMessage("Would you like to receive notifications recommending deals, events and restaurants near you?");
+        LayoutInflater inflater = getLayoutInflater();
+        final View view = inflater.inflate(R.layout.dialog_location_request, null);
+
+        builder.setView(view);
         builder.setNegativeButton("No", (dialog, which) -> {
             Log.d(TAG, "geofence no selected");
             mSharedPreferences.edit()
@@ -1539,7 +1544,15 @@ public class AcornActivity extends AppCompatActivity
                 .apply());
 
         AlertDialog dialog = builder.create();
+
+        dialog.setOnShowListener(dialog1 -> {
+            ImageView imageView = view.findViewById(R.id.dialog_location_request_iv);
+            LinearLayout rootView = view.findViewById(R.id.dialog_location_request_root);
+            imageView.getLayoutParams().width = rootView.getWidth();
+            imageView.getLayoutParams().height = Math.round(1.243f * rootView.getWidth());
+        });
         dialog.show();
+
     }
 
 }

@@ -11,6 +11,7 @@ import android.view.View;
 import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.EditText;
+import android.widget.ProgressBar;
 
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AlertDialog;
@@ -71,6 +72,8 @@ public class SavedArticlesActivity extends AppCompatActivity
     private String mSearchText;
     private List<String> mThemeFilterList = new ArrayList<>();
 
+    private ProgressBar mProgressBar;
+
     @Override protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_saved_articles);
@@ -88,14 +91,14 @@ public class SavedArticlesActivity extends AppCompatActivity
         mRecyclerView.setLayoutManager(mLinearLayoutManager);
         mAdapter = new SavedArticleAdapter(this);
         mRecyclerView.setAdapter(mAdapter);
-        mRecyclerView.addOnScrollListener(new RecyclerView.OnScrollListener() {
-            @Override
-            public void onScrolled(RecyclerView recyclerView, int dx, int dy) {
-                if (dy > 0) {
-                    loadMoreArticles();
-                }
-            }
-        });
+//        mRecyclerView.addOnScrollListener(new RecyclerView.OnScrollListener() {
+//            @Override
+//            public void onScrolled(RecyclerView recyclerView, int dx, int dy) {
+//                if (dy > 0) {
+//                    loadMoreArticles();
+//                }
+//            }
+//        });
 
         // Set up swipe mechanism
         ItemTouchHelper.SimpleCallback itemTouchHelperCallback =
@@ -108,6 +111,8 @@ public class SavedArticlesActivity extends AppCompatActivity
         for (int i = 0; i < themeList.length; i++) {
             checkedStatus[i] = false;
         }
+
+        mProgressBar = findViewById(R.id.saved_articles_pb);
 
         setUpInitialViewModelObserver();
     }
@@ -242,6 +247,7 @@ public class SavedArticlesActivity extends AppCompatActivity
                     }
                 }
                 mAdapter.setList(currentList, mThemeFilterList, mSearchText);
+                mProgressBar.setVisibility(View.GONE);
             }
         };
         articleListLD.observeForever(articleListObserver);

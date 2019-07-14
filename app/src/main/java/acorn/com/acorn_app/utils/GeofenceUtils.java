@@ -119,17 +119,17 @@ public class GeofenceUtils {
                 }
             }
 
-            mGeofenceList.add(new Geofence.Builder()
-                .setRequestId("One-north")
-                .setCircularRegion(
-                        1.304136,
-                        103.901394,
-                        1000
-                )
-                .setExpirationDuration(Geofence.NEVER_EXPIRE)
-                .setTransitionTypes(Geofence.GEOFENCE_TRANSITION_ENTER | Geofence.GEOFENCE_TRANSITION_DWELL)
-                .setLoiteringDelay(10 * 60 * 1000)
-                .build());
+//            mGeofenceList.add(new Geofence.Builder()
+//                .setRequestId("One-north")
+//                .setCircularRegion(
+//                        1.304136,
+//                        103.901394,
+//                        1000
+//                )
+//                .setExpirationDuration(Geofence.NEVER_EXPIRE)
+//                .setTransitionTypes(Geofence.GEOFENCE_TRANSITION_ENTER | Geofence.GEOFENCE_TRANSITION_DWELL)
+//                .setLoiteringDelay(10 * 60 * 1000)
+//                .build());
 
             Log.d(TAG, "Geofence List: " + mGeofenceList.size() + ", " + mGeofenceList.toString());
             onComplete.run();

@@ -39,7 +39,7 @@ public class FbQuery implements Parcelable {
         } else if (state == 1) { // Trending
             orderByChild = "trendingIndex";
         } else if (state == 2) { // Saved articles
-            limit = 20;
+            limit = 200;
             orderByChild = "trendingIndex";
         } else if (state == 4) { // Deals
             orderByChild = "trendingIndex";
