@@ -109,4 +109,18 @@ public class DateUtils {
         }
         return null;
     }
+
+    public static Long getWeekAgoMidnight() {
+        if (getThisMidnight() != null) {
+            return (getThisMidnight() - (7L * 24L * 60L * 60L * 1000L));
+        }
+        return null;
+    }
+
+    public static Long getWeekLaterMidnight() {
+        if (getThisMidnight() != null) {
+            return (getThisMidnight() + (7L * 24L * 60L * 60L * 1000L));
+        }
+        return null;
+    }
 }

@@ -42,6 +42,10 @@ import com.firebase.jobdispatcher.Job;
 import com.firebase.jobdispatcher.Lifetime;
 import com.firebase.jobdispatcher.RetryStrategy;
 import com.firebase.jobdispatcher.Trigger;
+import com.google.android.gms.tasks.OnCompleteListener;
+import com.google.android.gms.tasks.Task;
+import com.google.android.gms.tasks.TaskCompletionSource;
+import com.google.android.gms.tasks.Tasks;
 import com.google.common.geometry.S1Angle;
 import com.google.common.geometry.S2Cap;
 import com.google.common.geometry.S2CellId;
@@ -87,7 +91,6 @@ import acorn.com.acorn_app.services.RecArticlesJobService;
 import acorn.com.acorn_app.services.RecDealsJobService;
 import acorn.com.acorn_app.utils.AppExecutors;
 import acorn.com.acorn_app.utils.HtmlUtils;
-import bolts.TaskCompletionSource;
 
 import static acorn.com.acorn_app.ui.activities.AcornActivity.mUid;
 
@@ -181,7 +184,7 @@ public class NetworkDataSource {
         filterNearbyArticles(articleIds, false, 50, onComplete);
     }
 
-    private void filterNearbyArticles(Map<String, Long> articleIds, boolean todayOnly, int limit,
+    private void filterNearbyArticles(Map<String, Long> articleIds, boolean weekOnly, int limit,
                                       Consumer<List<Article>> onComplete) {
         if (articleIds.size() == 0) {
             onComplete.accept(new ArrayList<>());
@@ -196,11 +199,11 @@ public class NetworkDataSource {
             if (entry.getValue() > 1) {
                 long now = (new Date()).getTime();
                 long absDiff = Math.abs(now - entry.getValue());
-                if (todayOnly) {
+                if (weekOnly) {
                     try {
-                        long thisMidnight = DateUtils.getThisMidnight();
-                        long nextMidnight = DateUtils.getNextMidnight();
-                        if (entry.getValue() >= thisMidnight && entry.getValue() < nextMidnight) {
+                        long weekAgoMidnight = DateUtils.getWeekAgoMidnight();
+                        long weekLaterMidnight = DateUtils.getWeekLaterMidnight();
+                        if (entry.getValue() >= weekAgoMidnight && entry.getValue() < weekLaterMidnight) {
                             datedArticleIds.put(entry.getKey(), absDiff);
                         }
                     } catch (Exception e) {
@@ -1148,62 +1151,6 @@ public class NetworkDataSource {
         });
     }
 
-    public void recordArticleOpenDetails(String articleId, String mainTheme) {
-        Long timeNow = new Date().getTime();
-        DatabaseReference articleRef = FirebaseDatabase.getInstance()
-                .getReference("article/"+articleId);
-
-        articleRef.runTransaction(new Transaction.Handler() {
-            @NonNull
-            @Override
-            public Transaction.Result doTransaction(@NonNull MutableData mutableData) {
-                Article article = mutableData.getValue(Article.class);
-                if (article == null) {
-                    return Transaction.success(mutableData);
-                }
-
-                int currentOpenCount = article.getOpenCount() == null ? 0 : article.getOpenCount();
-
-                article.openedBy.put(mUid, timeNow);
-                article.setOpenCount(currentOpenCount + 1);
-
-                article.changedSinceLastJob = true;
-                mutableData.setValue(article);
-                return Transaction.success(mutableData);
-            }
-
-            @Override
-            public void onComplete(@Nullable DatabaseError databaseError, boolean b, @Nullable DataSnapshot dataSnapshot) {
-            }
-        });
-
-        // Update user with save data
-        DatabaseReference userRef = FirebaseDatabase.getInstance()
-                .getReference("user/"+mUid);
-
-        userRef.runTransaction(new Transaction.Handler() {
-            @NonNull
-            @Override
-            public Transaction.Result doTransaction(@NonNull MutableData mutableData) {
-                User user = mutableData.getValue(User.class);
-                if (user == null) {
-                    return Transaction.success(mutableData);
-                }
-
-                int themeOpenedCount = user.openedThemes.get(mainTheme);
-
-                user.openedArticles.put(articleId, timeNow);
-                user.openedThemes.put(mainTheme, themeOpenedCount + 1);
-
-                mutableData.setValue(user);
-                return Transaction.success(mutableData);
-            }
-
-            @Override
-            public void onComplete(@Nullable DatabaseError databaseError, boolean b, @Nullable DataSnapshot dataSnapshot) {
-            }
-        });
-    }
 
 
     // Record open video
@@ -1305,5 +1252,43 @@ public class NetworkDataSource {
 
         Log.d(TAG, "updates: " + updates);
         mDatabaseReference.child(USER_REF).updateChildren(updates);
+    }
+
+
+    // Get duplicate articles
+    public void getDuplicateArticles(List<String> articleIds, Consumer<List<Article>> onComplete) {
+        List<Task<Article>> taskList = new ArrayList<>();
+
+        for (String id : articleIds) {
+            TaskCompletionSource<Article> duplicateSource = new TaskCompletionSource<>();
+            Task<Article> duplicateTask = duplicateSource.getTask();
+            taskList.add(duplicateTask);
+
+            Query query = mDatabaseReference.child(ARTICLE_REF).child(id);
+            query.addListenerForSingleValueEvent(new ValueEventListener() {
+                @Override
+                public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+                    Article article = dataSnapshot.getValue(Article.class);
+                    if (article != null) {
+                        duplicateSource.trySetResult(article);
+                    } else {
+                        duplicateSource.trySetException(new Exception("Article does not exist: " + id));
+                    }
+                }
+
+                @Override
+                public void onCancelled(@NonNull DatabaseError databaseError) {
+                    duplicateSource.trySetException(databaseError.toException());
+                }
+            });
+        }
+
+        Tasks.whenAll(taskList).addOnSuccessListener(aVoid -> {
+            List<Article> duplicatesList = new ArrayList<>();
+            for (Task<Article> task : taskList) {
+                duplicatesList.add(task.getResult());
+            }
+            onComplete.accept(duplicatesList);
+        });
     }
 }

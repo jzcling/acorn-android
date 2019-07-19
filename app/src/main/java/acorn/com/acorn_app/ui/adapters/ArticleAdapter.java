@@ -7,6 +7,7 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import android.content.SharedPreferences;
 import android.preference.PreferenceManager;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -34,8 +35,6 @@ public class ArticleAdapter extends RecyclerView.Adapter<ArticleViewHolder> {
     private String mArticleType;
     private final OnLongClickListener longClickListener;
     private List<Article> mArticleList = new ArrayList<>();
-    private ArticleViewHolder mFirstViewHolder;
-    private boolean isFirstViewHolder = true;
 
     private final Map<DatabaseReference, ValueEventListener> mRefObservedList = new HashMap<>();
 
@@ -49,9 +48,15 @@ public class ArticleAdapter extends RecyclerView.Adapter<ArticleViewHolder> {
     public int getItemViewType(int position) {
         Article article = mArticleList.get(position);
         if (article.getType() == null || article.getType().equals("article")) {
-            return 0;
-        } else {
+            if (article.duplicates.size() > 0) {
+                return 2;
+            } else {
+                return 0;
+            }
+        } else if (article.getType().equals("post")) {
             return 1;
+        } else {
+            return 0;
         }
     }
 
@@ -59,11 +64,18 @@ public class ArticleAdapter extends RecyclerView.Adapter<ArticleViewHolder> {
     @Override
     public ArticleViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
         View view;
-        mArticleType = viewType == 0 ? "article" : "post";
         LayoutInflater inflater = LayoutInflater.from(mContext);
-        if (mArticleType.equals("post")) {
+        if (viewType == 0) {
+            mArticleType = "article";
+            view = inflater.inflate(R.layout.item_article_card, parent, false);
+        } else if (viewType == 1) {
+            mArticleType = "post";
             view = inflater.inflate(R.layout.item_post_card, parent, false);
+        } else if (viewType == 2) {
+            mArticleType = "article";
+            view = inflater.inflate(R.layout.item_article_card_with_duplicates, parent, false);
         } else {
+            mArticleType = "article";
             view = inflater.inflate(R.layout.item_article_card, parent, false);
         }
         return new ArticleViewHolder(mContext, view, mArticleType, longClickListener);
@@ -93,50 +105,6 @@ public class ArticleAdapter extends RecyclerView.Adapter<ArticleViewHolder> {
     public int getItemCount() {
         return mArticleList.size();
     }
-
-//    @Override
-//    public void onViewAttachedToWindow(@NonNull ArticleViewHolder holder) {
-//        super.onViewAttachedToWindow(holder);
-//        if (mQuery.state == 3 || mQuery.state == 4) {
-//            int adapterPos = holder.getAdapterPosition();
-//            Article article = mArticleList.get(adapterPos);
-//            DatabaseReference articleRef = FirebaseDatabase.getInstance()
-//                    .getReference("article/" + article.getObjectID());
-//            ValueEventListener searchArticleListener = articleRef.addValueEventListener(new ValueEventListener() {
-//                @Override
-//                public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
-//                    if (dataSnapshot.getValue() != null) {
-//                        Article snapArticle = dataSnapshot.getValue(Article.class);
-//                        holder.bind(snapArticle);
-//                    }
-//                }
-//
-//                @Override
-//                public void onCancelled(@NonNull DatabaseError databaseError) { }
-//            });
-//            mRefObservedList.put(articleRef, searchArticleListener);
-//
-//        }
-//    }
-//
-//    @Override
-//    public void onViewDetachedFromWindow(@NonNull ArticleViewHolder holder) {
-//        super.onViewDetachedFromWindow(holder);
-//        if (mQuery.state == 3 || mQuery.state == 4) {
-//            Article article;
-//            if (getItemCount() > 0 && holder.getAdapterPosition() != -1) {
-//                article = mArticleList.get(holder.getAdapterPosition());
-//                DatabaseReference articleRef = FirebaseDatabase.getInstance()
-//                        .getReference("article/" + article.getObjectID());
-//                ValueEventListener searchArticleListener = mRefObservedList.get(articleRef);
-//                if (searchArticleListener != null) {
-//                    articleRef.removeEventListener(searchArticleListener);
-//                }
-//                mRefObservedList.remove(articleRef);
-//
-//            }
-//        }
-//    }
 
     public void setList(List<Article> newList, Runnable onComplete) {
         mArticleList = new ArrayList<>(newList);
@@ -182,9 +150,5 @@ public class ArticleAdapter extends RecyclerView.Adapter<ArticleViewHolder> {
 
     public interface OnLongClickListener {
         void onLongClick(Article article, int id, String text);
-    }
-
-    public ArticleViewHolder getFirstViewHolder() {
-        return mFirstViewHolder;
     }
 }

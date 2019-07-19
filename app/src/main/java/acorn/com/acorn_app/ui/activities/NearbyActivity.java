@@ -143,7 +143,7 @@ public class NearbyActivity extends AppCompatActivity {
         final String[] from = new String[] {"stationName"};
         final int[] to = new int[] {android.R.id.text1};
         mSearchAdapter = new SimpleCursorAdapter(this,
-                android.R.layout.simple_list_item_1,
+                R.layout.layout_spinner_text,
                 null,
                 from,
                 to,

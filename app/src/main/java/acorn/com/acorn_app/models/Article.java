@@ -43,6 +43,7 @@ public class Article {
     public String selector;
     public Long reminderDate;
     public boolean hasAddress = false;
+    public final Map<String, Long> duplicates = new HashMap<>();
 
     public Article() {}
 

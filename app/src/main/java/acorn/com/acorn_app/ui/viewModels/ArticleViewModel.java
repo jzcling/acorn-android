@@ -9,7 +9,7 @@ import acorn.com.acorn_app.data.NetworkDataSource;
 import acorn.com.acorn_app.models.FbQuery;
 
 public class ArticleViewModel extends ViewModel {
-    public static final int QUERY_LIMIT = 10;
+    public static final int QUERY_LIMIT = 100;
     private final NetworkDataSource mDataSource;
 
     public ArticleViewModel(NetworkDataSource dataSource) {

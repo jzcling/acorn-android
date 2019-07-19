@@ -13,6 +13,7 @@ import android.content.pm.Signature;
 import android.graphics.Color;
 import android.graphics.Point;
 import android.graphics.PorterDuff;
+import android.graphics.Typeface;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
@@ -24,15 +25,18 @@ import android.text.Spannable;
 import android.util.Base64;
 import android.util.DisplayMetrics;
 import android.util.Log;
+import android.util.TypedValue;
 import android.view.Display;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
+import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -133,7 +137,8 @@ import static acorn.com.acorn_app.utils.UiUtils.createToast;
 
 public class AcornActivity extends AppCompatActivity
         implements NavigationView.OnNavigationItemSelectedListener,
-        ArticleAdapter.OnLongClickListener, OnCompleteListener<Void> {
+        ArticleAdapter.OnLongClickListener, OnCompleteListener<Void>,
+        AdapterView.OnItemSelectedListener {
 
     private static final String TAG = "AcornActivity";
 
@@ -173,10 +178,6 @@ public class AcornActivity extends AppCompatActivity
     private FirebaseDatabase mDatabase;
     private DatabaseReference mDatabaseReference;
     public static FbQuery mQuery;
-
-    //Room database
-    private ArticleRoomDatabase mRoomDb;
-    private Context mContext;
 
     //Data source
     private NetworkDataSource mDataSource;
@@ -245,6 +246,11 @@ public class AcornActivity extends AppCompatActivity
     // Geofence
     private GeofenceUtils mGeofenceUtils;
 
+    // Toolbar
+    private Toolbar mToolbar;
+    private Spinner mToolbarSpinner;
+    private String mSelectedFeed;
+
     private Bundle mSavedInstanceState;
 
     @Override
@@ -263,8 +269,8 @@ public class AcornActivity extends AppCompatActivity
         AppCompatDelegate.setDefaultNightMode(dayNightValue);
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_acorn);
-        Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
-        setSupportActionBar(toolbar);
+        mToolbar = (Toolbar) findViewById(R.id.toolbar);
+        setSupportActionBar(mToolbar);
 
         mFirebaseAnalytics.logEvent(FirebaseAnalytics.Event.APP_OPEN, null);
 
@@ -288,10 +294,6 @@ public class AcornActivity extends AppCompatActivity
         if (mDatabase == null) mDatabase = FirebaseDatabase.getInstance();
         mDatabaseReference = mDatabase.getReference();
         mDataSource = NetworkDataSource.getInstance(this, mExecutors);
-
-        // Set up room database
-        mRoomDb = ArticleRoomDatabase.getInstance(this);
-        mContext = this;
 
         // Handle dynamic links
         Intent intent = getIntent();
@@ -325,7 +327,7 @@ public class AcornActivity extends AppCompatActivity
                     mScrollFab.show();
                 } else {
                     mScrollFab.hide();
-                    loadMoreArticles();
+//                    loadMoreArticles();
                 }
             }
         });
@@ -353,7 +355,7 @@ public class AcornActivity extends AppCompatActivity
 
         // Set up navigation mDrawer
         ActionBarDrawerToggle toggle = new ActionBarDrawerToggle(
-                this, mDrawer, toolbar, R.string.navigation_drawer_open, R.string.navigation_drawer_close) {
+                this, mDrawer, mToolbar, R.string.navigation_drawer_open, R.string.navigation_drawer_close) {
             @Override
             public void onDrawerOpened(View drawerView) {
                 if (!mSharedPreferences.getBoolean(getString(R.string.pref_key_nearby_seen), false)) {
@@ -501,15 +503,26 @@ public class AcornActivity extends AppCompatActivity
         switch (id) {
             case R.id.nav_subscriptions:
                 if (mQuery != null && mQuery.state == 3 && item.isChecked()) break;
+                mSelectedFeed = "Subscriptions";
                 getThemeData();
+                setupToolbarTitleSpinner(mUserThemePrefs);
+                mToolbarSpinner.setVisibility(View.VISIBLE);
                 break;
             case R.id.nav_trending:
                 if (mQuery != null && mQuery.state == 3 && item.isChecked()) break;
+                mSelectedFeed = "Trending";
                 getTrendingData();
+                String[] themeArray = getResources().getStringArray(R.array.theme_array);
+                List<String> themeList = new ArrayList<>();
+                Collections.addAll(themeList, themeArray);
+                setupToolbarTitleSpinner(themeList);
+                mToolbarSpinner.setVisibility(View.VISIBLE);
                 break;
             case R.id.nav_deals:
                 if (mQuery != null && mQuery.state == 4) break;
+                mSelectedFeed = "Deals";
                 getDealsData();
+                mToolbarSpinner.setVisibility(View.GONE);
                 break;
             case R.id.nav_saved:
                 Intent savedArticlesIntent = new Intent(this, SavedArticlesActivity.class);
@@ -608,6 +621,17 @@ public class AcornActivity extends AppCompatActivity
                 // Sign in failed
                 if (response == null) {
                     // User pressed back button
+                    AlertDialog.Builder builder = new AlertDialog.Builder(AcornActivity.this);
+                    builder.setMessage("In order for us to cater the best experience for you, " +
+                            "we require that you sign in to use Acorn.")
+                            .setPositiveButton("OK", (dialog, which) -> {
+                                launchLogin();
+                            })
+                            .setNegativeButton("Cancel", (dialog, which) -> {
+                                finish();
+                            });
+                    AlertDialog alertDialog = builder.create();
+                    alertDialog.show();
                     createToast(this, getString(R.string.sign_in_cancelled), Toast.LENGTH_SHORT);
                     return;
                 }
@@ -881,14 +905,17 @@ public class AcornActivity extends AppCompatActivity
         }
     }
 
-    private void resetView() {
-        Log.d(TAG, "resetView");
+    private void clearView() {
         mRecyclerView.setVisibility(View.INVISIBLE);
         mSwipeRefreshLayout.setRefreshing(true);
         mRecyclerView.scrollToPosition(0);
 
         mAdapter.clear();
         removeAllObservers();
+    }
+
+    private void resetView() {
+        Log.d(TAG, "resetView");
 
         mAdapter = new ArticleAdapter(this, this);
         mRecyclerView.setAdapter(mAdapter);
@@ -914,6 +941,7 @@ public class AcornActivity extends AppCompatActivity
 
     private void logout() {
         mReferredBy = null;
+        clearView();
         AuthUI.getInstance()
                 .signOut(this)
                 .addOnCompleteListener(task -> {
@@ -1074,7 +1102,11 @@ public class AcornActivity extends AppCompatActivity
                         mQuery = new FbQuery(3, hitsRef, "trendingIndex");
                     }
 
+                    mSelectedFeed = "Subscriptions";
                     getThemeData();
+
+                    // set up toolbar title spinner
+                    setupToolbarTitleSpinner(mUserThemePrefs);
 
                     // set up search button
                     mDataSource.setupAlgoliaClient(() -> {
@@ -1387,20 +1419,26 @@ public class AcornActivity extends AppCompatActivity
                 This way, adapter list expands up to size of all observed live data lists
                 (includes all loadMoreArticles lists), with no repeat articles on changes.
                 */
-                List<Article> currentList = mAdapter.getList();
-                List<String> currentIdList = mAdapter.getIdList();
-                for (int i = 0; i < articles.size(); i++) {
-                    if (currentList.size() < i+1) {
-                        //1
-                        currentList.add(i, articles.get(i));
-                        Log.d(TAG, "added: " + currentList.size());
-                    } else {
-                        //2
-                        currentList.set(i, articles.get(i));
-                        Log.d(TAG, "set: " + currentList.size());
-                    }
-                }
-                mAdapter.setList(currentList, () -> {
+//                List<Article> currentList = mAdapter.getList();
+//                List<String> currentIdList = mAdapter.getIdList();
+//                for (int i = 0; i < articles.size(); i++) {
+//                    if (currentList.size() < i+1) {
+//                        //1
+//                        currentList.add(i, articles.get(i));
+//                        Log.d(TAG, "added: " + currentList.size());
+//                    } else {
+//                        //2
+//                        currentList.set(i, articles.get(i));
+//                        Log.d(TAG, "set: " + currentList.size());
+//                    }
+//                }
+//                mAdapter.setList(currentList, () -> {
+//                    if (mRecyclerView.getVisibility() != View.VISIBLE) {
+//                        mRecyclerView.setVisibility(View.VISIBLE);
+//                        mSwipeRefreshLayout.setRefreshing(false);
+//                    }
+//                });
+                mAdapter.setList(articles, () -> {
                     if (mRecyclerView.getVisibility() != View.VISIBLE) {
                         mRecyclerView.setVisibility(View.VISIBLE);
                         mSwipeRefreshLayout.setRefreshing(false);
@@ -1555,4 +1593,46 @@ public class AcornActivity extends AppCompatActivity
 
     }
 
+    private void setupToolbarTitleSpinner(List<String> themes) {
+        mToolbarSpinner = mToolbar.findViewById(R.id.toolbar_title);
+        ArrayAdapter<CharSequence> spinnerAdapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_item);
+        spinnerAdapter.add("Acorn");
+        spinnerAdapter.addAll(themes);
+        spinnerAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        mToolbarSpinner.setOnItemSelectedListener(this);
+        mToolbarSpinner.setAdapter(spinnerAdapter);
+    }
+
+    @Override
+    public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+        TextView titleTv = (TextView) parent.getChildAt(0);
+        titleTv.setTextColor(Color.WHITE);
+        titleTv.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
+        titleTv.setTextSize(TypedValue.COMPLEX_UNIT_PX,
+                getResources().getDimension(R.dimen.title_font_size));
+
+        String theme = parent.getItemAtPosition(position).toString();
+        if (theme.equals("Acorn")) {
+            if (mQuery != null && mQuery.state == 3) return;
+            if (mSelectedFeed.equals("Subscriptions")) {
+                getThemeData();
+            } else if (mSelectedFeed.equals("Trending")) {
+                getTrendingData();
+            }
+        } else {
+            String themeRef = SEARCH_REF + "/" + theme + "/hits";
+            String searchKey = theme;
+            String searchFilter = "mainTheme: \"" + theme + "\"";
+            mDataSource.getSearchData(searchKey, searchFilter, () -> {
+                mLlmState = null;
+                mQuery = new FbQuery(-1, themeRef, "trendingIndex");
+                resetView();
+            });
+        }
+    }
+
+    @Override
+    public void onNothingSelected(AdapterView<?> parent) {
+        parent.setSelection(0);
+    }
 }

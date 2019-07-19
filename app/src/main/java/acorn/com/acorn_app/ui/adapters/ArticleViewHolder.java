@@ -7,7 +7,10 @@ import android.content.Context;
 import acorn.com.acorn_app.utils.ShareUtils;
 import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.cardview.widget.CardView;
+import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
+import androidx.recyclerview.widget.SimpleItemAnimator;
+
 import android.text.Html;
 import android.view.HapticFeedbackConstants;
 import android.view.View;
@@ -22,6 +25,8 @@ import com.bumptech.glide.request.RequestOptions;
 import com.google.firebase.storage.FirebaseStorage;
 import com.google.firebase.storage.StorageReference;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -51,6 +56,7 @@ public class ArticleViewHolder extends RecyclerView.ViewHolder {
     private ConstraintLayout commentFrame;
     private final TextView commentCount;
     private final ImageView mainImage;
+    private final ImageView mainImageCard;
     private ImageView postImage;
 
     private TextView theme;
@@ -69,6 +75,10 @@ public class ArticleViewHolder extends RecyclerView.ViewHolder {
     private ImageView postExpand;
     private CardView cardArticle;
     private boolean isExpanded = false;
+    
+    private RecyclerView duplicatesRv;
+    private LinearLayoutManager llm;
+    private DuplicateArticleAdapter adapter;
 
     private NetworkDataSource mDataSource;
     private final AppExecutors mExecutors = AppExecutors.getInstance();
@@ -92,6 +102,7 @@ public class ArticleViewHolder extends RecyclerView.ViewHolder {
             commentFrame = (ConstraintLayout) view.findViewById(R.id.card_comment_frame);
         commentCount = (TextView) view.findViewById(R.id.card_comment_count);
         mainImage = (ImageView) view.findViewById(R.id.card_image);
+        mainImageCard = (ImageView) view.findViewById(R.id.card_image_card);
 
         if (mArticleType.equals("article")) {
             readTime = (TextView) view.findViewById(R.id.card_read_time);
@@ -113,6 +124,11 @@ public class ArticleViewHolder extends RecyclerView.ViewHolder {
         commentView = (CheckBox) view.findViewById(R.id.card_button_comment);
         favView = (CheckBox) view.findViewById(R.id.card_button_favourite);
         shareView = (CheckBox) view.findViewById(R.id.card_button_share);
+
+        duplicatesRv = (RecyclerView) view.findViewById(R.id.card_duplicates_rv);
+        llm = new LinearLayoutManager(mContext);
+        llm.setOrientation(RecyclerView.HORIZONTAL);
+        adapter = new DuplicateArticleAdapter(mContext);
     }
 
     private ArticleOnClickListener onClickListener(Article article, String cardAttribute) {
@@ -173,6 +189,9 @@ public class ArticleViewHolder extends RecyclerView.ViewHolder {
                 } else {
                     imageUrl = article.getImageUrl();
                 }
+                if (mainImageCard != null) {
+                    mainImageCard.setVisibility(View.VISIBLE);
+                }
                 mainImage.setVisibility(View.VISIBLE);
                 Glide.with(mContext.getApplicationContext())
                         .load(imageUrl)
@@ -188,7 +207,11 @@ public class ArticleViewHolder extends RecyclerView.ViewHolder {
             } else if (!(article.getPostImageUrl() == null || article.getPostImageUrl().equals(""))) {
                 StorageReference storageReference = FirebaseStorage.getInstance()
                         .getReferenceFromUrl(article.getPostImageUrl());
-                mainImage.setVisibility(View.GONE);
+                if (mainImageCard != null) {
+                    mainImageCard.setVisibility(View.GONE);
+                } else {
+                    mainImage.setVisibility(View.GONE);
+                }
                 cardArticle.setVisibility(View.GONE);
                 postImage.setVisibility(View.VISIBLE);
                 Glide.with(mContext.getApplicationContext())
@@ -205,7 +228,11 @@ public class ArticleViewHolder extends RecyclerView.ViewHolder {
                     }
                     postImage.setVisibility(View.GONE);
                 }
-                mainImage.setVisibility(View.GONE);
+                if (mainImageCard != null) {
+                    mainImageCard.setVisibility(View.GONE);
+                } else {
+                    mainImage.setVisibility(View.GONE);
+                }
             }
 
             if (mArticleType.equals("article")) {
@@ -352,6 +379,22 @@ public class ArticleViewHolder extends RecyclerView.ViewHolder {
                     tempPostText = m.replaceAll("<a href=\"$1\">" + truncatedLink + "</a>");
 
                     postText.setText(Html.fromHtml(tempPostText));
+                }
+            }
+            
+            // check for duplicates
+            if (duplicatesRv != null) {
+                if (article.duplicates.size() > 0) {
+                    duplicatesRv.setLayoutManager(llm);
+                    duplicatesRv.setAdapter(adapter);
+                    ((SimpleItemAnimator) duplicatesRv.getItemAnimator()).setSupportsChangeAnimations(false);
+                    List<String> duplicateIds = new ArrayList<>(article.duplicates.keySet());
+                    mDataSource.getDuplicateArticles(duplicateIds, (articles -> {
+                        adapter.setList(articles);
+                        duplicatesRv.setVisibility(View.VISIBLE);
+                    }));
+                } else {
+                    duplicatesRv.setVisibility(View.GONE);
                 }
             }
         }

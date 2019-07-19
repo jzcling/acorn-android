@@ -18,6 +18,8 @@ import androidx.core.app.TaskStackBuilder;
 
 import com.google.android.gms.location.Geofence;
 import com.google.android.gms.location.GeofencingEvent;
+import com.google.android.gms.tasks.Task;
+import com.google.android.gms.tasks.TaskCompletionSource;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -25,6 +27,7 @@ import java.util.List;
 import acorn.com.acorn_app.R;
 import acorn.com.acorn_app.data.NetworkDataSource;
 import acorn.com.acorn_app.models.Article;
+import acorn.com.acorn_app.models.User;
 import acorn.com.acorn_app.ui.activities.AcornActivity;
 import acorn.com.acorn_app.ui.activities.CommentActivity;
 import acorn.com.acorn_app.ui.activities.NearbyActivity;
@@ -97,7 +100,7 @@ public class GeofenceTransitionsJobIntentService extends JobIntentService {
             // Get the geofences that were triggered. A single event can trigger multiple geofences.
             List<Geofence> triggeringGeofences = geofencingEvent.getTriggeringGeofences();
 
-            // Get the transition details as a String.
+            // Get the transition details.
             String stationName = getFirstTriggeredStationName(triggeringGeofences);
             Log.d(TAG, "geofence station name: " + stationName);
 
@@ -151,7 +154,7 @@ public class GeofenceTransitionsJobIntentService extends JobIntentService {
 
     /**
      * Posts a notification in the notification bar when a transition is detected.
-     * If the user clicks the notification, control goes to the MainActivity.
+     * If the user clicks the notification, control goes to the NearbyActivity.
      */
     private void sendNotification(String stationName, List<Article> articles) {
         final String GROUP_NAME = "mrtGeofenceGroup";
@@ -199,7 +202,7 @@ public class GeofenceTransitionsJobIntentService extends JobIntentService {
             individualIntent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
             PendingIntent individualPendingIntent = TaskStackBuilder.create(this)
                     .addNextIntentWithParentStack(individualIntent)
-                    .getPendingIntent(i, PendingIntent.FLAG_UPDATE_CURRENT);
+                    .getPendingIntent(20+i, PendingIntent.FLAG_UPDATE_CURRENT);
 
             Bitmap bitmap = IOUtils.getBitmapFromUrl(imageUrl);
             contentText = (source != null && !source.equals("")) ?
@@ -225,7 +228,7 @@ public class GeofenceTransitionsJobIntentService extends JobIntentService {
         stationIntent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
         PendingIntent stationPendingIntent = TaskStackBuilder.create(this)
                 .addNextIntentWithParentStack(stationIntent)
-                .getPendingIntent(99, PendingIntent.FLAG_UPDATE_CURRENT);
+                .getPendingIntent(29, PendingIntent.FLAG_UPDATE_CURRENT);
 
         NotificationCompat.Builder stationNotificationBuilder =
                 new NotificationCompat.Builder(this, CHANNEL_ID)
@@ -237,7 +240,7 @@ public class GeofenceTransitionsJobIntentService extends JobIntentService {
                         .setAutoCancel(true)
                         .setGroup(GROUP_NAME)
                         .setGroupAlertBehavior(GROUP_ALERT_SUMMARY);
-        mNotificationManager.notify(20, stationNotificationBuilder.build());
+        mNotificationManager.notify(29, stationNotificationBuilder.build());
 
         // Prepare and send summary notification in inboxStyle
         Intent intent = new Intent(this, NearbyActivity.class);

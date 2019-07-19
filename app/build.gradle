@@ -1,7 +1,7 @@
 apply plugin: 'com.android.application'
 apply plugin: 'com.google.firebase.firebase-perf'
 apply plugin: 'kotlin-android'
-//apply plugin: 'io.fabric'
+apply plugin: 'io.fabric'
 
 android {
     signingConfigs {
@@ -18,9 +18,10 @@ android {
         applicationId 'acorn.com.acorn_app'
         minSdkVersion 24
         targetSdkVersion 28
-        versionCode 70
-        versionName "1.8.2"
+        versionCode 73
+        versionName "1.8.5"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+        resConfigs "en"
     }
     buildTypes {
         release {
@@ -55,9 +56,9 @@ dependencies {
     annotationProcessor 'com.github.bumptech.glide:compiler:4.8.0'
     annotationProcessor 'androidx.annotation:annotation:1.1.0'
     implementation 'com.google.firebase:firebase-core:17.0.1'
-    implementation 'com.firebaseui:firebase-ui-auth:4.0.1'
-    implementation 'com.firebaseui:firebase-ui-database:4.0.0'
-    implementation 'com.firebaseui:firebase-ui-storage:4.1.0'
+    implementation 'com.firebaseui:firebase-ui-auth:5.0.0'
+    implementation 'com.firebaseui:firebase-ui-database:5.0.0'
+    implementation 'com.firebaseui:firebase-ui-storage:5.0.0'
     implementation 'com.google.firebase:firebase-auth:18.1.0'
     implementation 'com.google.firebase:firebase-database:18.0.0'
     implementation 'com.google.firebase:firebase-storage:18.1.0'

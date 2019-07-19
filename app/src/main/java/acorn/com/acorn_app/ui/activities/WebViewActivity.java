@@ -16,6 +16,7 @@ import android.view.animation.AlphaAnimation;
 import android.view.animation.Animation;
 import android.view.inputmethod.InputMethodManager;
 import android.webkit.WebChromeClient;
+import android.webkit.WebResourceRequest;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.CheckBox;
@@ -676,6 +677,17 @@ public class WebViewActivity extends AppCompatActivity {
             if (isNewIntent) {
                 view.clearHistory();
             }
+        }
+
+        @Override
+        public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
+            if (request.getUrl().toString().equals(link)) {
+                return false;
+            }
+
+            Intent intent = new Intent(Intent.ACTION_VIEW, request.getUrl());
+            startActivity(intent);
+            return true;
         }
     }
 }
