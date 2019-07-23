@@ -160,4 +160,42 @@ public class Article {
     public void setMainTheme(String mainTheme) { this.mainTheme = mainTheme; }
 
     public void setReadTime(Integer readTime) { this.readTime = readTime; }
+
+    public Video toVideo() {
+        Video video = new Video();
+
+        video.setObjectID(objectID);
+        video.setType(type);
+        video.setPostAuthorUid(postAuthorUid);
+        video.setPostAuthor(postAuthor);
+        video.setPostText(postText);
+        video.setVideoUrl(postText != null ? null : link);
+        video.setPostVideoUrl(postText != null ? link : null);
+        video.setPostDate(postDate);
+        video.setTitle(title);
+        video.setSource(source);
+        video.setAuthor(author);
+        video.setPubDate(pubDate);
+        video.setMainTheme(mainTheme);
+        video.setTrendingIndex(trendingIndex);
+        video.setVoteCount(voteCount);
+        video.setCommentCount(commentCount);
+        video.setSaveCount(saveCount);
+        video.setShareCount(shareCount);
+        video.setViewCount(openCount);
+        video.theme = theme;
+        video.upvoters.putAll(upvoters);
+        video.downvoters.putAll(downvoters);
+        video.commenters.putAll(commenters);
+        video.savers.putAll(savers);
+        video.sharers.putAll(sharers);
+        video.viewedBy.putAll(openedBy);
+        video.notificationTokens.putAll(notificationTokens);
+        video.changedSinceLastJob = changedSinceLastJob;
+        video.isReported = isReported;
+        video.youtubeVideoId = objectID.replace("yt:", "");
+        video.youtubeViewCount = readTime;
+
+        return video;
+    }
 }

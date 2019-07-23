@@ -3,7 +3,6 @@ package acorn.com.acorn_app.services;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
-import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.graphics.Bitmap;
@@ -12,13 +11,13 @@ import android.os.Build;
 
 import acorn.com.acorn_app.data.NetworkDataSource;
 import acorn.com.acorn_app.models.Article;
+import acorn.com.acorn_app.ui.activities.AcornActivity;
 import acorn.com.acorn_app.utils.AppExecutors;
-import acorn.com.acorn_app.utils.DateUtils;
 import acorn.com.acorn_app.utils.IOUtils;
 import androidx.core.app.NotificationCompat;
+import androidx.core.app.NotificationManagerCompat;
 import androidx.core.app.TaskStackBuilder;
 
-import android.os.Handler;
 import android.util.Log;
 
 import com.google.firebase.database.DatabaseReference;
@@ -33,7 +32,6 @@ import java.util.Map;
 import java.util.Random;
 
 import acorn.com.acorn_app.R;
-import acorn.com.acorn_app.ui.activities.AcornActivity;
 import acorn.com.acorn_app.ui.activities.CommentActivity;
 import acorn.com.acorn_app.ui.activities.WebViewActivity;
 import acorn.com.acorn_app.ui.viewModels.NotificationViewModel;
@@ -55,7 +53,7 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
     private NetworkDataSource mDataSource;
     private SharedPreferences sharedPrefs;
 
-    private static NotificationManager mNotificationManager;
+    private static NotificationManagerCompat mNotificationManager;
     
     private final int COMMENT_NOTIFICATION_ID = 9001;
     private final String COMMENT_GROUP_NAME = "comments";
@@ -93,8 +91,8 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
         mDataSource = NetworkDataSource.getInstance(this, mExecutors);
         sharedPrefs = getSharedPreferences(getString(R.string.notif_pref_id), MODE_PRIVATE);
 
-        mNotificationManager =
-                (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+        mNotificationManager = NotificationManagerCompat.from(this);
+//                (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
 
         String COMMENT_CHANNEL_ID = getString(R.string.comment_notification_channel_id);
         String COMMENT_CHANNEL_NAME = getString(R.string.comment_notification_channel_name);
@@ -264,7 +262,7 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
         }
 
         NotificationCompat.InboxStyle inboxStyle = new NotificationCompat.InboxStyle();
-        int pendingIntentRC = 20;
+        int pendingIntentRC = 100;
         for (int i = 0; i < comments.size(); i++) {
             inboxStyle.addLine(comments.get(i));
             pendingIntentRC++;

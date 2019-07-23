@@ -1,49 +1,31 @@
 package acorn.com.acorn_app.ui.fragments;
 
 
-import android.app.PendingIntent;
+import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Bundle;
+import android.util.ArraySet;
 import android.util.Log;
 import android.view.MenuItem;
-import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AlertDialog;
-import androidx.appcompat.app.AppCompatActivity;
-import androidx.appcompat.widget.SwitchCompat;
-import androidx.preference.ListPreference;
 import androidx.preference.Preference;
 import androidx.preference.PreferenceFragmentCompat;
 import androidx.preference.PreferenceManager;
-import androidx.preference.SwitchPreference;
-import androidx.preference.SwitchPreferenceCompat;
-
-import com.google.android.gms.location.Geofence;
-import com.google.android.gms.location.GeofencingClient;
-import com.google.android.gms.tasks.OnCompleteListener;
-import com.google.android.gms.tasks.Task;
 
 import java.util.ArrayList;
-import java.util.Map;
+import java.util.List;
+import java.util.Set;
 
 import acorn.com.acorn_app.R;
-import acorn.com.acorn_app.data.NetworkDataSource;
-import acorn.com.acorn_app.ui.activities.AcornActivity;
 import acorn.com.acorn_app.ui.activities.SettingsActivity;
 import acorn.com.acorn_app.ui.activities.ThemeSelectionActivity;
-import acorn.com.acorn_app.utils.AppExecutors;
-import acorn.com.acorn_app.utils.GeofenceConstants;
-import acorn.com.acorn_app.utils.GeofenceErrorMessages;
-import acorn.com.acorn_app.utils.GeofenceUtils;
-import acorn.com.acorn_app.utils.LocationPermissionsUtils;
 
 import static acorn.com.acorn_app.ui.activities.AcornActivity.RC_THEME_PREF;
-import static acorn.com.acorn_app.ui.activities.AcornActivity.mSharedPreferences;
 import static acorn.com.acorn_app.ui.activities.AcornActivity.mUserThemePrefs;
 import static acorn.com.acorn_app.ui.activities.SettingsActivity.mLocationPermissionsUtils;
-import static acorn.com.acorn_app.utils.UiUtils.createToast;
 import static androidx.appcompat.app.AppCompatActivity.RESULT_OK;
 
 public class SettingsFragment extends PreferenceFragmentCompat
@@ -52,6 +34,8 @@ public class SettingsFragment extends PreferenceFragmentCompat
 
     private SharedPreferences mSharedPreferences;
     public static Preference locationPreference;
+
+    private List<String> channelsToAdd = new ArrayList<>();
 
     @Override
     public void onCreatePreferences(Bundle savedInstanceState, String rootKey) {
@@ -66,6 +50,7 @@ public class SettingsFragment extends PreferenceFragmentCompat
         onSharedPreferenceChanged(mSharedPreferences, getString(R.string.pref_key_notif_deals));
         onSharedPreferenceChanged(mSharedPreferences, getString(R.string.pref_key_notif_saved_articles_reminder));
         onSharedPreferenceChanged(mSharedPreferences, getString(R.string.pref_key_notif_location));
+        onSharedPreferenceChanged(mSharedPreferences, getString(R.string.pref_key_feed_videos));
 
         // Set up theme editor
         Preference editThemes = (Preference) findPreference(getString(R.string.pref_key_edit_themes));
@@ -78,6 +63,49 @@ public class SettingsFragment extends PreferenceFragmentCompat
 
         // Set reference for locationPreference
         locationPreference = (Preference) findPreference(getString(R.string.pref_key_notif_location));
+
+        // Set up video channels handler
+        Preference channelsRemovedPref = (Preference) findPreference(getString(R.string.pref_key_feed_videos_channels));
+        channelsRemovedPref.setOnPreferenceClickListener(preference -> {
+            Set<String> channelsRemoved = mSharedPreferences.getStringSet(
+                    getString(R.string.pref_key_feed_videos_channels), new ArraySet<>());
+
+            String[] channels = new String[channelsRemoved.size()];
+            channelsRemoved.toArray(channels);
+            boolean[] checkedStatus = new boolean[channelsRemoved.size()];
+            for (int i = 0; i < channelsRemoved.size(); i++) {
+                checkedStatus[i] = true;
+            }
+
+            AlertDialog.Builder builder = new AlertDialog.Builder(this.getActivity());
+            builder.setTitle("Channels Removed")
+                    .setMultiChoiceItems(channels, checkedStatus, ((dialog, which, isChecked) -> {
+                        checkedStatus[which] = isChecked;
+                    }));
+
+            builder.setNegativeButton("Cancel", (dialog, which) -> dialog.dismiss());
+            builder.setPositiveButton("Done", ((dialog, which) -> {
+                channelsRemoved.clear();
+                for (int i = 0; i < channels.length; i++) {
+                    if (checkedStatus[i]) {
+                        channelsRemoved.add(channels[i]);
+                    } else {
+                        channelsToAdd.add(channels[i]);
+                    }
+                }
+                Log.d(TAG, "channelsRemoved: " + channelsRemoved + ", channelsToAdd: " + channelsToAdd);
+                mSharedPreferences.edit().putStringSet(
+                        getString(R.string.pref_key_feed_videos_channels), channelsRemoved
+                ).apply();
+
+                passData(channelsToAdd);
+            }));
+
+            AlertDialog dialog = builder.create();
+            dialog.show();
+
+            return true;
+        });
     }
 
     @Override
@@ -110,7 +138,7 @@ public class SettingsFragment extends PreferenceFragmentCompat
                 key.equals(getString(R.string.pref_key_notif_deals)) ||
                 key.equals(getString(R.string.pref_key_notif_saved_articles_reminder))) {
             Preference preference = findPreference(key);
-            setSummary(preference, mSharedPreferences.getBoolean(key, false));
+            setSummary(preference, mSharedPreferences.getBoolean(key, true));
         } else if (key.equals(getString(R.string.pref_key_notif_location))) {
             Preference preference = findPreference(key);
             boolean value = mSharedPreferences.getBoolean(key, false);
@@ -118,6 +146,9 @@ public class SettingsFragment extends PreferenceFragmentCompat
             if (value) {
                 mLocationPermissionsUtils.requestLocationPermissions(() -> {});
             }
+        } else if (key.equals(getString(R.string.pref_key_feed_videos))) {
+            Preference preference = findPreference(key);
+            setSummary(preference, mSharedPreferences.getBoolean(key, true));
         }
     }
 
@@ -145,5 +176,21 @@ public class SettingsFragment extends PreferenceFragmentCompat
     public void onDestroy() {
         super.onDestroy();
         locationPreference = null;
+    }
+
+    public interface OnDataPass {
+        public void OnDataPass(List<String> data);
+    }
+
+    OnDataPass dataPasser;
+
+    @Override
+    public void onAttach(@NonNull Context context) {
+        super.onAttach(context);
+        dataPasser = (OnDataPass) context;
+    }
+
+    public void passData(List<String> data) {
+        dataPasser.OnDataPass(data);
     }
 }

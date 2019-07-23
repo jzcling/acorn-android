@@ -120,4 +120,40 @@ public class Video {
     public void setAuthor(String author) { this.author = author; }
 
     public void setMainTheme(String mainTheme) { this.mainTheme = mainTheme; }
+
+    public Article toArticle() {
+        Article article = new Article();
+
+        article.setObjectID(objectID);
+        article.setType(type);
+        article.setPostAuthorUid(postAuthorUid);
+        article.setPostAuthor(postAuthor);
+        article.setPostText(postText);
+        article.setLink(videoUrl != null ? videoUrl : postVideoUrl);
+        article.setPostDate(postDate);
+        article.setTitle(title);
+        article.setSource(source);
+        article.setAuthor(author);
+        article.setPubDate(pubDate);
+        article.setMainTheme(mainTheme);
+        article.setTrendingIndex(trendingIndex);
+        article.setVoteCount(voteCount);
+        article.setCommentCount(commentCount);
+        article.setSaveCount(saveCount);
+        article.setShareCount(shareCount);
+        article.setOpenCount(viewCount);
+        article.theme = theme;
+        article.upvoters.putAll(upvoters);
+        article.downvoters.putAll(downvoters);
+        article.commenters.putAll(commenters);
+        article.savers.putAll(savers);
+        article.sharers.putAll(sharers);
+        article.openedBy.putAll(viewedBy);
+        article.notificationTokens.putAll(notificationTokens);
+        article.changedSinceLastJob = changedSinceLastJob;
+        article.isReported = isReported;
+        article.setReadTime(youtubeViewCount);
+
+        return article;
+    }
 }

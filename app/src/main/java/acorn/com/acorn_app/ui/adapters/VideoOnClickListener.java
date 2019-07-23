@@ -25,6 +25,7 @@ import java.util.Date;
 
 import acorn.com.acorn_app.R;
 import acorn.com.acorn_app.data.NetworkDataSource;
+import acorn.com.acorn_app.models.Article;
 import acorn.com.acorn_app.models.User;
 import acorn.com.acorn_app.models.Video;
 import acorn.com.acorn_app.utils.AppExecutors;
@@ -46,7 +47,8 @@ public class VideoOnClickListener implements View.OnClickListener {
     private boolean isTransactionRunning = false;
 
     private final Context mContext;
-    private final Video mVideo;
+    private Video mVideo;
+    private Article mArticle;
     private final String mCardAttribute;
     private final String mYoutubeApiKey;
 

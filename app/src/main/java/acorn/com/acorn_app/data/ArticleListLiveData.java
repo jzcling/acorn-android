@@ -5,9 +5,12 @@ import androidx.lifecycle.LiveData;
 
 import android.os.Handler;
 import androidx.annotation.NonNull;
+
+import android.util.ArraySet;
 import android.util.Log;
 
 import com.google.android.gms.tasks.OnCompleteListener;
+import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.android.gms.tasks.Task;
 import com.google.android.gms.tasks.TaskCompletionSource;
 import com.google.android.gms.tasks.Tasks;
@@ -25,9 +28,20 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import acorn.com.acorn_app.models.Article;
+import acorn.com.acorn_app.models.Video;
+import acorn.com.acorn_app.models.VideoInFeedPreference;
+import acorn.com.acorn_app.utils.AppExecutors;
+import acorn.com.acorn_app.utils.DateUtils;
+
+import static acorn.com.acorn_app.data.NetworkDataSource.PREFERENCES_REF;
+import static acorn.com.acorn_app.data.NetworkDataSource.VIDEOS_IN_FEED_PREF_REF;
+import static acorn.com.acorn_app.ui.activities.AcornActivity.mSharedPreferences;
+import static acorn.com.acorn_app.ui.activities.AcornActivity.mUid;
+import static acorn.com.acorn_app.ui.activities.AcornActivity.mUserThemePrefs;
 
 public class ArticleListLiveData extends LiveData<List<Article>> {
     private static final String TAG = "ArticleListLiveData";
@@ -48,7 +62,7 @@ public class ArticleListLiveData extends LiveData<List<Article>> {
 
     private final List<String> mArticleIds = new ArrayList<>();
     private final List<Article> mArticleList = new ArrayList<>();
-    List<Article> articleList = new ArrayList<>();
+    private List<String> mThemeList = new ArrayList<>();
 
     private boolean listenerRemovePending = false;
     private final Handler handler = new Handler();
@@ -72,8 +86,9 @@ public class ArticleListLiveData extends LiveData<List<Article>> {
         }
     };
 
-    public ArticleListLiveData(Query query) {
+    public ArticleListLiveData(Query query, List<String> themeList) {
         this.query = query;
+        this.mThemeList = themeList;
         this.searchStates.add(-2);
         this.searchStates.add(-1);
         this.searchStates.add(3);
@@ -135,6 +150,9 @@ public class ArticleListLiveData extends LiveData<List<Article>> {
                     }
                 });
             } else if (searchStates.contains(state)) { // Subscriptions, Trending, Deals
+                TaskCompletionSource<List<Article>> articleSource = new TaskCompletionSource<>();
+                Task<List<Article>> articleTask = articleSource.getTask();
+
                 query.addValueEventListener(new ValueEventListener() {
                     @Override
                     public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
@@ -169,7 +187,9 @@ public class ArticleListLiveData extends LiveData<List<Article>> {
                                 }
                             }
 
-                            Tasks.whenAll(taskList).addOnCompleteListener(task -> setValue(mArticleList));
+                            Tasks.whenAll(taskList).addOnSuccessListener(aVoid -> {
+                                articleSource.trySetResult(mArticleList);
+                            });
                         }
                     }
 
@@ -178,6 +198,44 @@ public class ArticleListLiveData extends LiveData<List<Article>> {
                         setValue(new ArrayList<>());
                     }
                 });
+
+
+                TaskCompletionSource<List<Article>> videoSource = new TaskCompletionSource<>();
+                Task<List<Article>> videoTask = videoSource.getTask();
+                Long cutoffDate = -DateUtils.getThreeDaysAgoMidnight();
+                Query videoQuery = mDatabaseReference.child("video").orderByChild("pubDate").endAt(cutoffDate);
+                VideoValueEventListener videoValueListener = new VideoValueEventListener(videoSource);
+                videoQuery.addListenerForSingleValueEvent(videoValueListener);
+
+                Boolean showVideos = mSharedPreferences.getBoolean("videosInFeed", true);
+                Set<String> channelsToRemove = mSharedPreferences.getStringSet(
+                        "videosInFeedChannelsToRemove", new ArraySet<>());
+
+                if (showVideos) {
+                    Tasks.whenAll(articleTask, videoTask).addOnSuccessListener(aVoid -> {
+                        List<Article> videos = videoTask.getResult();
+                        List<Article> selectedVideos = new ArrayList<>();
+                        if (videos != null) {
+                            for (Article video : videos) {
+                                Log.d(TAG, "videoId: " + video.getObjectID() + ", theme: " +
+                                        video.getMainTheme() + ", pubDate: " + video.getPubDate());
+                                if (mThemeList.contains(video.getMainTheme()) &&
+                                        !channelsToRemove.contains(video.getSource())) {
+                                    selectedVideos.add(video);
+                                }
+                            }
+                            int sizeLimit = Math.min(mArticleList.size() / 5, selectedVideos.size());
+                            for (int i = 0; i < sizeLimit; i++) {
+                                mArticleList.add((i + 1) * 5, selectedVideos.get(i));
+                                mArticleIds.add((i + 1) * 5, selectedVideos.get(i).getObjectID());
+                            }
+                        }
+                        setValue(mArticleList);
+                    });
+                } else {
+                    Tasks.whenAll(articleTask, videoTask).addOnSuccessListener(
+                            aVoid -> setValue(mArticleList));
+                }
             } else {
                 query.addChildEventListener(childListener);
             }
@@ -380,4 +438,28 @@ public class ArticleListLiveData extends LiveData<List<Article>> {
             dbSource.trySetException(databaseError.toException());
         }
     }
+
+    private class VideoValueEventListener implements ValueEventListener {
+        private TaskCompletionSource<List<Article>> dbSource;
+        private List<Article> videoList = new ArrayList<>();
+
+        private VideoValueEventListener(TaskCompletionSource<List<Article>> dbSource) {
+            this.dbSource = dbSource;
+        }
+
+        @Override
+        public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+            for (DataSnapshot snap : dataSnapshot.getChildren()) {
+                Video video = snap.getValue(Video.class);
+                videoList.add(video.toArticle());
+            }
+            dbSource.trySetResult(videoList);
+        }
+
+        @Override
+        public void onCancelled(@NonNull DatabaseError databaseError) {
+            dbSource.trySetException(databaseError.toException());
+        }
+    }
 }
+

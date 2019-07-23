@@ -14,6 +14,8 @@ import acorn.com.acorn_app.models.Video;
 import acorn.com.acorn_app.utils.AppExecutors;
 import acorn.com.acorn_app.utils.DateUtils;
 
+import static acorn.com.acorn_app.ui.activities.AcornActivity.mUid;
+
 public class VideoFeedViewHolder extends RecyclerView.ViewHolder {
     private static final String TAG = "VideoFeedViewHolder";
     private final Context mContext;
@@ -102,7 +104,30 @@ public class VideoFeedViewHolder extends RecyclerView.ViewHolder {
         videoThumbnail.setOnClickListener(onClickListener(video, "videoThumbnail"));
         upVoteView.setOnClickListener(onClickListener(video, "upvote"));
         downVoteView.setOnClickListener(onClickListener(video, "downvote"));
+        commentView.setEnabled(false);
+        shareView.setEnabled(false);
         shareView.setOnClickListener(onClickListener(video, "share"));
+
+        if (video.upvoters.containsKey(mUid)) {
+            upVoteView.setChecked(true);
+        } else {
+            upVoteView.setChecked(false);
+        }
+        if (video.downvoters.containsKey(mUid)) {
+            downVoteView.setChecked(true);
+        } else {
+            downVoteView.setChecked(false);
+        }
+        if (video.commenters.containsKey(mUid)) {
+            commentView.setChecked(true);
+        } else {
+            commentView.setChecked(false);
+        }
+        if (video.savers.containsKey(mUid)) {
+            favView.setChecked(true);
+        } else {
+            favView.setChecked(false);
+        }
 
         if (!(video.youtubeVideoId == null || video.youtubeVideoId.equals(""))) {
             String thumbnailUrl = "https://img.youtube.com/vi/" + video.youtubeVideoId + "/hqdefault.jpg";

@@ -4,6 +4,7 @@ import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.Context;
 
+import acorn.com.acorn_app.models.Video;
 import acorn.com.acorn_app.utils.ShareUtils;
 import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.cardview.widget.CardView;
@@ -12,6 +13,7 @@ import androidx.recyclerview.widget.RecyclerView;
 import androidx.recyclerview.widget.SimpleItemAnimator;
 
 import android.text.Html;
+import android.util.ArraySet;
 import android.view.HapticFeedbackConstants;
 import android.view.View;
 import android.widget.CheckBox;
@@ -27,6 +29,7 @@ import com.google.firebase.storage.StorageReference;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -36,6 +39,7 @@ import acorn.com.acorn_app.models.Article;
 import acorn.com.acorn_app.utils.AppExecutors;
 import acorn.com.acorn_app.utils.DateUtils;
 
+import static acorn.com.acorn_app.ui.activities.AcornActivity.mSharedPreferences;
 import static acorn.com.acorn_app.ui.activities.AcornActivity.mUid;
 import static acorn.com.acorn_app.utils.UiUtils.createToast;
 import static acorn.com.acorn_app.utils.UiUtils.increaseTouchArea;
@@ -45,6 +49,7 @@ public class ArticleViewHolder extends RecyclerView.ViewHolder {
     private static final String TAG = "ArticleViewHolder";
     private final String mArticleType;
     private final Context mContext;
+    private final String mYoutubeApiKey;
     private final ArticleAdapter.OnLongClickListener longClickListener;
 
     private final TextView title;
@@ -61,6 +66,7 @@ public class ArticleViewHolder extends RecyclerView.ViewHolder {
 
     private TextView theme;
     private TextView readTime;
+    private TextView youtubeViewCount;
     private TextView topSeparator;
     private CheckBox upVoteView;
     private CheckBox downVoteView;
@@ -83,11 +89,12 @@ public class ArticleViewHolder extends RecyclerView.ViewHolder {
     private NetworkDataSource mDataSource;
     private final AppExecutors mExecutors = AppExecutors.getInstance();
 
-    public ArticleViewHolder(Context context, View view, String articleType,
+    public ArticleViewHolder(Context context, View view, String articleType, String youtubeApiKey,
                              ArticleAdapter.OnLongClickListener longClickListener) {
         super(view);
         mContext = context;
         mArticleType = articleType;
+        mYoutubeApiKey = youtubeApiKey;
         this.longClickListener = longClickListener;
 
         mDataSource = NetworkDataSource.getInstance(mContext, mExecutors);
@@ -98,26 +105,23 @@ public class ArticleViewHolder extends RecyclerView.ViewHolder {
         pubDate = (TextView) view.findViewById(R.id.card_date);
         netVote = (ImageView) view.findViewById(R.id.card_image_net_vote);
         voteCount = (TextView) view.findViewById(R.id.card_vote_count);
-        if (mArticleType.equals("article"))
-            commentFrame = (ConstraintLayout) view.findViewById(R.id.card_comment_frame);
+        commentFrame = (ConstraintLayout) view.findViewById(R.id.card_comment_frame);
         commentCount = (TextView) view.findViewById(R.id.card_comment_count);
         mainImage = (ImageView) view.findViewById(R.id.card_image);
         mainImageCard = (ImageView) view.findViewById(R.id.card_image_card);
 
-        if (mArticleType.equals("article")) {
-            readTime = (TextView) view.findViewById(R.id.card_read_time);
-            topSeparator = (TextView) view.findViewById(R.id.card_top_separator);
-        } else {
-            postAuthor = (TextView) view.findViewById(R.id.post_author);
-            postDate = (TextView) view.findViewById(R.id.post_date);
-            postText = (TextView) view.findViewById(R.id.post_text);
-            postExpand = (ImageView) view.findViewById(R.id.post_expand);
-            postImage = (ImageView) view.findViewById(R.id.post_image);
-            cardArticle = (CardView) view.findViewById(R.id.card_article);
-
-            optionsButton = (ImageButton) view.findViewById(R.id.card_button_options);
-        }
         theme = (TextView) view.findViewById(R.id.card_theme);
+        readTime = (TextView) view.findViewById(R.id.card_read_time);
+        topSeparator = (TextView) view.findViewById(R.id.card_top_separator);
+        youtubeViewCount = (TextView) view.findViewById(R.id.card_youtube_view_count);
+
+        postAuthor = (TextView) view.findViewById(R.id.post_author);
+        postDate = (TextView) view.findViewById(R.id.post_date);
+        postText = (TextView) view.findViewById(R.id.post_text);
+        postExpand = (ImageView) view.findViewById(R.id.post_expand);
+        postImage = (ImageView) view.findViewById(R.id.post_image);
+        cardArticle = (CardView) view.findViewById(R.id.card_article);
+        optionsButton = (ImageButton) view.findViewById(R.id.card_button_options);
 
         upVoteView = (CheckBox) view.findViewById(R.id.card_button_upvote);
         downVoteView = (CheckBox) view.findViewById(R.id.card_button_downvote);
@@ -133,6 +137,12 @@ public class ArticleViewHolder extends RecyclerView.ViewHolder {
 
     private ArticleOnClickListener onClickListener(Article article, String cardAttribute) {
         return new ArticleOnClickListener(mContext, article, cardAttribute,
+                upVoteView, downVoteView, commentView, favView, shareView);
+    }
+
+    private VideoOnClickListener videoOnClickListener(Article article, String cardAttribute) {
+        Video video = article.toVideo();
+        return new VideoOnClickListener(mContext, mYoutubeApiKey, video, cardAttribute,
                 upVoteView, downVoteView, commentView, favView, shareView);
     }
 
@@ -344,6 +354,8 @@ public class ArticleViewHolder extends RecyclerView.ViewHolder {
                 commentFrame.setOnClickListener(onClickListener(article, "comment"));
             commentView.setOnClickListener(onClickListener(article, "comment"));
             favView.setOnClickListener(onClickListener(article, "favourite"));
+            commentView.setEnabled(true);
+            shareView.setEnabled(true);
             shareView.setOnClickListener(onClickListener(article, "share"));
 
             if (article.upvoters.containsKey(mUid)) {
@@ -396,6 +408,113 @@ public class ArticleViewHolder extends RecyclerView.ViewHolder {
                 } else {
                     duplicatesRv.setVisibility(View.GONE);
                 }
+            }
+        }
+    }
+
+    public void bindVideo(Article video) {
+        if (video.getMainTheme() != null && !video.getMainTheme().equals("")) {
+            theme.setText(video.getMainTheme());
+        } else {
+            theme.setVisibility(View.GONE);
+            topSeparator.setVisibility(View.GONE);
+        }
+        String viewCount = String.format("%,d",video.getReadTime()) + " YouTube views";
+        youtubeViewCount.setText(viewCount);
+        title.setText(video.getTitle());
+        if (video.getSource() != null && !video.getSource().equals(""))
+            contributor.setText(video.getSource().length() > 20 ?
+                    video.getSource().substring(0, 17) + "..." : video.getSource());
+        if (!mArticleType.equals("userGenerated")) {
+            pubDate.setText(DateUtils.parseDate(video.getPubDate()));
+        } else if (pubDate != null) {
+            pubDate.setText(DateUtils.parseDate(video.getPostDate()));
+        }
+        if (video.getVoteCount() < 0) {
+            netVote.setImageResource(R.drawable.ic_arrow_down);
+            netVote.setColorFilter(mContext.getColor(R.color.card_down_arrow_tint));
+        } else {
+            netVote.setImageResource(R.drawable.ic_arrow_up);
+            netVote.setColorFilter(mContext.getColor(R.color.card_up_arrow_tint));
+        }
+        voteCount.setText(String.valueOf(video.getVoteCount() == null ? 0 : video.getVoteCount()));
+        commentCount.setText(String.valueOf(video.getCommentCount() == null ? 0 : video.getCommentCount()));
+
+        title.setOnClickListener(videoOnClickListener(video, "title"));
+        mainImage.setOnClickListener(videoOnClickListener(video, "videoThumbnail"));
+        upVoteView.setOnClickListener(videoOnClickListener(video, "upvote"));
+        downVoteView.setOnClickListener(videoOnClickListener(video, "downvote"));
+        commentView.setEnabled(false);
+        shareView.setEnabled(false);
+        shareView.setOnClickListener(videoOnClickListener(video, "share"));
+
+        if (video.upvoters.containsKey(mUid)) {
+            upVoteView.setChecked(true);
+        } else {
+            upVoteView.setChecked(false);
+        }
+        if (video.downvoters.containsKey(mUid)) {
+            downVoteView.setChecked(true);
+        } else {
+            downVoteView.setChecked(false);
+        }
+        if (video.commenters.containsKey(mUid)) {
+            commentView.setChecked(true);
+        } else {
+            commentView.setChecked(false);
+        }
+        if (video.savers.containsKey(mUid)) {
+            favView.setChecked(true);
+        } else {
+            favView.setChecked(false);
+        }
+
+        String youtubeVideoId = video.getObjectID().replace("yt:", "");
+        String thumbnailUrl = "https://img.youtube.com/vi/" + youtubeVideoId + "/hqdefault.jpg";
+        Glide.with(mContext.getApplicationContext())
+                .load(thumbnailUrl)
+                .into(mainImage);
+
+        optionsButton.setVisibility(View.VISIBLE);
+        optionsButton.setOnClickListener(v -> {
+            PopupMenu popup = new PopupMenu(mContext, optionsButton);
+            popup.inflate(R.menu.video_options_menu);
+            popup.getMenu().findItem(R.id.action_remove_source).setTitle("Don't show from " + video.getSource());
+            popup.setOnMenuItemClickListener(item -> {
+                switch (item.getItemId()) {
+                    case R.id.action_remove_videos:
+                        mSharedPreferences.edit().putBoolean(
+                                mContext.getString(R.string.pref_key_feed_videos), false
+                        ).apply();
+                        mDataSource.setVideosInFeedPreference(false);
+                        return true;
+                    case R.id.action_remove_source:
+                        Set<String> channelsToRemove = mSharedPreferences.getStringSet(
+                                mContext.getString(R.string.pref_key_feed_videos_channels),
+                                new ArraySet<>());
+                        channelsToRemove.add(video.getSource());
+                        mSharedPreferences.edit().putStringSet(
+                                mContext.getString(R.string.pref_key_feed_videos_channels),
+                                channelsToRemove
+                        ).apply();
+                        mDataSource.setVideosInFeedPreference(video.getSource(), false);
+                        return true;
+                    default:
+                        return false;
+                }
+            });
+            popup.show();
+        });
+
+        if (mArticleType.equals("userGenerated")) {
+            if (video.getSource() == null || video.getSource().equals("")) {
+                contributor.setText(video.getPostAuthor());
+                title.setText(video.getPostText().length() > 200 ?
+                        video.getPostText().substring(0, 197) + "..." :
+                        video.getPostText());
+            } else if (video.getTitle() != null && !video.getTitle().equals("")) {
+                separator.setVisibility(View.GONE);
+                pubDate.setVisibility(View.GONE);
             }
         }
     }

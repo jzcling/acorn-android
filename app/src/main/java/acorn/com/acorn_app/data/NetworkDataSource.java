@@ -113,6 +113,7 @@ public class NetworkDataSource {
     public static final String YOUTUBE_API_KEY_REF = "youtubeKey";
     public static final String MAPS_API_KEY_REF = "mapsKey";
     public static final String REPORT_REF = "reported";
+    public static final String VIDEOS_IN_FEED_PREF_REF = "videosInFeed";
 
     // Saved articles lists
     private List<String> mSavedArticlesIdList = new ArrayList<>();
@@ -154,7 +155,7 @@ public class NetworkDataSource {
         return sInstance;
     }
 
-    public ArticleListLiveData getArticles(FbQuery query) {
+    public ArticleListLiveData getArticles(FbQuery query, List<String> themeList) {
         Query articleQuery;
         switch (query.state) {
             case -2: // source
@@ -164,7 +165,7 @@ public class NetworkDataSource {
                         .orderByChild(query.orderByChild)
                         .limitToFirst(query.limit);
 //                articleQuery.keepSynced(true);
-                return new ArticleListLiveData(articleQuery);
+                return new ArticleListLiveData(articleQuery, themeList);
             case 2: // saved
                 articleQuery = mDatabaseReference.child(USER_REF + "/" + mUid + "/savedItems")
                         .orderByKey()
@@ -176,7 +177,7 @@ public class NetworkDataSource {
                         .orderByChild(query.orderByChild)
                         .limitToFirst(query.limit);
 //                articleQuery.keepSynced(true);
-                return new ArticleListLiveData(articleQuery);
+                return new ArticleListLiveData(articleQuery, themeList);
         }
     }
 
@@ -267,7 +268,7 @@ public class NetworkDataSource {
         getNearbyArticles(lat, lng, radius, false, 50, onComplete);
     }
 
-    public void getNearbyArticles(double lat, double lng, double radius, boolean todayOnly,
+    public void getNearbyArticles(double lat, double lng, double radius, boolean weekOnly,
                                   int limit, Consumer<List<Article>> onComplete) {
         // get sphere cap centred at location
         S2Point point = S2LatLng.fromDegrees(lat, lng).toPoint();
@@ -329,7 +330,7 @@ public class NetworkDataSource {
 
                     if (doneList.size() >= covering.size()) {
                         Log.d(TAG, "articleIds size: " + articleIds.size());
-                        filterNearbyArticles(articleIds, todayOnly, limit, onComplete);
+                        filterNearbyArticles(articleIds, weekOnly, limit, onComplete);
                     }
                 }
 
@@ -339,7 +340,7 @@ public class NetworkDataSource {
         }
     }
 
-    public ArticleListLiveData getAdditionalArticles(FbQuery query, Object index, int indexType) {
+    public ArticleListLiveData getAdditionalArticles(FbQuery query, Object index, int indexType, List<String> themeList) {
         Query articleQuery;
         switch (query.state) {
             case -2: // source
@@ -349,7 +350,7 @@ public class NetworkDataSource {
                         .orderByChild(query.orderByChild)
                         .limitToFirst(query.limit + 1);
                 articleQuery = articleQuery.startAt((String) index);
-                return new ArticleListLiveData(articleQuery);
+                return new ArticleListLiveData(articleQuery, themeList);
             case 2: // saved
                 articleQuery = mDatabaseReference.child(USER_REF + "/" + mUid + "/savedItems")
                         .orderByKey()
@@ -369,7 +370,7 @@ public class NetworkDataSource {
                     if (index instanceof Number)
                         articleQuery = articleQuery.equalTo(((Number) index).longValue());
                 }
-                return new ArticleListLiveData(articleQuery);
+                return new ArticleListLiveData(articleQuery, themeList);
         }
     }
 
@@ -1241,6 +1242,26 @@ public class NetworkDataSource {
             mDatabaseReference.child(PREFERENCES_REF).child(type).child(mUid).setValue(toReceive);
         } else {
             mDatabaseReference.child(PREFERENCES_REF).child(type).child(mUid).removeValue();
+        }
+    }
+
+    public void setVideosInFeedPreference(boolean showVideos) {
+        if (showVideos) {
+            mDatabaseReference.child(PREFERENCES_REF).child(VIDEOS_IN_FEED_PREF_REF).child(mUid)
+                    .child("showVideos").removeValue();
+        } else {
+            mDatabaseReference.child(PREFERENCES_REF).child(VIDEOS_IN_FEED_PREF_REF).child(mUid)
+                    .child("showVideos").setValue(showVideos);
+        }
+    }
+
+    public void setVideosInFeedPreference(String channel, boolean showFromChannel) {
+        if (showFromChannel) {
+            mDatabaseReference.child(PREFERENCES_REF).child(VIDEOS_IN_FEED_PREF_REF).child(mUid)
+                    .child("channelsToRemove").child(channel).removeValue();
+        } else {
+            mDatabaseReference.child(PREFERENCES_REF).child(VIDEOS_IN_FEED_PREF_REF).child(mUid)
+                    .child("channelsToRemove").child(channel).setValue((new Date()).getTime());
         }
     }
 

@@ -16,6 +16,9 @@ import androidx.preference.SwitchPreferenceCompat;
 import android.util.Log;
 import android.view.MenuItem;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import acorn.com.acorn_app.R;
 import acorn.com.acorn_app.ui.fragments.SettingsFragment;
 import acorn.com.acorn_app.utils.LocationPermissionsUtils;
@@ -33,20 +36,20 @@ import static acorn.com.acorn_app.ui.fragments.SettingsFragment.locationPreferen
  * href="http://developer.android.com/guide/topics/ui/settings.html">Settings
  * API Guide</a> for more information on developing a Settings UI.
  */
-public class SettingsActivity extends AppCompatActivity {
+public class SettingsActivity extends AppCompatActivity implements SettingsFragment.OnDataPass {
     private static final String TAG = "SettingsActivity";
     private int dayNightValue;
+    public List<String> channelsToAdd = new ArrayList<>();
 
     public static LocationPermissionsUtils mLocationPermissionsUtils;
     private SharedPreferences mSharedPreferences;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
-        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
-        dayNightValue = Integer.parseInt(prefs.getString(getString(R.string.pref_key_night_mode), "0"));
-
         mLocationPermissionsUtils = new LocationPermissionsUtils(this);
         mSharedPreferences = PreferenceManager.getDefaultSharedPreferences(this);
+        dayNightValue = Integer.parseInt(mSharedPreferences
+                .getString(getString(R.string.pref_key_night_mode), "0"));
 
         AppCompatDelegate.setDefaultNightMode(dayNightValue);
         super.onCreate(savedInstanceState);
@@ -70,6 +73,10 @@ public class SettingsActivity extends AppCompatActivity {
     public void finish() {
         Intent result = new Intent();
         result.putExtra("dayNightValue", dayNightValue);
+        String[] channels = new String[channelsToAdd.size()];
+        channelsToAdd.toArray(channels);
+        Log.d(TAG, "channelsToAdd: " + channelsToAdd + ", channels: " + channels);
+        result.putExtra("channelsToAdd", channels);
         setResult(RESULT_OK, result);
         super.finish();
     }
@@ -121,5 +128,10 @@ public class SettingsActivity extends AppCompatActivity {
 
                 break;
         }
+    }
+
+    @Override
+    public void OnDataPass(List<String> data) {
+        channelsToAdd = new ArrayList<>(data);
     }
 }

@@ -43,6 +43,8 @@ import acorn.com.acorn_app.utils.AppExecutors;
 import acorn.com.acorn_app.utils.InjectorUtils;
 import acorn.com.acorn_app.utils.SavedArticleTouchHelper;
 
+import static acorn.com.acorn_app.ui.activities.AcornActivity.mUserThemePrefs;
+
 
 public class SavedArticlesActivity extends AppCompatActivity
     implements SavedArticleTouchHelper.RecyclerItemTouchHelperListener {
@@ -283,7 +285,7 @@ public class SavedArticlesActivity extends AppCompatActivity
             index = lastArticle.getObjectID();
 
             int indexType = 0;
-            ArticleListLiveData addListLD = mArticleViewModel.getAdditionalArticles(index, indexType);
+            ArticleListLiveData addListLD = mArticleViewModel.getAdditionalArticles(index, indexType, mUserThemePrefs);
             Observer<List<Article>> addListObserver = articles -> {
                 if (articles != null) {
                     /*

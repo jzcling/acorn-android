@@ -52,11 +52,14 @@
     <string name="pref_key_notif_deals">dealsNotifPref</string>
     <string name="pref_key_notif_saved_articles_reminder">savedArticlesReminderNotifPref</string>
     <string name="pref_key_notif_location">locationNotifPref</string>
+    <string name="pref_key_feed_videos">videosInFeed</string>
+    <string name="pref_key_feed_videos_channels">videosInFeedChannelsToRemove</string>
     <string name="pref_key_nearby_seen">nearbySeenPref</string>
     <string name="pref_key_saved_seen">savedSeenPref</string>
     <string name="pref_key_loc_permissions_asked">locationPermissionsAskedPref</string>
     <string name="pref_cat_general_settings">GENERAL</string>
     <string name="pref_cat_notif_settings">NOTIFICATIONS</string>
+    <string name="pref_cat_feed_settings">FEED</string>
     <string name="pref_cat_user_account_settings">MANAGE ACCOUNT</string>
     <string name="pref_title_night_mode_checkbox">Night mode</string>
     <string name="pref_title_edit_themes_pref">Edit subscribed themes</string>
@@ -65,6 +68,8 @@
     <string name="pref_title_notif_deals">Recommended deals</string>
     <string name="pref_title_notif_saved_articles_reminder">Saved articles reminder</string>
     <string name="pref_title_notif_location">Location based notifications</string>
+    <string name="pref_title_feed_videos">Show videos in feed</string>
+    <string name="pref_title_feed_videos_channels">Channels removed</string>
     <string name="pref_title_change_password">Change password</string>
     <string name="pref_title_change_email">Change email address</string>
     <string name="pref_title_delete_account">Delete account</string>

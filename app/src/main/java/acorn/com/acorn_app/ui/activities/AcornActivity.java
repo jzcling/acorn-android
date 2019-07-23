@@ -22,6 +22,7 @@ import android.preference.PreferenceManager;
 import android.provider.Settings;
 import android.text.Html;
 import android.text.Spannable;
+import android.util.ArraySet;
 import android.util.Base64;
 import android.util.DisplayMetrics;
 import android.util.Log;
@@ -99,6 +100,7 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import acorn.com.acorn_app.BuildConfig;
 import acorn.com.acorn_app.R;
@@ -167,6 +169,7 @@ public class AcornActivity extends AppCompatActivity
     public static String mThemeSearchKey;
     public static String mThemeSearchFilter;
     public static String mAllThemesSearchKey;
+    private List<String> mThemeList;
 
     //Main UI
     private DrawerLayout mDrawer;
@@ -281,6 +284,7 @@ public class AcornActivity extends AppCompatActivity
                 MessageDigest md = MessageDigest.getInstance("SHA");
                 md.update(signature.toByteArray());
                 String hashKey = new String(Base64.encode(md.digest(), 0));
+                Log.d(TAG, "hashKey: " + hashKey);
             }
         } catch (NoSuchAlgorithmException e) {
             Log.d(TAG, e.getLocalizedMessage());
@@ -504,18 +508,20 @@ public class AcornActivity extends AppCompatActivity
             case R.id.nav_subscriptions:
                 if (mQuery != null && mQuery.state == 3 && item.isChecked()) break;
                 mSelectedFeed = "Subscriptions";
-                getThemeData();
+                mThemeList = mUserThemePrefs;
                 setupToolbarTitleSpinner(mUserThemePrefs);
+                getThemeData();
                 mToolbarSpinner.setVisibility(View.VISIBLE);
                 break;
             case R.id.nav_trending:
                 if (mQuery != null && mQuery.state == 3 && item.isChecked()) break;
                 mSelectedFeed = "Trending";
-                getTrendingData();
                 String[] themeArray = getResources().getStringArray(R.array.theme_array);
                 List<String> themeList = new ArrayList<>();
                 Collections.addAll(themeList, themeArray);
+                mThemeList = themeList;
                 setupToolbarTitleSpinner(themeList);
+                getTrendingData();
                 mToolbarSpinner.setVisibility(View.VISIBLE);
                 break;
             case R.id.nav_deals:
@@ -650,11 +656,11 @@ public class AcornActivity extends AppCompatActivity
 
                 if (newDayNightValue != dayNightValue) recreate();
 
-                commentNotifValue = mSharedPreferences.getBoolean(getString(R.string.pref_key_notif_comment), false);
+                commentNotifValue = mSharedPreferences.getBoolean(getString(R.string.pref_key_notif_comment), true);
                 Log.d(TAG, "commentNotifValue: " + commentNotifValue);
                 mDataSource.ToggleNotifications(COMMENTS_NOTIFICATION, commentNotifValue);
 
-                articleNotifValue = mSharedPreferences.getBoolean(getString(R.string.pref_key_notif_article), false);
+                articleNotifValue = mSharedPreferences.getBoolean(getString(R.string.pref_key_notif_article), true);
                 Log.d(TAG, "articleNotifValue: " + articleNotifValue);
                 if (articleNotifValue) {
                     if (!mSharedPreferences.getBoolean("isRecArticlesScheduled", false)) {
@@ -667,7 +673,7 @@ public class AcornActivity extends AppCompatActivity
                 }
                 mDataSource.ToggleNotifications(REC_ARTICLES_NOTIFICATION, articleNotifValue);
 
-                dealsNotifValue = mSharedPreferences.getBoolean(getString(R.string.pref_key_notif_deals), false);
+                dealsNotifValue = mSharedPreferences.getBoolean(getString(R.string.pref_key_notif_deals), true);
                 Log.d(TAG, "dealsNotifValue: " + dealsNotifValue);
                 if (dealsNotifValue) {
                     if (!mSharedPreferences.getBoolean("isRecDealsScheduled", false)) {
@@ -681,7 +687,7 @@ public class AcornActivity extends AppCompatActivity
                 mDataSource.ToggleNotifications(REC_DEALS_NOTIFICATION, dealsNotifValue);
 
                 savedArticlesReminderNotifValue = mSharedPreferences.getBoolean(
-                        getString(R.string.pref_key_notif_saved_articles_reminder), false);
+                        getString(R.string.pref_key_notif_saved_articles_reminder), true);
                 Log.d(TAG, "savedArticlesReminderNotifValue: " + savedArticlesReminderNotifValue);
                 mDataSource.ToggleNotifications(SAVED_ARTICLES_REMINDER_NOTIFICATION, savedArticlesReminderNotifValue);
 
@@ -708,6 +714,17 @@ public class AcornActivity extends AppCompatActivity
                         mGeofenceUtils.performPendingGeofenceTask();
                         mDataSource.ToggleNotifications(LOCATION_NOTIFICATION, locationNotifValue);
                     }
+                }
+
+                boolean videosInFeed = mSharedPreferences.getBoolean(
+                        getString(R.string.pref_key_feed_videos), true);
+                Log.d(TAG, "videosInFeed: " + videosInFeed);
+                mDataSource.setVideosInFeedPreference(videosInFeed);
+
+                String[] channelsToAdd = data.getStringArrayExtra("channelsToAdd");
+                for (String channel : channelsToAdd) {
+                    Log.d(TAG, "channelToAdd: " + channel);
+                    mDataSource.setVideosInFeedPreference(channel, true);
                 }
             }
         } else if (requestCode == RC_THEME_PREF) {
@@ -877,7 +894,7 @@ public class AcornActivity extends AppCompatActivity
             }
 
             int indexType = 0;
-            ArticleListLiveData addListLD = mArticleViewModel.getAdditionalArticles(index, indexType);
+            ArticleListLiveData addListLD = mArticleViewModel.getAdditionalArticles(index, indexType, mThemeList);
             Observer<List<Article>> addListObserver = articles -> {
                 if (articles != null) {
                     /*
@@ -1043,6 +1060,7 @@ public class AcornActivity extends AppCompatActivity
                             .putBoolean(getString(R.string.pref_key_notif_deals), true)
                             .putBoolean(getString(R.string.pref_key_notif_saved_articles_reminder), true)
                             .putString(getString(R.string.pref_key_night_mode), "0")
+                            .putBoolean(getString(R.string.pref_key_feed_videos), true)
                             .apply();
 
                     // Check if referred by someone
@@ -1102,11 +1120,13 @@ public class AcornActivity extends AppCompatActivity
                         mQuery = new FbQuery(3, hitsRef, "trendingIndex");
                     }
 
+                    // set up toolbar title spinner
+                    mThemeList = mUserThemePrefs;
+                    setupToolbarTitleSpinner(mUserThemePrefs);
+
+                    // set up feed
                     mSelectedFeed = "Subscriptions";
                     getThemeData();
-
-                    // set up toolbar title spinner
-                    setupToolbarTitleSpinner(mUserThemePrefs);
 
                     // set up search button
                     mDataSource.setupAlgoliaClient(() -> {
@@ -1150,6 +1170,8 @@ public class AcornActivity extends AppCompatActivity
                         mSharedPreferences.edit().putBoolean(getString(R.string.pref_key_notif_saved_articles_reminder), true).apply();
                     if (!mSharedPreferences.contains(getString(R.string.pref_key_night_mode)))
                         mSharedPreferences.edit().putString(getString(R.string.pref_key_night_mode), "0").apply();
+                    if (!mSharedPreferences.contains(getString(R.string.pref_key_feed_videos)))
+                        mSharedPreferences.edit().putBoolean(getString(R.string.pref_key_feed_videos), true).apply();
                 }
 
                 // put uid in sharedPrefs
@@ -1408,7 +1430,7 @@ public class AcornActivity extends AppCompatActivity
         ArticleViewModelFactory factory = InjectorUtils.provideArticleViewModelFactory(this.getApplicationContext());
         mArticleViewModel = ViewModelProviders.of(this, factory).get(ArticleViewModel.class);
 
-        ArticleListLiveData articleListLD = mArticleViewModel.getArticles(mQuery);
+        ArticleListLiveData articleListLD = mArticleViewModel.getArticles(mQuery, mThemeList);
         Observer<List<Article>> articleListObserver = articles -> {
             if (articles != null) {
                 /*
@@ -1606,10 +1628,12 @@ public class AcornActivity extends AppCompatActivity
     @Override
     public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
         TextView titleTv = (TextView) parent.getChildAt(0);
-        titleTv.setTextColor(Color.WHITE);
-        titleTv.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
-        titleTv.setTextSize(TypedValue.COMPLEX_UNIT_PX,
-                getResources().getDimension(R.dimen.title_font_size));
+        if (titleTv != null) {
+            titleTv.setTextColor(Color.WHITE);
+            titleTv.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
+            titleTv.setTextSize(TypedValue.COMPLEX_UNIT_PX,
+                    getResources().getDimension(R.dimen.title_font_size));
+        }
 
         String theme = parent.getItemAtPosition(position).toString();
         if (theme.equals("Acorn")) {

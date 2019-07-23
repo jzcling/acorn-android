@@ -1,6 +1,6 @@
 apply plugin: 'com.android.application'
 apply plugin: 'com.google.firebase.firebase-perf'
-apply plugin: 'kotlin-android'
+//apply plugin: 'kotlin-android'
 apply plugin: 'io.fabric'
 
 android {
@@ -18,8 +18,8 @@ android {
         applicationId 'acorn.com.acorn_app'
         minSdkVersion 24
         targetSdkVersion 28
-        versionCode 73
-        versionName "1.8.5"
+        versionCode 75
+        versionName "1.8.7"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         resConfigs "en"
     }
@@ -63,7 +63,7 @@ dependencies {
     implementation 'com.google.firebase:firebase-database:18.0.0'
     implementation 'com.google.firebase:firebase-storage:18.1.0'
     implementation 'com.google.firebase:firebase-messaging:19.0.1'
-    implementation 'com.facebook.android:facebook-android-sdk:5.0.1'
+    implementation 'com.facebook.android:facebook-android-sdk:4.38.1'
     implementation 'com.github.chrisbanes:PhotoView:2.3.0'
     implementation 'com.algolia:instantsearch-androidx:1.15.2'
     implementation 'com.algolia:algoliasearch-android:3.27.0'
@@ -98,4 +98,4 @@ dependencies {
 
 apply plugin: 'com.google.gms.google-services'
 
-apply plugin: 'kotlin-android-extensions'
+//apply plugin: 'kotlin-android-extensions'

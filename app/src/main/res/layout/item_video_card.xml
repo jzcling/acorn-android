@@ -5,6 +5,7 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     app:cardUseCompatPadding="true"
+    app:cardCornerRadius="8dp"
     app:cardElevation="2dp">
 
     <androidx.constraintlayout.widget.ConstraintLayout xmlns:app="http://schemas.android.com/apk/res-auto"
@@ -66,6 +67,21 @@
                 app:layout_constraintStart_toEndOf="@id/card_top_separator"
                 app:layout_constraintEnd_toEndOf="parent"/>
         </androidx.constraintlayout.widget.ConstraintLayout>
+
+        <ImageButton
+            android:id="@+id/card_button_options"
+            android:layout_height="20dp"
+            android:layout_width="20dp"
+            android:layout_marginEnd="12dp"
+            android:layout_marginTop="8dp"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            android:foreground="@drawable/ripple"
+            android:clickable="true"
+            android:focusable="true"
+            android:background="@drawable/ic_more"
+            android:backgroundTint="@color/card_button_default"
+            android:visibility="gone"/>
 
         <TextView
             android:id="@+id/card_title"

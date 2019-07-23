@@ -1,12 +1,12 @@
 package acorn.com.acorn_app.services;
 
+import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
 import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
 import android.graphics.Color;
 import android.os.Build;
 import android.text.TextUtils;
@@ -14,12 +14,11 @@ import android.util.Log;
 
 import androidx.core.app.JobIntentService;
 import androidx.core.app.NotificationCompat;
+import androidx.core.app.NotificationManagerCompat;
 import androidx.core.app.TaskStackBuilder;
 
 import com.google.android.gms.location.Geofence;
 import com.google.android.gms.location.GeofencingEvent;
-import com.google.android.gms.tasks.Task;
-import com.google.android.gms.tasks.TaskCompletionSource;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -27,8 +26,6 @@ import java.util.List;
 import acorn.com.acorn_app.R;
 import acorn.com.acorn_app.data.NetworkDataSource;
 import acorn.com.acorn_app.models.Article;
-import acorn.com.acorn_app.models.User;
-import acorn.com.acorn_app.ui.activities.AcornActivity;
 import acorn.com.acorn_app.ui.activities.CommentActivity;
 import acorn.com.acorn_app.ui.activities.NearbyActivity;
 import acorn.com.acorn_app.ui.activities.WebViewActivity;
@@ -39,7 +36,6 @@ import acorn.com.acorn_app.utils.IOUtils;
 import static acorn.com.acorn_app.ui.activities.NearbyActivity.RADIUS;
 import static androidx.core.app.NotificationCompat.CATEGORY_RECOMMENDATION;
 import static androidx.core.app.NotificationCompat.DEFAULT_SOUND;
-import static androidx.core.app.NotificationCompat.DEFAULT_VIBRATE;
 import static androidx.core.app.NotificationCompat.GROUP_ALERT_SUMMARY;
 import static androidx.core.app.NotificationCompat.PRIORITY_HIGH;
 import static androidx.core.app.NotificationCompat.VISIBILITY_PUBLIC;
@@ -159,9 +155,10 @@ public class GeofenceTransitionsJobIntentService extends JobIntentService {
     private void sendNotification(String stationName, List<Article> articles) {
         final String GROUP_NAME = "mrtGeofenceGroup";
         final int NOTIFICATION_ID = 9100;
+        final List<Notification> notifications = new ArrayList<>();
 
-        NotificationManager mNotificationManager =
-                (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+        NotificationManagerCompat notificationManager = NotificationManagerCompat.from(this);
+//                (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
 
         // Set inbox style for the 3 articles
         NotificationCompat.InboxStyle inboxStyle = new NotificationCompat.InboxStyle();
@@ -208,7 +205,7 @@ public class GeofenceTransitionsJobIntentService extends JobIntentService {
             contentText = (source != null && !source.equals("")) ?
                     source + " · " + article.getMainTheme() : article.getMainTheme();
 
-            NotificationCompat.Builder notificationBuilder =
+            Notification notification =
                     new NotificationCompat.Builder(this, CHANNEL_ID)
                             .setSmallIcon(R.drawable.ic_notif_acorn)
                             .setColor(Color.RED)
@@ -218,8 +215,10 @@ public class GeofenceTransitionsJobIntentService extends JobIntentService {
                             .setContentIntent(individualPendingIntent)
                             .setAutoCancel(true)
                             .setGroup(GROUP_NAME)
-                            .setGroupAlertBehavior(GROUP_ALERT_SUMMARY);
-            mNotificationManager.notify(20+i, notificationBuilder.build());
+                            .setGroupAlertBehavior(GROUP_ALERT_SUMMARY)
+                            .build();
+            notifications.add(notification);
+//            notificationManager.notify(20+i, notification);
         }
 
         // general station notification
@@ -230,7 +229,7 @@ public class GeofenceTransitionsJobIntentService extends JobIntentService {
                 .addNextIntentWithParentStack(stationIntent)
                 .getPendingIntent(29, PendingIntent.FLAG_UPDATE_CURRENT);
 
-        NotificationCompat.Builder stationNotificationBuilder =
+        Notification stationNotification =
                 new NotificationCompat.Builder(this, CHANNEL_ID)
                         .setSmallIcon(R.drawable.ic_notif_acorn)
                         .setColor(Color.RED)
@@ -239,8 +238,10 @@ public class GeofenceTransitionsJobIntentService extends JobIntentService {
                         .setContentIntent(stationPendingIntent)
                         .setAutoCancel(true)
                         .setGroup(GROUP_NAME)
-                        .setGroupAlertBehavior(GROUP_ALERT_SUMMARY);
-        mNotificationManager.notify(29, stationNotificationBuilder.build());
+                        .setGroupAlertBehavior(GROUP_ALERT_SUMMARY)
+                        .build();
+        notifications.add(stationNotification);
+//        notificationManager.notify(29, stationNotification);
 
         // Prepare and send summary notification in inboxStyle
         Intent intent = new Intent(this, NearbyActivity.class);
@@ -249,12 +250,13 @@ public class GeofenceTransitionsJobIntentService extends JobIntentService {
                 .addNextIntentWithParentStack(intent)
                 .getPendingIntent(PENDINGINTENT_RC, PendingIntent.FLAG_UPDATE_CURRENT);
 
-        NotificationCompat.Builder summaryNotificationBuilder =
+        Notification summaryNotification =
                 new NotificationCompat.Builder(this, CHANNEL_ID)
                         .setOnlyAlertOnce(true)
                         .setGroup(GROUP_NAME)
                         .setGroupSummary(true)
-                        .setDefaults(DEFAULT_SOUND|DEFAULT_VIBRATE)
+                        .setDefaults(DEFAULT_SOUND)
+                        .setVibrate(new long[]{0})
                         .setLights(Color.YELLOW, 700, 300)
                         .setPriority(PRIORITY_HIGH)
                         .setCategory(CATEGORY_RECOMMENDATION)
@@ -264,7 +266,8 @@ public class GeofenceTransitionsJobIntentService extends JobIntentService {
                         .setColor(Color.RED)
                         .setAutoCancel(true)
                         .setContentIntent(pendingIntent)
-                        .setNumber(articles.size());
+                        .setNumber(articles.size())
+                        .build();
 
         // Since android Oreo notification channel is needed.
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -274,11 +277,15 @@ public class GeofenceTransitionsJobIntentService extends JobIntentService {
             channel.setShowBadge(true);
             channel.enableLights(true);
             channel.setLightColor(Color.YELLOW);
+            channel.setVibrationPattern(new long[]{0});
             channel.enableVibration(true);
-            mNotificationManager.createNotificationChannel(channel);
+            notificationManager.createNotificationChannel(channel);
         }
 
-        mNotificationManager.notify(NOTIFICATION_ID, summaryNotificationBuilder.build());
+        for (int i = 0; i < notifications.size(); i++) {
+            notificationManager.notify(20+i, notifications.get(i));
+        }
+        notificationManager.notify(NOTIFICATION_ID, summaryNotification);
     }
 
     /**

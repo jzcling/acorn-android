@@ -1,9 +1,9 @@
 package acorn.com.acorn_app.services;
 
+import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
-import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.graphics.Bitmap;
@@ -11,11 +11,13 @@ import android.graphics.Color;
 import android.os.Build;
 import android.preference.PreferenceManager;
 import androidx.core.app.NotificationCompat;
+import androidx.core.app.NotificationManagerCompat;
 import androidx.core.app.TaskStackBuilder;
 
 import com.firebase.jobdispatcher.JobParameters;
 import com.firebase.jobdispatcher.JobService;
 
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 
@@ -31,7 +33,6 @@ import acorn.com.acorn_app.utils.IOUtils;
 
 import static androidx.core.app.NotificationCompat.CATEGORY_RECOMMENDATION;
 import static androidx.core.app.NotificationCompat.DEFAULT_SOUND;
-import static androidx.core.app.NotificationCompat.DEFAULT_VIBRATE;
 import static androidx.core.app.NotificationCompat.GROUP_ALERT_SUMMARY;
 import static androidx.core.app.NotificationCompat.PRIORITY_HIGH;
 import static androidx.core.app.NotificationCompat.VISIBILITY_PUBLIC;
@@ -84,6 +85,7 @@ public class RecArticlesJobService extends JobService {
         final int PENDINGINTENT_RC = 502;
         final String CHANNEL_ID = getString(R.string.article_notification_channel_id);
         final String CHANNEL_NAME = getString(R.string.article_notification_channel_name);
+        final List<Notification> notifications = new ArrayList<>();
 
         SharedPreferences sharedPrefs = getSharedPreferences(getString(R.string.notif_pref_id), MODE_PRIVATE);
 
@@ -92,8 +94,8 @@ public class RecArticlesJobService extends JobService {
         PendingIntent pendingIntent = PendingIntent.getActivity(this, PENDINGINTENT_RC, intent,
                 PendingIntent.FLAG_ONE_SHOT);
 
-        NotificationManager notificationManager =
-                (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+        NotificationManagerCompat notificationManager = NotificationManagerCompat.from(this);
+//                (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
 
         NotificationCompat.InboxStyle inboxStyle = new NotificationCompat.InboxStyle();
         inboxStyle.setSummaryText("Based on your subscriptions");
@@ -158,7 +160,7 @@ public class RecArticlesJobService extends JobService {
             contentText = (source != null && !source.equals("")) ?
                     source + " · " + article.getMainTheme() : article.getMainTheme();
 
-            NotificationCompat.Builder notificationBuilder =
+            Notification notification =
                     new NotificationCompat.Builder(this, CHANNEL_ID)
                             .setSmallIcon(R.drawable.ic_notif_acorn)
                             .setColor(getColor(R.color.colorPrimary))
@@ -168,16 +170,19 @@ public class RecArticlesJobService extends JobService {
                             .setContentIntent(individualPendingIntent)
                             .setAutoCancel(true)
                             .setGroup(GROUP_NAME)
-                            .setGroupAlertBehavior(GROUP_ALERT_SUMMARY);
-            notificationManager.notify(i, notificationBuilder.build());
+                            .setGroupAlertBehavior(GROUP_ALERT_SUMMARY)
+                            .build();
+            notifications.add(notification);
+//            notificationManager.notify(i, notification);
         }
 
-        NotificationCompat.Builder summaryNotificationBuilder =
+        Notification summaryNotification =
                 new NotificationCompat.Builder(this, CHANNEL_ID)
                         .setOnlyAlertOnce(true)
                         .setGroup(GROUP_NAME)
                         .setGroupSummary(true)
-                        .setDefaults(DEFAULT_SOUND|DEFAULT_VIBRATE)
+                        .setDefaults(DEFAULT_SOUND)
+                        .setVibrate(new long[]{0})
                         .setLights(Color.YELLOW, 700, 300)
                         .setPriority(PRIORITY_HIGH)
                         .setCategory(CATEGORY_RECOMMENDATION)
@@ -187,7 +192,8 @@ public class RecArticlesJobService extends JobService {
                         .setColor(getColor(R.color.colorPrimary))
                         .setAutoCancel(true)
                         .setContentIntent(pendingIntent)
-                        .setNumber(articleList.size());
+                        .setNumber(articleList.size())
+                        .build();
 
         // Since android Oreo notification channel is needed.
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -197,6 +203,7 @@ public class RecArticlesJobService extends JobService {
             channel.setShowBadge(true);
             channel.enableLights(true);
             channel.setLightColor(Color.YELLOW);
+            channel.setVibrationPattern(new long[]{0});
             channel.enableVibration(true);
             notificationManager.createNotificationChannel(channel);
         }
@@ -205,6 +212,9 @@ public class RecArticlesJobService extends JobService {
 
         NotificationViewModel.sharedPrefs.postValue(sharedPrefs);
 
-        notificationManager.notify(ARTICLE_NOTIFICATION_ID, summaryNotificationBuilder.build());
+        for (int i = 0; i < notifications.size(); i++) {
+            notificationManager.notify(i, notifications.get(i));
+        }
+        notificationManager.notify(ARTICLE_NOTIFICATION_ID, summaryNotification);
     }
 }

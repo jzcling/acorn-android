@@ -33,6 +33,16 @@
             app:key="@string/pref_key_notif_location"
             app:title="@string/pref_title_notif_location" />
     </PreferenceCategory>
+    <PreferenceCategory
+        app:title="@string/pref_cat_feed_settings"
+        app:key="pref_cat_feed_settings">
+        <SwitchPreferenceCompat
+            app:key="@string/pref_key_feed_videos"
+            app:title="@string/pref_title_feed_videos" />
+        <Preference
+            app:key="@string/pref_key_feed_videos_channels"
+            app:title="@string/pref_title_feed_videos_channels" />
+    </PreferenceCategory>
     <!--<PreferenceCategory-->
         <!--app:title="@string/pref_cat_user_account_settings"-->
         <!--app:key="pref_key_user_account_settings">-->

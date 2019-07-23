@@ -89,6 +89,20 @@ public class DateUtils {
         return null;
     }
 
+    public static Long getDayAgoMidnight() {
+        if (getNextMidnight() != null) {
+            return (getThisMidnight() - (24 * 60 * 60 * 1000));
+        }
+        return null;
+    }
+
+    public static Long getThreeDaysAgoMidnight() {
+        if (getNextMidnight() != null) {
+            return (getThisMidnight() - (3 * 24 * 60 * 60 * 1000));
+        }
+        return null;
+    }
+
     public static Long getThirtyDaysLaterMidnight() {
         if (getThisMidnight() != null) {
             return (getThisMidnight() + (30L * 24L * 60L * 60L * 1000L));
