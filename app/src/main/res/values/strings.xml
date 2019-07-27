@@ -54,8 +54,6 @@
     <string name="pref_key_notif_location">locationNotifPref</string>
     <string name="pref_key_feed_videos">videosInFeed</string>
     <string name="pref_key_feed_videos_channels">videosInFeedChannelsToRemove</string>
-    <string name="pref_key_nearby_seen">nearbySeenPref</string>
-    <string name="pref_key_saved_seen">savedSeenPref</string>
     <string name="pref_key_loc_permissions_asked">locationPermissionsAskedPref</string>
     <string name="pref_cat_general_settings">GENERAL</string>
     <string name="pref_cat_notif_settings">NOTIFICATIONS</string>
@@ -73,6 +71,11 @@
     <string name="pref_title_change_password">Change password</string>
     <string name="pref_title_change_email">Change email address</string>
     <string name="pref_title_delete_account">Delete account</string>
+
+    <!-- Helpers -->
+    <string name="helper_nearby_seen">nearbySeenPref</string>
+    <string name="helper_saved_seen">savedSeenPref</string>
+    <string name="helper_remove_video_seen">removeVideoSeen</string>
 
     <!-- Facebook -->
     <string name="facebook_application_id" translatable="false">120640472147728</string>
@@ -143,8 +146,8 @@
     <string name="article_notification_channel_name" translatable="true">Recommended Articles</string>
     <string name="deals_notification_channel_id" translatable="false">fcm_deals_channel</string>
     <string name="deals_notification_channel_name" translatable="true">Recommended Deals</string>
-    <string name="geofence_notification_channel_id" translatable="false">geofence_mrt_channel</string>
-    <string name="geofence_notification_channel_name" translatable="true">Geofence MRT</string>
+    <string name="geofence_notification_channel_id" translatable="false">acorn_location_mrt_channel</string>
+    <string name="geofence_notification_channel_name" translatable="true">Acorn Location MRT</string>
     <string name="notif_clear_button">Clear all</string>
     <string name="notif_empty_text">You have no new notifications!</string>
     <string name="notif_delete">DELETE</string>

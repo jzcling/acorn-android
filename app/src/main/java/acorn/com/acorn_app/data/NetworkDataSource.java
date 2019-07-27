@@ -114,6 +114,7 @@ public class NetworkDataSource {
     public static final String MAPS_API_KEY_REF = "mapsKey";
     public static final String REPORT_REF = "reported";
     public static final String VIDEOS_IN_FEED_PREF_REF = "videosInFeed";
+    private static final String NOTIFICATION_REF = "notification";
 
     // Saved articles lists
     private List<String> mSavedArticlesIdList = new ArrayList<>();
@@ -155,7 +156,7 @@ public class NetworkDataSource {
         return sInstance;
     }
 
-    public ArticleListLiveData getArticles(FbQuery query, List<String> themeList) {
+    public ArticleListLiveData getArticles(FbQuery query, List<String> themeList, @Nullable Integer seed) {
         Query articleQuery;
         switch (query.state) {
             case -2: // source
@@ -165,7 +166,7 @@ public class NetworkDataSource {
                         .orderByChild(query.orderByChild)
                         .limitToFirst(query.limit);
 //                articleQuery.keepSynced(true);
-                return new ArticleListLiveData(articleQuery, themeList);
+                return new ArticleListLiveData(articleQuery, themeList, seed);
             case 2: // saved
                 articleQuery = mDatabaseReference.child(USER_REF + "/" + mUid + "/savedItems")
                         .orderByKey()
@@ -177,7 +178,7 @@ public class NetworkDataSource {
                         .orderByChild(query.orderByChild)
                         .limitToFirst(query.limit);
 //                articleQuery.keepSynced(true);
-                return new ArticleListLiveData(articleQuery, themeList);
+                return new ArticleListLiveData(articleQuery, themeList, seed);
         }
     }
 
@@ -340,7 +341,8 @@ public class NetworkDataSource {
         }
     }
 
-    public ArticleListLiveData getAdditionalArticles(FbQuery query, Object index, int indexType, List<String> themeList) {
+    public ArticleListLiveData getAdditionalArticles(FbQuery query, Object index, int indexType,
+                                                     List<String> themeList, int seed) {
         Query articleQuery;
         switch (query.state) {
             case -2: // source
@@ -350,7 +352,7 @@ public class NetworkDataSource {
                         .orderByChild(query.orderByChild)
                         .limitToFirst(query.limit + 1);
                 articleQuery = articleQuery.startAt((String) index);
-                return new ArticleListLiveData(articleQuery, themeList);
+                return new ArticleListLiveData(articleQuery, themeList, seed);
             case 2: // saved
                 articleQuery = mDatabaseReference.child(USER_REF + "/" + mUid + "/savedItems")
                         .orderByKey()
@@ -370,7 +372,7 @@ public class NetworkDataSource {
                     if (index instanceof Number)
                         articleQuery = articleQuery.equalTo(((Number) index).longValue());
                 }
-                return new ArticleListLiveData(articleQuery, themeList);
+                return new ArticleListLiveData(articleQuery, themeList, seed);
         }
     }
 
@@ -1311,5 +1313,16 @@ public class NetworkDataSource {
             }
             onComplete.accept(duplicatesList);
         });
+    }
+
+    // Track notifications
+    public void logNotificationClicked(String userId, @Nullable String itemId, String type) {
+        Map<String, Object> data = new HashMap<>();
+        data.put("userId", userId);
+        if (itemId != null) data.put("itemId", itemId);
+        data.put("type", type);
+        data.put("date", (new Date()).getTime());
+
+        mDatabaseReference.child(userId).updateChildren(data);
     }
 }

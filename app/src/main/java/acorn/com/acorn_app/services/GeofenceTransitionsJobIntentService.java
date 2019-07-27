@@ -78,11 +78,11 @@ public class GeofenceTransitionsJobIntentService extends JobIntentService {
     protected void onHandleWork(Intent intent) {
         Log.d(TAG, "onHandleWork");
         mExecutors = AppExecutors.getInstance();
-        mDataSource = NetworkDataSource.getInstance(this, mExecutors);
+        mDataSource = NetworkDataSource.getInstance(getApplicationContext(), mExecutors);
 
         GeofencingEvent geofencingEvent = GeofencingEvent.fromIntent(intent);
         if (geofencingEvent.hasError()) {
-            String errorMessage = GeofenceErrorMessages.getErrorString(this,
+            String errorMessage = GeofenceErrorMessages.getErrorString(getApplicationContext(),
                     geofencingEvent.getErrorCode());
             Log.e(TAG, errorMessage);
             return;
@@ -157,7 +157,7 @@ public class GeofenceTransitionsJobIntentService extends JobIntentService {
         final int NOTIFICATION_ID = 9100;
         final List<Notification> notifications = new ArrayList<>();
 
-        NotificationManagerCompat notificationManager = NotificationManagerCompat.from(this);
+        NotificationManagerCompat notificationManager = NotificationManagerCompat.from(getApplicationContext());
 //                (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
 
         // Set inbox style for the 3 articles
@@ -191,13 +191,15 @@ public class GeofenceTransitionsJobIntentService extends JobIntentService {
 
             inboxStyle.addLine(title);
 
-            Intent individualIntent = new Intent(this, WebViewActivity.class);
+            Intent individualIntent = new Intent(getApplicationContext(), WebViewActivity.class);
             if (article.getLink() == null || article.getLink().equals("")) {
-                individualIntent = new Intent(this, CommentActivity.class);
+                individualIntent = new Intent(getApplicationContext(), CommentActivity.class);
             }
             individualIntent.putExtra("id", article.getObjectID());
+            individualIntent.putExtra("fromNotif", true);
+            individualIntent.putExtra("notifType", "Nearby");
             individualIntent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
-            PendingIntent individualPendingIntent = TaskStackBuilder.create(this)
+            PendingIntent individualPendingIntent = TaskStackBuilder.create(getApplicationContext())
                     .addNextIntentWithParentStack(individualIntent)
                     .getPendingIntent(20+i, PendingIntent.FLAG_UPDATE_CURRENT);
 
@@ -206,7 +208,7 @@ public class GeofenceTransitionsJobIntentService extends JobIntentService {
                     source + " · " + article.getMainTheme() : article.getMainTheme();
 
             Notification notification =
-                    new NotificationCompat.Builder(this, CHANNEL_ID)
+                    new NotificationCompat.Builder(getApplicationContext(), CHANNEL_ID)
                             .setSmallIcon(R.drawable.ic_notif_acorn)
                             .setColor(Color.RED)
                             .setLargeIcon(bitmap)
@@ -222,15 +224,17 @@ public class GeofenceTransitionsJobIntentService extends JobIntentService {
         }
 
         // general station notification
-        Intent stationIntent = new Intent(this, NearbyActivity.class);
+        Intent stationIntent = new Intent(getApplicationContext(), NearbyActivity.class);
         stationIntent.putExtra("stationName", stationName);
+        stationIntent.putExtra("fromNotif", true);
+        stationIntent.putExtra("notifType", "Nearby");
         stationIntent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
-        PendingIntent stationPendingIntent = TaskStackBuilder.create(this)
+        PendingIntent stationPendingIntent = TaskStackBuilder.create(getApplicationContext())
                 .addNextIntentWithParentStack(stationIntent)
                 .getPendingIntent(29, PendingIntent.FLAG_UPDATE_CURRENT);
 
         Notification stationNotification =
-                new NotificationCompat.Builder(this, CHANNEL_ID)
+                new NotificationCompat.Builder(getApplicationContext(), CHANNEL_ID)
                         .setSmallIcon(R.drawable.ic_notif_acorn)
                         .setColor(Color.RED)
                         .setContentTitle(stationNotifTitle)
@@ -244,14 +248,16 @@ public class GeofenceTransitionsJobIntentService extends JobIntentService {
 //        notificationManager.notify(29, stationNotification);
 
         // Prepare and send summary notification in inboxStyle
-        Intent intent = new Intent(this, NearbyActivity.class);
+        Intent intent = new Intent(getApplicationContext(), NearbyActivity.class);
         intent.putExtra("stationName", stationName);
-        PendingIntent pendingIntent = TaskStackBuilder.create(this)
+        intent.putExtra("fromNotif", true);
+        intent.putExtra("notifType", "Nearby");
+        PendingIntent pendingIntent = TaskStackBuilder.create(getApplicationContext())
                 .addNextIntentWithParentStack(intent)
                 .getPendingIntent(PENDINGINTENT_RC, PendingIntent.FLAG_UPDATE_CURRENT);
 
         Notification summaryNotification =
-                new NotificationCompat.Builder(this, CHANNEL_ID)
+                new NotificationCompat.Builder(getApplicationContext(), CHANNEL_ID)
                         .setOnlyAlertOnce(true)
                         .setGroup(GROUP_NAME)
                         .setGroupSummary(true)

@@ -1,10 +1,5 @@
 package acorn.com.acorn_app.ui.activities;
 
-import android.Manifest;
-import android.app.Dialog;
-import android.app.PendingIntent;
-import android.content.Context;
-import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageInfo;
@@ -19,12 +14,7 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Parcelable;
 import android.preference.PreferenceManager;
-import android.provider.Settings;
-import android.text.Html;
-import android.text.Spannable;
-import android.util.ArraySet;
 import android.util.Base64;
-import android.util.DisplayMetrics;
 import android.util.Log;
 import android.util.TypedValue;
 import android.view.Display;
@@ -32,7 +22,6 @@ import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
-import android.view.ViewGroup;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.ImageView;
@@ -42,6 +31,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.appcompat.app.ActionBarDrawerToggle;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
@@ -49,7 +39,6 @@ import androidx.appcompat.app.AppCompatDelegate;
 import androidx.appcompat.widget.Toolbar;
 import androidx.cardview.widget.CardView;
 import androidx.constraintlayout.widget.ConstraintLayout;
-import androidx.core.app.ActivityCompat;
 import androidx.core.view.GravityCompat;
 import androidx.core.view.MenuItemCompat;
 import androidx.drawerlayout.widget.DrawerLayout;
@@ -65,18 +54,12 @@ import com.crashlytics.android.Crashlytics;
 import com.firebase.ui.auth.AuthUI;
 import com.firebase.ui.auth.ErrorCodes;
 import com.firebase.ui.auth.IdpResponse;
-import com.google.android.gms.location.Geofence;
-import com.google.android.gms.location.GeofencingClient;
-import com.google.android.gms.location.GeofencingRequest;
-import com.google.android.gms.location.LocationServices;
-import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.Task;
 import com.google.android.gms.tasks.TaskCompletionSource;
 import com.google.android.gms.tasks.Tasks;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.android.material.navigation.NavigationView;
-import com.google.android.material.snackbar.Snackbar;
 import com.google.firebase.analytics.FirebaseAnalytics;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
@@ -100,37 +83,28 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
+import java.util.Random;
 
-import acorn.com.acorn_app.BuildConfig;
 import acorn.com.acorn_app.R;
 import acorn.com.acorn_app.data.ArticleListLiveData;
-import acorn.com.acorn_app.data.ArticleRoomDatabase;
 import acorn.com.acorn_app.data.NetworkDataSource;
 import acorn.com.acorn_app.models.Article;
 import acorn.com.acorn_app.models.FbQuery;
 import acorn.com.acorn_app.models.PremiumStatus;
 import acorn.com.acorn_app.models.User;
-import acorn.com.acorn_app.services.GeofenceBroadcastReceiver;
-import acorn.com.acorn_app.services.GeofenceTransitionsJobIntentService;
 import acorn.com.acorn_app.ui.adapters.ArticleAdapter;
-import acorn.com.acorn_app.ui.adapters.ArticleViewHolder;
 import acorn.com.acorn_app.ui.fragments.NotificationsDialogFragment;
 import acorn.com.acorn_app.ui.viewModels.ArticleViewModel;
 import acorn.com.acorn_app.ui.viewModels.ArticleViewModelFactory;
 import acorn.com.acorn_app.ui.viewModels.NotificationViewModel;
-import acorn.com.acorn_app.ui.views.CollapsibleMenuItemView;
 import acorn.com.acorn_app.utils.AppExecutors;
-import acorn.com.acorn_app.utils.GeofenceConstants;
 import acorn.com.acorn_app.utils.GeofenceErrorMessages;
 import acorn.com.acorn_app.utils.GeofenceUtils;
 import acorn.com.acorn_app.utils.InjectorUtils;
 import acorn.com.acorn_app.utils.InviteUtils;
 import acorn.com.acorn_app.utils.LocationPermissionsUtils;
+import acorn.com.acorn_app.utils.Logger;
 import acorn.com.acorn_app.utils.UiUtils;
-import smartdevelop.ir.eram.showcaseviewlib.GuideView;
-import smartdevelop.ir.eram.showcaseviewlib.config.DismissType;
-import smartdevelop.ir.eram.showcaseviewlib.config.Gravity;
 
 import static acorn.com.acorn_app.data.NetworkDataSource.ALGOLIA_API_KEY;
 import static acorn.com.acorn_app.data.NetworkDataSource.SEARCH_REF;
@@ -169,7 +143,8 @@ public class AcornActivity extends AppCompatActivity
     public static String mThemeSearchKey;
     public static String mThemeSearchFilter;
     public static String mAllThemesSearchKey;
-    private List<String> mThemeList;
+    private static List<String> mThemeList;
+    private static Integer mSeed;
 
     //Main UI
     private DrawerLayout mDrawer;
@@ -252,9 +227,10 @@ public class AcornActivity extends AppCompatActivity
     // Toolbar
     private Toolbar mToolbar;
     private Spinner mToolbarSpinner;
-    private String mSelectedFeed;
+    private static String mSelectedFeed;
 
     private Bundle mSavedInstanceState;
+    private Logger mLogger;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -273,6 +249,7 @@ public class AcornActivity extends AppCompatActivity
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_acorn);
         mToolbar = (Toolbar) findViewById(R.id.toolbar);
+        mToolbar.setTitle("");
         setSupportActionBar(mToolbar);
 
         mFirebaseAnalytics.logEvent(FirebaseAnalytics.Event.APP_OPEN, null);
@@ -299,6 +276,9 @@ public class AcornActivity extends AppCompatActivity
         mDatabaseReference = mDatabase.getReference();
         mDataSource = NetworkDataSource.getInstance(this, mExecutors);
 
+        // Set up logging
+        mLogger = new Logger(this);
+
         // Handle dynamic links
         Intent intent = getIntent();
         String appLinkAction = intent.getAction();
@@ -308,6 +288,9 @@ public class AcornActivity extends AppCompatActivity
             handleDynamicLink(intent);
         } else {
             Log.d(TAG, "no dynamic link");
+            boolean fromNotif = intent.getBooleanExtra("fromNotif", false);
+            String notifType = intent.getStringExtra("notifType");
+            mLogger.logNotificationClicked(fromNotif, notifType, mUid, null);
         }
 
         // Initiate views
@@ -323,6 +306,7 @@ public class AcornActivity extends AppCompatActivity
         mRecyclerView.setLayoutManager(mLinearLayoutManager);
         mAdapter = new ArticleAdapter(this, this);
         mRecyclerView.setAdapter(mAdapter);
+        mRecyclerView.setVisibility(View.INVISIBLE);
         ((SimpleItemAnimator) mRecyclerView.getItemAnimator()).setSupportsChangeAnimations(false);
         mRecyclerView.addOnScrollListener(new RecyclerView.OnScrollListener() {
             @Override
@@ -362,7 +346,7 @@ public class AcornActivity extends AppCompatActivity
                 this, mDrawer, mToolbar, R.string.navigation_drawer_open, R.string.navigation_drawer_close) {
             @Override
             public void onDrawerOpened(View drawerView) {
-                if (!mSharedPreferences.getBoolean(getString(R.string.pref_key_nearby_seen), false)) {
+                if (!mSharedPreferences.getBoolean(getString(R.string.helper_nearby_seen), false)) {
                     NavigationView navigationView = (NavigationView) findViewById(R.id.nav_view);
                     MenuItem item = navigationView.getMenu().findItem(R.id.nav_nearby);
                     LinearLayout view = (LinearLayout) item.getActionView();
@@ -382,7 +366,7 @@ public class AcornActivity extends AppCompatActivity
                             "Refer a friend to enjoy this premium feature!";
                     UiUtils.highlightView(AcornActivity.this, target, title, text);
 
-                    mSharedPreferences.edit().putBoolean(getString(R.string.pref_key_nearby_seen), true).apply();
+                    mSharedPreferences.edit().putBoolean(getString(R.string.helper_nearby_seen), true).apply();
                 }
                 super.onDrawerOpened(drawerView);
             }
@@ -508,27 +492,23 @@ public class AcornActivity extends AppCompatActivity
             case R.id.nav_subscriptions:
                 if (mQuery != null && mQuery.state == 3 && item.isChecked()) break;
                 mSelectedFeed = "Subscriptions";
-                mThemeList = mUserThemePrefs;
-                setupToolbarTitleSpinner(mUserThemePrefs);
+                setupToolbarTitleSpinner(true, mUserThemePrefs);
                 getThemeData();
-                mToolbarSpinner.setVisibility(View.VISIBLE);
                 break;
             case R.id.nav_trending:
                 if (mQuery != null && mQuery.state == 3 && item.isChecked()) break;
                 mSelectedFeed = "Trending";
-                String[] themeArray = getResources().getStringArray(R.array.theme_array);
+                String[] themePrefs = getResources().getStringArray(R.array.theme_array);
                 List<String> themeList = new ArrayList<>();
-                Collections.addAll(themeList, themeArray);
-                mThemeList = themeList;
-                setupToolbarTitleSpinner(themeList);
+                Collections.addAll(themeList, themePrefs);
+                setupToolbarTitleSpinner(true, themeList);
                 getTrendingData();
-                mToolbarSpinner.setVisibility(View.VISIBLE);
                 break;
             case R.id.nav_deals:
                 if (mQuery != null && mQuery.state == 4) break;
                 mSelectedFeed = "Deals";
                 getDealsData();
-                mToolbarSpinner.setVisibility(View.GONE);
+                setupToolbarTitleSpinner(false, null);
                 break;
             case R.id.nav_saved:
                 Intent savedArticlesIntent = new Intent(this, SavedArticlesActivity.class);
@@ -894,7 +874,7 @@ public class AcornActivity extends AppCompatActivity
             }
 
             int indexType = 0;
-            ArticleListLiveData addListLD = mArticleViewModel.getAdditionalArticles(index, indexType, mThemeList);
+            ArticleListLiveData addListLD = mArticleViewModel.getAdditionalArticles(index, indexType, mThemeList, mSeed);
             Observer<List<Article>> addListObserver = articles -> {
                 if (articles != null) {
                     /*
@@ -938,9 +918,6 @@ public class AcornActivity extends AppCompatActivity
         mRecyclerView.setAdapter(mAdapter);
 
         setUpInitialViewModelObserver();
-
-//        mRecyclerView.setVisibility(View.VISIBLE);
-//        mSwipeRefreshLayout.setRefreshing(false);
     }
 
     private void launchLogin() {
@@ -1120,13 +1097,22 @@ public class AcornActivity extends AppCompatActivity
                         mQuery = new FbQuery(3, hitsRef, "trendingIndex");
                     }
 
-                    // set up toolbar title spinner
-                    mThemeList = mUserThemePrefs;
-                    setupToolbarTitleSpinner(mUserThemePrefs);
-
                     // set up feed
-                    mSelectedFeed = "Subscriptions";
-                    getThemeData();
+                    if (mThemeList == null) mThemeList = new ArrayList<>(mUserThemePrefs);
+                    if (mSelectedFeed == null) mSelectedFeed = "Subscriptions";
+                    if (mSeed == null) mSeed = new Random().nextInt(100);
+                    if (mLlmState == null) {
+                        getThemeData();
+                    } else {
+                        setUpInitialViewModelObserver();
+                    }
+
+                    // set up toolbar
+                    if (mSelectedFeed.equals("Deals")) {
+                        setupToolbarTitleSpinner(false, null);
+                    } else {
+                        setupToolbarTitleSpinner(true, mThemeList);
+                    }
 
                     // set up search button
                     mDataSource.setupAlgoliaClient(() -> {
@@ -1342,6 +1328,10 @@ public class AcornActivity extends AppCompatActivity
             mDataSource.getSearchData(searchKey, searchFilter, ()->{
                 mLlmState = null;
                 mQuery = new FbQuery(-1, themeRef, "trendingIndex");
+                mThemeList.clear();
+                mThemeList.add(article.getMainTheme());
+                mSeed = (new Random()).nextInt(100);
+                Log.d(TAG, "seed: " + mSeed + ", themeList: " + mThemeList);
                 resetView();
             });
         } else if (id == R.id.card_contributor) {
@@ -1363,6 +1353,9 @@ public class AcornActivity extends AppCompatActivity
         mDataSource.getThemeData(()->{
             mLlmState = null;
             mQuery = new FbQuery(3, hitsRef, "trendingIndex");
+            mThemeList = new ArrayList<>(mUserThemePrefs);
+            mSeed = (new Random()).nextInt(100);
+            Log.d(TAG, "seed: " + mSeed + ", themeList: " + mThemeList);
             resetView();
         });
     }
@@ -1388,6 +1381,11 @@ public class AcornActivity extends AppCompatActivity
         mDataSource.getTrendingData(()->{
             mLlmState = null;
             mQuery = new FbQuery(3, hitsRef, "trendingIndex");
+            List<String> themeList = new ArrayList<>();
+            Collections.addAll(themeList, themePrefs);
+            mThemeList = new ArrayList<>(themeList);
+            mSeed = (new Random()).nextInt(100);
+            Log.d(TAG, "seed: " + mSeed + ", themeList: " + mThemeList);
             resetView();
         });
     }
@@ -1399,6 +1397,10 @@ public class AcornActivity extends AppCompatActivity
         mDataSource.getDealsData(()->{
             mLlmState = null;
             mQuery = new FbQuery(4, hitsRef, "trendingIndex");
+            mThemeList.clear();
+            mThemeList.add("Deals");
+            mSeed = (new Random()).nextInt(100);
+            Log.d(TAG, "seed: " + mSeed + ", themeList: " + mThemeList);
             resetView();
         });
     }
@@ -1424,13 +1426,13 @@ public class AcornActivity extends AppCompatActivity
     }
 
     private void setUpInitialViewModelObserver() {
-        Log.d(TAG, "setUpInitialViewModelObserver");
+        Log.d(TAG, "setUpInitialViewModelObserver: theme:" + mThemeList + ", seed: " + mSeed);
 
         // Set up view model
         ArticleViewModelFactory factory = InjectorUtils.provideArticleViewModelFactory(this.getApplicationContext());
         mArticleViewModel = ViewModelProviders.of(this, factory).get(ArticleViewModel.class);
 
-        ArticleListLiveData articleListLD = mArticleViewModel.getArticles(mQuery, mThemeList);
+        ArticleListLiveData articleListLD = mArticleViewModel.getArticles(mQuery, mThemeList, mSeed);
         Observer<List<Article>> articleListObserver = articles -> {
             if (articles != null) {
                 /*
@@ -1461,9 +1463,12 @@ public class AcornActivity extends AppCompatActivity
 //                    }
 //                });
                 mAdapter.setList(articles, () -> {
-                    if (mRecyclerView.getVisibility() != View.VISIBLE) {
-                        mRecyclerView.setVisibility(View.VISIBLE);
-                        mSwipeRefreshLayout.setRefreshing(false);
+                    if (mLlmState == null) {
+                        Log.d(TAG, "state: null");
+                        if (mRecyclerView.getVisibility() != View.VISIBLE) {
+                            mRecyclerView.setVisibility(View.VISIBLE);
+                            mSwipeRefreshLayout.setRefreshing(false);
+                        }
                     }
                 });
             }
@@ -1472,10 +1477,15 @@ public class AcornActivity extends AppCompatActivity
         mObservedList.put(articleListLD, articleListObserver);
         if (mLlmState != null) {
             new Handler().postDelayed(() -> {
+                Log.d(TAG, "restore instance state");
                 mLinearLayoutManager.onRestoreInstanceState(mLlmState);
-            },100);
-        }
 
+                if (mRecyclerView.getVisibility() != View.VISIBLE) {
+                    mRecyclerView.setVisibility(View.VISIBLE);
+                    mSwipeRefreshLayout.setRefreshing(false);
+                }
+            },500);
+        }
     }
 
     private int getDeviceWidth() {
@@ -1615,14 +1625,22 @@ public class AcornActivity extends AppCompatActivity
 
     }
 
-    private void setupToolbarTitleSpinner(List<String> themes) {
-        mToolbarSpinner = mToolbar.findViewById(R.id.toolbar_title);
-        ArrayAdapter<CharSequence> spinnerAdapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_item);
-        spinnerAdapter.add("Acorn");
-        spinnerAdapter.addAll(themes);
-        spinnerAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-        mToolbarSpinner.setOnItemSelectedListener(this);
-        mToolbarSpinner.setAdapter(spinnerAdapter);
+    private void setupToolbarTitleSpinner(boolean show, @Nullable List<String> themes) {
+        TextView mToolbarTitle = mToolbar.findViewById(R.id.toolbar_title);
+        mToolbarSpinner = mToolbar.findViewById(R.id.toolbar_title_spinner);
+        if (show) {
+            ArrayAdapter<CharSequence> spinnerAdapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_item);
+            spinnerAdapter.add("Acorn");
+            spinnerAdapter.addAll(themes);
+            spinnerAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+            mToolbarSpinner.setOnItemSelectedListener(this);
+            mToolbarSpinner.setAdapter(spinnerAdapter);
+            mToolbarSpinner.setVisibility(View.VISIBLE);
+            mToolbarTitle.setVisibility(View.GONE);
+        } else {
+            mToolbarTitle.setVisibility(View.VISIBLE);
+            mToolbarSpinner.setVisibility(View.GONE);
+        }
     }
 
     @Override
@@ -1650,6 +1668,10 @@ public class AcornActivity extends AppCompatActivity
             mDataSource.getSearchData(searchKey, searchFilter, () -> {
                 mLlmState = null;
                 mQuery = new FbQuery(-1, themeRef, "trendingIndex");
+                mThemeList.clear();
+                mThemeList.add(theme);
+                mSeed = (new Random()).nextInt(100);
+                Log.d(TAG, "seed: " + mSeed + ", themeList: " + mThemeList);
                 resetView();
             });
         }

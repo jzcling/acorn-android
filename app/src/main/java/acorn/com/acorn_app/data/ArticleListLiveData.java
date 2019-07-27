@@ -28,6 +28,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -63,6 +64,7 @@ public class ArticleListLiveData extends LiveData<List<Article>> {
     private final List<String> mArticleIds = new ArrayList<>();
     private final List<Article> mArticleList = new ArrayList<>();
     private List<String> mThemeList = new ArrayList<>();
+    private int mSeed = 1;
 
     private boolean listenerRemovePending = false;
     private final Handler handler = new Handler();
@@ -86,9 +88,10 @@ public class ArticleListLiveData extends LiveData<List<Article>> {
         }
     };
 
-    public ArticleListLiveData(Query query, List<String> themeList) {
+    public ArticleListLiveData(Query query, List<String> themeList, int seed) {
         this.query = query;
         this.mThemeList = themeList;
+        this.mSeed = seed;
         this.searchStates.add(-2);
         this.searchStates.add(-1);
         this.searchStates.add(3);
@@ -153,7 +156,7 @@ public class ArticleListLiveData extends LiveData<List<Article>> {
                 TaskCompletionSource<List<Article>> articleSource = new TaskCompletionSource<>();
                 Task<List<Article>> articleTask = articleSource.getTask();
 
-                query.addValueEventListener(new ValueEventListener() {
+                query.addListenerForSingleValueEvent(new ValueEventListener() {
                     @Override
                     public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
                         List<Task<Boolean>> taskList = new ArrayList<>();
@@ -199,31 +202,32 @@ public class ArticleListLiveData extends LiveData<List<Article>> {
                     }
                 });
 
-
-                TaskCompletionSource<List<Article>> videoSource = new TaskCompletionSource<>();
-                Task<List<Article>> videoTask = videoSource.getTask();
-                Long cutoffDate = -DateUtils.getThreeDaysAgoMidnight();
-                Query videoQuery = mDatabaseReference.child("video").orderByChild("pubDate").endAt(cutoffDate);
-                VideoValueEventListener videoValueListener = new VideoValueEventListener(videoSource);
-                videoQuery.addListenerForSingleValueEvent(videoValueListener);
-
-                Boolean showVideos = mSharedPreferences.getBoolean("videosInFeed", true);
-                Set<String> channelsToRemove = mSharedPreferences.getStringSet(
-                        "videosInFeedChannelsToRemove", new ArraySet<>());
-
+                boolean showVideos = mSharedPreferences.getBoolean("videosInFeed", true);
                 if (showVideos) {
+                    TaskCompletionSource<List<Article>> videoSource = new TaskCompletionSource<>();
+                    Task<List<Article>> videoTask = videoSource.getTask();
+                    Long cutoffDate = -DateUtils.getThreeDaysAgoMidnight();
+                    Query videoQuery = mDatabaseReference.child("video").orderByChild("pubDate").endAt(cutoffDate);
+                    VideoValueEventListener videoValueListener = new VideoValueEventListener(videoSource);
+                    videoQuery.addListenerForSingleValueEvent(videoValueListener);
+
+                    Set<String> channelsToRemove = mSharedPreferences.getStringSet(
+                            "videosInFeedChannelsToRemove", new ArraySet<>());
+
+
                     Tasks.whenAll(articleTask, videoTask).addOnSuccessListener(aVoid -> {
                         List<Article> videos = videoTask.getResult();
                         List<Article> selectedVideos = new ArrayList<>();
                         if (videos != null) {
                             for (Article video : videos) {
-                                Log.d(TAG, "videoId: " + video.getObjectID() + ", theme: " +
-                                        video.getMainTheme() + ", pubDate: " + video.getPubDate());
+//                                Log.d(TAG, "videoId: " + video.getObjectID() + ", theme: " +
+//                                        video.getMainTheme() + ", pubDate: " + video.getPubDate());
                                 if (mThemeList.contains(video.getMainTheme()) &&
                                         !channelsToRemove.contains(video.getSource())) {
                                     selectedVideos.add(video);
                                 }
                             }
+                            Collections.shuffle(selectedVideos, new Random(mSeed));
                             int sizeLimit = Math.min(mArticleList.size() / 5, selectedVideos.size());
                             for (int i = 0; i < sizeLimit; i++) {
                                 mArticleList.add((i + 1) * 5, selectedVideos.get(i));
@@ -233,7 +237,7 @@ public class ArticleListLiveData extends LiveData<List<Article>> {
                         setValue(mArticleList);
                     });
                 } else {
-                    Tasks.whenAll(articleTask, videoTask).addOnSuccessListener(
+                    Tasks.whenAll(articleTask).addOnSuccessListener(
                             aVoid -> setValue(mArticleList));
                 }
             } else {
@@ -340,7 +344,7 @@ public class ArticleListLiveData extends LiveData<List<Article>> {
 
         @Override
         public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
-            Log.d(TAG, "onDataChanged");
+//            Log.d(TAG, "onDataChanged");
             if (dataSnapshot.exists()) {
                 Article article = dataSnapshot.getValue(Article.class);
                 String articleId = dataSnapshot.getKey();
@@ -403,7 +407,7 @@ public class ArticleListLiveData extends LiveData<List<Article>> {
 
         @Override
         public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
-            Log.d(TAG, "onDataChanged");
+//            Log.d(TAG, "onDataChanged");
             if (dataSnapshot.exists()) {
                 Article article = dataSnapshot.getValue(Article.class);
                 String articleId = dataSnapshot.getKey();

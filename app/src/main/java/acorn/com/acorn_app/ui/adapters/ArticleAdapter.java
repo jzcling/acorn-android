@@ -97,6 +97,8 @@ public class ArticleAdapter extends RecyclerView.Adapter<ArticleViewHolder> {
 
     @Override
     public void onBindViewHolder(@NonNull ArticleViewHolder holder, int position) {
+        SharedPreferences sharedPrefs = PreferenceManager.getDefaultSharedPreferences(mContext);
+
         Article article = mArticleList.get(position);
         if (article.getType().equals("video")) {
             holder.bindVideo(article);
@@ -105,8 +107,7 @@ public class ArticleAdapter extends RecyclerView.Adapter<ArticleViewHolder> {
         }
 
         if (position == 0) {
-            SharedPreferences sharedPrefs = PreferenceManager.getDefaultSharedPreferences(mContext);
-            if (!sharedPrefs.getBoolean(mContext.getString(R.string.pref_key_saved_seen), false)) {
+            if (!sharedPrefs.getBoolean(mContext.getString(R.string.helper_saved_seen), false)) {
                 View target = holder.favView;
 
                 String title = "Save";
@@ -114,7 +115,7 @@ public class ArticleAdapter extends RecyclerView.Adapter<ArticleViewHolder> {
                         "notifications for events or deals a day before they happen!";
                 UiUtils.highlightView(mContext, target, title, text);
 
-                sharedPrefs.edit().putBoolean(mContext.getString(R.string.pref_key_saved_seen), true).apply();
+                sharedPrefs.edit().putBoolean(mContext.getString(R.string.helper_saved_seen), true).apply();
             }
         }
     }

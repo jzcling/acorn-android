@@ -87,6 +87,8 @@ public class RecDealsJobService extends JobService {
 
         Intent intent = new Intent(this, AcornActivity.class);
         intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
+        intent.putExtra("fromNotif", true);
+        intent.putExtra("notifType", "Recommended Deal");
         PendingIntent pendingIntent = PendingIntent.getActivity(this, PENDINGINTENT_RC, intent,
                 PendingIntent.FLAG_ONE_SHOT);
 
@@ -147,6 +149,8 @@ public class RecDealsJobService extends JobService {
                 individualIntent = new Intent(this, CommentActivity.class);
             }
             individualIntent.putExtra("id", article.getObjectID());
+            individualIntent.putExtra("fromNotif", true);
+            individualIntent.putExtra("notifType", "Recommended Deal");
             individualIntent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
             PendingIntent individualPendingIntent = TaskStackBuilder.create(this)
                     .addNextIntentWithParentStack(individualIntent)

@@ -22,18 +22,19 @@ public class ArticleViewModel extends ViewModel {
 
     private FbQuery queryPlaceholder;
 
-    public ArticleListLiveData getArticles(FbQuery query, List<String> themeList) {
+    public ArticleListLiveData getArticles(FbQuery query, List<String> themeList, int seed) {
         queryPlaceholder = query;
-        return mDataSource.getArticles(query, themeList);
+        return mDataSource.getArticles(query, themeList, seed);
     }
 
     public ArticleListLiveData getArticles(FbQuery query) {
         queryPlaceholder = query;
-        return mDataSource.getArticles(query, mUserThemePrefs);
+        return mDataSource.getArticles(query, mUserThemePrefs, null);
     }
 
-    public ArticleListLiveData getAdditionalArticles(Object index, int indexType, List<String> themeList) {
-        return mDataSource.getAdditionalArticles(queryPlaceholder, index, indexType, themeList);
+    public ArticleListLiveData getAdditionalArticles(Object index, int indexType,
+                                                     List<String> themeList, int seed) {
+        return mDataSource.getAdditionalArticles(queryPlaceholder, index, indexType, themeList, seed);
     }
 
     public ArticleListLiveData getSavedArticles(FbQuery query) {

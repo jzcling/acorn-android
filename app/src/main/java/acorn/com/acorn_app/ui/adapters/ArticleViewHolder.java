@@ -73,7 +73,7 @@ public class ArticleViewHolder extends RecyclerView.ViewHolder {
     private CheckBox commentView;
     public CheckBox favView;
     private CheckBox shareView;
-    private ImageButton optionsButton;
+    public ImageButton optionsButton;
 
     private TextView postAuthor;
     private TextView postDate;
@@ -445,7 +445,7 @@ public class ArticleViewHolder extends RecyclerView.ViewHolder {
         upVoteView.setOnClickListener(videoOnClickListener(video, "upvote"));
         downVoteView.setOnClickListener(videoOnClickListener(video, "downvote"));
         commentView.setEnabled(false);
-        shareView.setEnabled(false);
+        favView.setEnabled(false);
         shareView.setOnClickListener(videoOnClickListener(video, "share"));
 
         if (video.upvoters.containsKey(mUid)) {
@@ -476,7 +476,13 @@ public class ArticleViewHolder extends RecyclerView.ViewHolder {
                 .into(mainImage);
 
         optionsButton.setVisibility(View.VISIBLE);
+        if (!mSharedPreferences.getBoolean(mContext.getString(R.string.helper_remove_video_seen), false)) {
+            optionsButton.setBackgroundTintList(mContext.getColorStateList(R.color.video_options_state_list));
+        } else {
+            optionsButton.setBackgroundTintList(mContext.getColorStateList(R.color.video_options_seen_state_list));
+        }
         optionsButton.setOnClickListener(v -> {
+            mSharedPreferences.edit().putBoolean(mContext.getString(R.string.helper_remove_video_seen), true).apply();
             PopupMenu popup = new PopupMenu(mContext, optionsButton);
             popup.inflate(R.menu.video_options_menu);
             popup.getMenu().findItem(R.id.action_remove_source).setTitle("Don't show from " + video.getSource());

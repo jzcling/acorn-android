@@ -54,6 +54,7 @@ import acorn.com.acorn_app.ui.views.ObservableWebView;
 import acorn.com.acorn_app.utils.AppExecutors;
 import acorn.com.acorn_app.utils.DateUtils;
 import acorn.com.acorn_app.utils.HtmlUtils;
+import acorn.com.acorn_app.utils.Logger;
 
 import static acorn.com.acorn_app.data.NetworkDataSource.ARTICLE_REF;
 import static acorn.com.acorn_app.data.NetworkDataSource.NOTIFICATION_TOKENS;
@@ -108,6 +109,8 @@ public class WebViewActivity extends AppCompatActivity {
     private static boolean hasDisplayedMessageOverlay = false;
     private boolean hasLoggedSelectContent = false;
 
+    private Logger mLogger;
+
     @SuppressLint("SetJavaScriptEnabled")
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
@@ -120,6 +123,9 @@ public class WebViewActivity extends AppCompatActivity {
 
         // Set up Room Database
         mRoomDb = ArticleRoomDatabase.getInstance(this);
+
+        // Set up logger
+        mLogger = new Logger(this);
 
         // Set up Firebase Database
         if (mDatabase == null) mDatabase = FirebaseDatabase.getInstance();
@@ -224,6 +230,10 @@ public class WebViewActivity extends AppCompatActivity {
                     });
         } else {
             articleId = intent.getStringExtra("id");
+            boolean fromNotif = intent.getBooleanExtra("fromNotif", false);
+            String notifType = intent.getStringExtra("notifType");
+            mLogger.logNotificationClicked(fromNotif, notifType, mUid, articleId);
+
             loadArticle();
         }
     }

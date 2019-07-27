@@ -63,7 +63,9 @@ import acorn.com.acorn_app.R;
 import acorn.com.acorn_app.data.NetworkDataSource;
 import acorn.com.acorn_app.ui.adapters.NearbyArticleAdapter;
 import acorn.com.acorn_app.utils.AppExecutors;
+import acorn.com.acorn_app.utils.Logger;
 
+import static acorn.com.acorn_app.ui.activities.AcornActivity.mUid;
 import static acorn.com.acorn_app.utils.UiUtils.createToast;
 
 public class NearbyActivity extends AppCompatActivity {
@@ -116,6 +118,8 @@ public class NearbyActivity extends AppCompatActivity {
     private boolean[] checkedStatus;
     private List<String> mThemeFilterList = new ArrayList<>();
 
+    private Logger mLogger;
+
 
     @SuppressLint("MissingPermission")
     @Override
@@ -125,6 +129,8 @@ public class NearbyActivity extends AppCompatActivity {
         Toolbar toolbar = findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
         getSupportActionBar().setDisplayHomeAsUpEnabled(true);
+
+        mLogger = new Logger(this);
 
         mLocationTv = findViewById(R.id.location_tv);
         mRecyclerView = findViewById(R.id.nearby_rv);
@@ -438,6 +444,9 @@ public class NearbyActivity extends AppCompatActivity {
                         // check if any intent provides an address, if not find articles near user
                         Intent intent = getIntent();
                         String stationName = intent.getStringExtra("stationName");
+                        boolean fromNotif = intent.getBooleanExtra("fromNotif", false);
+                        String notifType = intent.getStringExtra("notifType");
+                        mLogger.logNotificationClicked(fromNotif, notifType, mUid, stationName);
                         if (stationName != null) {
                             mAddress = stationName;
                             if (mMrtStationMap != null) {

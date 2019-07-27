@@ -36,6 +36,8 @@ public class SettingsFragment extends PreferenceFragmentCompat
     public static Preference locationPreference;
 
     private List<String> channelsToAdd = new ArrayList<>();
+    private Set<String> channelsToRemove = new ArraySet<>();
+    private Set<String> channelsRemoved;
 
     @Override
     public void onCreatePreferences(Bundle savedInstanceState, String rootKey) {
@@ -65,16 +67,20 @@ public class SettingsFragment extends PreferenceFragmentCompat
         locationPreference = (Preference) findPreference(getString(R.string.pref_key_notif_location));
 
         // Set up video channels handler
+        channelsRemoved = mSharedPreferences.getStringSet(
+                getString(R.string.pref_key_feed_videos_channels), new ArraySet<>());
+        String[] channels = new String[channelsRemoved.size()];
+        channelsRemoved.toArray(channels);
+        channelsToRemove.addAll(channelsRemoved);
         Preference channelsRemovedPref = (Preference) findPreference(getString(R.string.pref_key_feed_videos_channels));
         channelsRemovedPref.setOnPreferenceClickListener(preference -> {
-            Set<String> channelsRemoved = mSharedPreferences.getStringSet(
-                    getString(R.string.pref_key_feed_videos_channels), new ArraySet<>());
-
-            String[] channels = new String[channelsRemoved.size()];
-            channelsRemoved.toArray(channels);
             boolean[] checkedStatus = new boolean[channelsRemoved.size()];
-            for (int i = 0; i < channelsRemoved.size(); i++) {
-                checkedStatus[i] = true;
+            for (int i = 0; i < channels.length; i++) {
+                if (channelsToRemove.contains(channels[i])) {
+                    checkedStatus[i] = true;
+                } else {
+                    checkedStatus[i] = false;
+                }
             }
 
             AlertDialog.Builder builder = new AlertDialog.Builder(this.getActivity());
@@ -85,17 +91,15 @@ public class SettingsFragment extends PreferenceFragmentCompat
 
             builder.setNegativeButton("Cancel", (dialog, which) -> dialog.dismiss());
             builder.setPositiveButton("Done", ((dialog, which) -> {
-                channelsRemoved.clear();
                 for (int i = 0; i < channels.length; i++) {
-                    if (checkedStatus[i]) {
-                        channelsRemoved.add(channels[i]);
-                    } else {
+                    if (!checkedStatus[i]) {
                         channelsToAdd.add(channels[i]);
+                        channelsToRemove.remove(channels[i]);
                     }
                 }
-                Log.d(TAG, "channelsRemoved: " + channelsRemoved + ", channelsToAdd: " + channelsToAdd);
+                Log.d(TAG, "channelsToRemove: " + channelsToRemove + ", channelsToAdd: " + channelsToAdd);
                 mSharedPreferences.edit().putStringSet(
-                        getString(R.string.pref_key_feed_videos_channels), channelsRemoved
+                        getString(R.string.pref_key_feed_videos_channels), channelsToRemove
                 ).apply();
 
                 passData(channelsToAdd);

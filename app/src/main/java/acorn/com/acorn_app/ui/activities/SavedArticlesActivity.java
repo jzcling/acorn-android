@@ -93,14 +93,6 @@ public class SavedArticlesActivity extends AppCompatActivity
         mRecyclerView.setLayoutManager(mLinearLayoutManager);
         mAdapter = new SavedArticleAdapter(this);
         mRecyclerView.setAdapter(mAdapter);
-//        mRecyclerView.addOnScrollListener(new RecyclerView.OnScrollListener() {
-//            @Override
-//            public void onScrolled(RecyclerView recyclerView, int dx, int dy) {
-//                if (dy > 0) {
-//                    loadMoreArticles();
-//                }
-//            }
-//        });
 
         // Set up swipe mechanism
         ItemTouchHelper.SimpleCallback itemTouchHelperCallback =
@@ -266,50 +258,6 @@ public class SavedArticlesActivity extends AppCompatActivity
             Article article = mAdapter.getList().get(position);
             mDataSource.removeSavedArticle(article.getObjectID());
             mAdapter.removeItem(position);
-        }
-    }
-
-    private void loadMoreArticles() {
-        if (isLoadingMore) return;
-
-        int currentPosition = mLinearLayoutManager.findLastCompletelyVisibleItemPosition();
-        final int trigger = 5;
-        final int initialListCount = mAdapter.getItemCount();
-        List<Article> currentList = mAdapter.getList();
-        final Object index;
-
-        if (currentPosition > mAdapter.getItemCount() - trigger) {
-            isLoadingMore = true;
-
-            Article lastArticle = mAdapter.getLastItem();
-            index = lastArticle.getObjectID();
-
-            int indexType = 0;
-            ArticleListLiveData addListLD = mArticleViewModel.getAdditionalArticles(index, indexType, mUserThemePrefs);
-            Observer<List<Article>> addListObserver = articles -> {
-                if (articles != null) {
-                    /*
-                    initialListCount marks where the end of the list was before additional
-                    articles are loaded. Live data list of additional articles will start
-                    from the last article in the current list, so startIndex is initialListCount - 1
-                    */
-                    int startIndex = initialListCount - 1;
-                    for (int i = 0; i < articles.size(); i++) {
-                        if (currentList.size() < startIndex + i + 1) {
-                            Log.d(TAG, "add: " + (startIndex + i));
-                            currentList.add(startIndex + i, articles.get(i));
-                        } else {
-                            Log.d(TAG, "set: " + (startIndex + i));
-                            currentList.set(startIndex + i, articles.get(i));
-                        }
-                    }
-                    mAdapter.setList(currentList, mThemeFilterList, mSearchText);
-                }
-            };
-            addListLD.observeForever(addListObserver);
-            mObservedList.put(addListLD, addListObserver);
-
-            new Handler().postDelayed(()->isLoadingMore = false,1000);
         }
     }
 }

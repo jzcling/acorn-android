@@ -28,6 +28,7 @@ import acorn.com.acorn_app.data.NetworkDataSource;
 import acorn.com.acorn_app.models.Article;
 import acorn.com.acorn_app.models.User;
 import acorn.com.acorn_app.models.Video;
+import acorn.com.acorn_app.ui.activities.YouTubeActivity;
 import acorn.com.acorn_app.utils.AppExecutors;
 import acorn.com.acorn_app.utils.UiUtils;
 
@@ -104,8 +105,11 @@ public class VideoOnClickListener implements View.OnClickListener {
                 bundle.putString(FirebaseAnalytics.Param.CONTENT_TYPE, mVideo.getType());
                 mFirebaseAnalytics.logEvent(FirebaseAnalytics.Event.SELECT_CONTENT, bundle);
 
-                Intent intent = YouTubeStandalonePlayer
-                        .createVideoIntent((Activity) mContext, mYoutubeApiKey, mVideo.youtubeVideoId);
+//                Intent intent = YouTubeStandalonePlayer
+//                        .createVideoIntent((Activity) mContext, mYoutubeApiKey, mVideo.youtubeVideoId);
+                Intent intent = new Intent(mContext, YouTubeActivity.class);
+                intent.putExtra("apiKey", mYoutubeApiKey);
+                intent.putExtra("videoId", mVideo.youtubeVideoId);
                 mExecutors.networkIO().execute(() -> mDataSource.recordVideoOpenDetails(mVideo));
                 mContext.startActivity(intent);
                 break;

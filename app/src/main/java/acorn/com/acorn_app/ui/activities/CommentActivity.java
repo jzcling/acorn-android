@@ -51,6 +51,7 @@ import com.firebase.ui.database.FirebaseRecyclerAdapter;
 import com.firebase.ui.database.FirebaseRecyclerOptions;
 import com.firebase.ui.database.SnapshotParser;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
+import com.google.firebase.analytics.FirebaseAnalytics;
 import com.google.firebase.database.ChildEventListener;
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
@@ -84,6 +85,7 @@ import acorn.com.acorn_app.ui.adapters.CommentAdapter;
 import acorn.com.acorn_app.ui.adapters.CommentViewHolder;
 import acorn.com.acorn_app.utils.AppExecutors;
 import acorn.com.acorn_app.utils.DateUtils;
+import acorn.com.acorn_app.utils.Logger;
 import acorn.com.acorn_app.utils.OnSwipeListener;
 import acorn.com.acorn_app.utils.UiUtils;
 
@@ -172,6 +174,8 @@ public class CommentActivity extends AppCompatActivity implements View.OnTouchLi
     private Animation slideUpAnim;
     private GestureDetector gestureDetector;
 
+    private Logger mLogger;
+
     public static String mCommentOpenObjectID;
 
 //    private FirebaseAnalytics mFirebaseAnalytics;
@@ -184,7 +188,15 @@ public class CommentActivity extends AppCompatActivity implements View.OnTouchLi
         setSupportActionBar(toolbar);
         getSupportActionBar().setDisplayHomeAsUpEnabled(true);
 
-        mArticleId = getIntent().getStringExtra("id");
+        // Set up logger
+        mLogger = new Logger(this);
+
+        Intent intent = getIntent();
+        mArticleId = intent.getStringExtra("id");
+        boolean fromNotif = intent.getBooleanExtra("fromNotif", false);
+        String notifType = intent.getStringExtra("notifType");
+        mLogger.logNotificationClicked(fromNotif, notifType, mUid, mArticleId);
+
         mCommentOpenObjectID = mArticleId;
 
         // Set up Firebase Database

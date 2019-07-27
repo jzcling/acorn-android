@@ -232,6 +232,8 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
 
         Intent intent = new Intent(this, AcornActivity.class);
         intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
+        intent.putExtra("fromNotif", true);
+        intent.putExtra("notifType", "Comment");
         PendingIntent pendingIntent = PendingIntent.getActivity(this, COMMENT_SUMMARY_PENDINGINTENT_RC, intent,
                 PendingIntent.FLAG_ONE_SHOT);
 
@@ -278,6 +280,8 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
 
         Intent individualIntent = new Intent(this, CommentActivity.class);
         individualIntent.putExtra("id", data.get("articleId"));
+        individualIntent.putExtra("fromNotif", true);
+        individualIntent.putExtra("notifType", "Comment");
         individualIntent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
         PendingIntent individualPendingIntent = TaskStackBuilder.create(this)
                 .addNextIntentWithParentStack(individualIntent)
@@ -345,6 +349,8 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
 
         Intent individualIntent = new Intent(this, WebViewActivity.class);
         individualIntent.putExtra("id", data.get("articleId"));
+        individualIntent.putExtra("fromNotif", true);
+        individualIntent.putExtra("notifType", "Manual Article");
         individualIntent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
         PendingIntent individualPendingIntent = TaskStackBuilder.create(this)
                 .addNextIntentWithParentStack(individualIntent)
@@ -380,6 +386,8 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
 
                 Intent intent = new Intent(this, AcornActivity.class);
                 intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
+                intent.putExtra("fromNotif", true);
+                intent.putExtra("notifType", "Saved Article Reminder");
                 PendingIntent summaryPendingIntent = PendingIntent.getActivity(this, SAVED_REMINDER_PENDINGINTENT_RC, intent,
                         PendingIntent.FLAG_ONE_SHOT);
 
@@ -429,6 +437,8 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
                     inboxStyle.addLine(contentTitle);
                     Intent individualIntent = new Intent(this, WebViewActivity.class);
                     individualIntent.putExtra("id", article.getObjectID());
+                    individualIntent.putExtra("fromNotif", true);
+                    individualIntent.putExtra("notifType", "Saved Article Reminder");
                     individualIntent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
                     PendingIntent individualPendingIntent = TaskStackBuilder.create(this)
                             .addNextIntentWithParentStack(individualIntent)

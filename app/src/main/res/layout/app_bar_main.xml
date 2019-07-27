@@ -20,7 +20,15 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Acorn"
-                android:id="@+id/toolbar_title" />
+                android:id="@+id/toolbar_title_spinner" />
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Acorn"
+                android:textSize="20sp"
+                android:fontFamily="sans-serif-medium"
+                android:textColor="@android:color/white"
+                android:id="@+id/toolbar_title"/>
         </androidx.appcompat.widget.Toolbar>
 
     </com.google.android.material.appbar.AppBarLayout>
