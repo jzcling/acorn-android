@@ -108,10 +108,10 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:background="@color/colorPrimaryDark"
-            app:layout_constraintBottom_toBottomOf="@+id/button_comment_layout"
+            app:layout_constraintBottom_toBottomOf="@id/button_comment_layout"
             app:layout_constraintEnd_toStartOf="@id/button_comment_layout"
             app:layout_constraintStart_toEndOf="@id/button_upvote_layout"
-            app:layout_constraintTop_toTopOf="@+id/button_comment_layout">
+            app:layout_constraintTop_toTopOf="@id/button_comment_layout">
 
             <CheckBox
                 android:id="@+id/button_downvote"
@@ -151,10 +151,10 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:background="@color/colorPrimaryDark"
-            app:layout_constraintBottom_toBottomOf="@+id/button_comment_layout"
+            app:layout_constraintBottom_toBottomOf="@id/button_comment_layout"
             app:layout_constraintEnd_toStartOf="@id/button_share_layout"
             app:layout_constraintStart_toEndOf="@id/button_comment_layout"
-            app:layout_constraintTop_toTopOf="@+id/button_comment_layout">
+            app:layout_constraintTop_toTopOf="@id/button_comment_layout">
 
             <CheckBox
                 android:id="@+id/button_favourite"
@@ -173,10 +173,10 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:background="@color/colorPrimaryDark"
-            app:layout_constraintBottom_toBottomOf="@+id/button_comment_layout"
+            app:layout_constraintBottom_toBottomOf="@id/button_comment_layout"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toEndOf="@id/button_favourite_layout"
-            app:layout_constraintTop_toTopOf="@+id/button_comment_layout">
+            app:layout_constraintTop_toTopOf="@id/button_comment_layout">
 
             <CheckBox
                 android:id="@+id/button_share"

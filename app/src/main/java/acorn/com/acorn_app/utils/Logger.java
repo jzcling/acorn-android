@@ -46,7 +46,18 @@ public class Logger {
             if (itemId != null) bundle.putString(FirebaseAnalytics.Param.ITEM_ID, itemId);
             bundle.putString("notification_type", notifType);
             mFirebaseAnalytics.logEvent("click_notification", bundle);
+            mDataSource.logNotificationClicked(userId, itemId, notifType);
         }
-        mDataSource.logNotificationClicked(userId, itemId, notifType);
+    }
+
+    public void logNotificationError(boolean fromNotif, String notifType,
+                                       String userId, @Nullable String itemId) {
+        if (fromNotif) {
+            Bundle bundle = new Bundle();
+            if (itemId != null) bundle.putString(FirebaseAnalytics.Param.ITEM_ID, itemId);
+            bundle.putString("notification_type", notifType);
+            mFirebaseAnalytics.logEvent("click_notification", bundle);
+            mDataSource.logNotificationError(userId, itemId, notifType);
+        }
     }
 }

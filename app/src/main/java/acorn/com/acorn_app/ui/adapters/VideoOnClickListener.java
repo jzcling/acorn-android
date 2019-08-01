@@ -7,6 +7,8 @@ import android.os.Bundle;
 import android.os.Handler;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+
+import android.util.Log;
 import android.view.View;
 import android.view.animation.Animation;
 import android.view.animation.AnimationUtils;
@@ -30,6 +32,7 @@ import acorn.com.acorn_app.models.User;
 import acorn.com.acorn_app.models.Video;
 import acorn.com.acorn_app.ui.activities.YouTubeActivity;
 import acorn.com.acorn_app.utils.AppExecutors;
+import acorn.com.acorn_app.utils.ShareUtils;
 import acorn.com.acorn_app.utils.UiUtils;
 
 import static acorn.com.acorn_app.ui.AcornApplication.mFirebaseAnalytics;
@@ -51,7 +54,7 @@ public class VideoOnClickListener implements View.OnClickListener {
     private Video mVideo;
     private Article mArticle;
     private final String mCardAttribute;
-    private final String mYoutubeApiKey;
+    private String mYoutubeApiKey;
 
     private final View mUpvoteView;
     private final View mDownvoteView;
@@ -73,7 +76,7 @@ public class VideoOnClickListener implements View.OnClickListener {
         mContext = context;
         mVideo = video;
         mCardAttribute = cardAttribute;
-        mYoutubeApiKey = youtubeApiKey;
+//        mYoutubeApiKey = youtubeApiKey;
 
         mDataSource = NetworkDataSource.getInstance(context, mExecutors);
 
@@ -108,7 +111,7 @@ public class VideoOnClickListener implements View.OnClickListener {
 //                Intent intent = YouTubeStandalonePlayer
 //                        .createVideoIntent((Activity) mContext, mYoutubeApiKey, mVideo.youtubeVideoId);
                 Intent intent = new Intent(mContext, YouTubeActivity.class);
-                intent.putExtra("apiKey", mYoutubeApiKey);
+//                intent.putExtra("apiKey", mYoutubeApiKey);
                 intent.putExtra("videoId", mVideo.youtubeVideoId);
                 mExecutors.networkIO().execute(() -> mDataSource.recordVideoOpenDetails(mVideo));
                 mContext.startActivity(intent);
@@ -499,7 +502,7 @@ public class VideoOnClickListener implements View.OnClickListener {
 
     private void onShareClicked() {
         if (mVideo.youtubeVideoId != null && !mVideo.youtubeVideoId.equals("")) {
-            Long clickTime = new Date().getTime();
+            Long clickTime = (new Date()).getTime();
             String videoId = mVideo.getObjectID();
 
             Bundle bundle = new Bundle();
@@ -541,14 +544,20 @@ public class VideoOnClickListener implements View.OnClickListener {
                 @Override
                 public void onComplete(@Nullable DatabaseError databaseError, boolean b, @Nullable DataSnapshot dataSnapshot) {
                     mExecutors.mainThread().execute(() -> {
-                        Intent shareIntent = new Intent();
-                        shareIntent.setType("text/plain");
-                        shareIntent.putExtra(Intent.EXTRA_SUBJECT, mVideo.getTitle());
-                        shareIntent.putExtra(Intent.EXTRA_TEXT, mVideo.getVideoUrl() + "\n- shared using Acorn: Your favourite blogs in a nutshell");
-                        shareIntent.setAction(Intent.ACTION_SEND);
-                        bounceAnim.setAnimationListener(
-                                new MyAnimationListener(Intent.createChooser(shareIntent, "Share video with")));
-                        mShareView.startAnimation(bounceAnim);
+                        String shareUri = ShareUtils.createVideoShareUri(mVideo.getObjectID(), mUid);
+                        Log.d(TAG, "url: " + mVideo.getVideoUrl() + ", shareUri: " + shareUri);
+                        ShareUtils.createShortDynamicLink(shareUri, shortLink -> {
+                            String dynamicLink = shortLink;
+
+                            Intent shareIntent = new Intent();
+                            shareIntent.setType("text/plain");
+                            shareIntent.putExtra(Intent.EXTRA_SUBJECT, mVideo.getTitle());
+                            shareIntent.putExtra(Intent.EXTRA_TEXT, dynamicLink);
+                            shareIntent.setAction(Intent.ACTION_SEND);
+                            bounceAnim.setAnimationListener(
+                                    new MyAnimationListener(Intent.createChooser(shareIntent, "Share video with")));
+                            mShareView.startAnimation(bounceAnim);
+                        });
                     });
 
                 }

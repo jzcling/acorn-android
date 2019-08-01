@@ -19,6 +19,7 @@ import androidx.core.app.TaskStackBuilder;
 
 import com.google.android.gms.location.Geofence;
 import com.google.android.gms.location.GeofencingEvent;
+import com.google.firebase.auth.FirebaseAuth;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -59,6 +60,8 @@ public class GeofenceTransitionsJobIntentService extends JobIntentService {
 
     private AppExecutors mExecutors;
     private NetworkDataSource mDataSource;
+
+    private FirebaseAuth auth = FirebaseAuth.getInstance();
 
     /**
      * Convenience method for enqueuing work in to this service.
@@ -157,8 +160,8 @@ public class GeofenceTransitionsJobIntentService extends JobIntentService {
         final int NOTIFICATION_ID = 9100;
         final List<Notification> notifications = new ArrayList<>();
 
-        NotificationManagerCompat notificationManager = NotificationManagerCompat.from(getApplicationContext());
-//                (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+        NotificationManager notificationManager = //NotificationManagerCompat.from(getApplicationContext());
+                (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
 
         // Set inbox style for the 3 articles
         NotificationCompat.InboxStyle inboxStyle = new NotificationCompat.InboxStyle();
@@ -285,13 +288,29 @@ public class GeofenceTransitionsJobIntentService extends JobIntentService {
             channel.setLightColor(Color.YELLOW);
             channel.setVibrationPattern(new long[]{0});
             channel.enableVibration(true);
-            notificationManager.createNotificationChannel(channel);
+
+            if (notificationManager == null)
+                notificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+
+            if (notificationManager != null) {
+                notificationManager.createNotificationChannel(channel);
+            } else {
+                mDataSource.logNotificationError(auth.getUid(), "null_notif_manager", "location");
+                Log.d(TAG, "notification manager is null");
+                return;
+            }
         }
 
-        for (int i = 0; i < notifications.size(); i++) {
-            notificationManager.notify(20+i, notifications.get(i));
+        if (notificationManager == null) {
+            notificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
         }
-        notificationManager.notify(NOTIFICATION_ID, summaryNotification);
+
+        if (notificationManager != null) {
+            for (int i = 0; i < notifications.size(); i++) {
+                notificationManager.notify(20 + i, notifications.get(i));
+            }
+            notificationManager.notify(NOTIFICATION_ID, summaryNotification);
+        }
     }
 
     /**

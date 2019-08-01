@@ -1,34 +1,38 @@
 package acorn.com.acorn_app.ui.activities;
 
-import android.app.AppOpsManager;
 import android.app.PictureInPictureParams;
-import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.content.res.Configuration;
 import android.os.Build;
 import android.os.Bundle;
-import android.os.Handler;
 import android.util.Log;
 import android.util.Rational;
 import android.view.View;
+import android.widget.CheckBox;
 import android.widget.ImageView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.RequiresApi;
-import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.core.content.ContextCompat;
 
-import com.pierfrancescosoffritti.androidyoutubeplayer.core.player.YouTubePlayer;
-import com.pierfrancescosoffritti.androidyoutubeplayer.core.player.listeners.AbstractYouTubePlayerListener;
-import com.pierfrancescosoffritti.androidyoutubeplayer.core.player.utils.YouTubePlayerUtils;
+import com.google.firebase.auth.FirebaseAuth;
 import com.pierfrancescosoffritti.androidyoutubeplayer.core.player.views.YouTubePlayerView;
 
 import acorn.com.acorn_app.R;
+import acorn.com.acorn_app.data.NetworkDataSource;
+import acorn.com.acorn_app.models.Article;
+import acorn.com.acorn_app.models.Video;
+import acorn.com.acorn_app.ui.adapters.VideoOnClickListener;
+import acorn.com.acorn_app.utils.AppExecutors;
+import acorn.com.acorn_app.utils.Logger;
 
+import static acorn.com.acorn_app.ui.activities.AcornActivity.mUid;
 import static acorn.com.acorn_app.utils.UiUtils.createToast;
+import static acorn.com.acorn_app.utils.UiUtils.increaseTouchArea;
 
 public class YouTubeActivity extends AppCompatActivity {
     private static final String TAG = "YoutubeActivity";
@@ -40,18 +44,80 @@ public class YouTubeActivity extends AppCompatActivity {
     private int width;
     private int height;
 
+    private ConstraintLayout mButtonLayout;
+    private ConstraintLayout mButtonLayoutRight;
+
+    // Action Buttons
+    private CheckBox upVoteView;
+    private CheckBox downVoteView;
+    private CheckBox commentView;
+    private CheckBox favView;
+    private CheckBox shareView;
+    private CheckBox upVoteViewRight;
+    private CheckBox downVoteViewRight;
+    private CheckBox commentViewRight;
+    private CheckBox favViewRight;
+    private CheckBox shareViewRight;
+
+    private Logger mLogger;
+
+    private AppExecutors mExecutors = AppExecutors.getInstance();
+    private NetworkDataSource mDataSource = NetworkDataSource.getInstance(this, mExecutors);
+
     @Override
     protected void onCreate(Bundle bundle) {
         super.onCreate(bundle);
         setContentView(R.layout.activity_youtube);
 
-        mApiKey = getIntent().getStringExtra("apiKey");
-        mVideoId = getIntent().getStringExtra("videoId");
+        mLogger = new Logger(this);
 
         mYouTubePlayerView = findViewById(R.id.player);
         getLifecycle().addObserver(mYouTubePlayerView);
         initPictureInPicture(mYouTubePlayerView);
+
+        mButtonLayout = findViewById(R.id.button_layout_bottom);
+        mButtonLayoutRight = findViewById(R.id.button_layout_right);
+
+        upVoteView = (CheckBox) findViewById(R.id.button_upvote);
+        downVoteView = (CheckBox) findViewById(R.id.button_downvote);
+        commentView = (CheckBox) findViewById(R.id.button_comment);
+        favView = (CheckBox) findViewById(R.id.button_favourite);
+        shareView = (CheckBox) findViewById(R.id.button_share);
+        upVoteViewRight = (CheckBox) findViewById(R.id.button_upvote_right);
+        downVoteViewRight = (CheckBox) findViewById(R.id.button_downvote_right);
+        commentViewRight = (CheckBox) findViewById(R.id.button_comment_right);
+        favViewRight = (CheckBox) findViewById(R.id.button_favourite_right);
+        shareViewRight = (CheckBox) findViewById(R.id.button_share_right);
+
+        increaseTouchArea(upVoteView);
+        increaseTouchArea(downVoteView);
+        increaseTouchArea(commentView);
+        increaseTouchArea(favView);
+        increaseTouchArea(shareView);
+        increaseTouchArea(upVoteViewRight);
+        increaseTouchArea(downVoteViewRight);
+        increaseTouchArea(commentViewRight);
+        increaseTouchArea(favViewRight);
+        increaseTouchArea(shareViewRight);
+
+        Intent intent = getIntent();
+        handleIntent(intent);
+    }
+
+    private void handleIntent(Intent intent) {
+        mVideoId = intent.getStringExtra("videoId");
+        mApiKey = intent.getStringExtra("apiKey");
+        boolean fromNotif = intent.getBooleanExtra("fromNotif", false);
+        String notifType = intent.getStringExtra("notifType");
+        if (mUid == null) mUid = FirebaseAuth.getInstance().getUid();
+        if (mUid != null) {
+            mLogger.logNotificationClicked(fromNotif, notifType, mUid, mVideoId);
+        } else {
+            mLogger.logNotificationError(fromNotif, notifType, "unknown", mVideoId);
+        }
+
         initialisePlayer();
+        setListeners();
     }
 
     @Override
@@ -95,10 +161,24 @@ public class YouTubeActivity extends AppCompatActivity {
         Log.d(TAG, "onNewIntent");
         super.onNewIntent(intent);
 
-        mApiKey = intent.getStringExtra("apiKey");
-        mVideoId = intent.getStringExtra("videoId");
+        handleIntent(intent);
+    }
 
-        initialisePlayer();
+    @Override
+    public void onConfigurationChanged(@NonNull Configuration newConfig) {
+        super.onConfigurationChanged(newConfig);
+
+        if (newConfig.orientation == Configuration.ORIENTATION_LANDSCAPE) {
+            if (!isInPictureInPictureMode()) {
+                mButtonLayoutRight.setVisibility(View.VISIBLE);
+                mButtonLayout.setVisibility(View.GONE);
+            }
+        } else if (newConfig.orientation == Configuration.ORIENTATION_PORTRAIT) {
+            if (!isInPictureInPictureMode()) {
+                mButtonLayoutRight.setVisibility(View.GONE);
+                mButtonLayout.setVisibility(View.VISIBLE);
+            }
+        }
     }
 
     private void initialisePlayer() {
@@ -106,7 +186,6 @@ public class YouTubeActivity extends AppCompatActivity {
             youTubePlayer.loadVideo(mVideoId, 0f);
             width = mYouTubePlayerView.getWidth();
             height = mYouTubePlayerView.getHeight();
-            mYouTubePlayerView.enterFullScreen();
         });
     }
 
@@ -114,15 +193,29 @@ public class YouTubeActivity extends AppCompatActivity {
     public void onPictureInPictureModeChanged(boolean isInPictureInPictureMode, Configuration newConfig) {
         super.onPictureInPictureModeChanged(isInPictureInPictureMode, newConfig);
         if (isInPictureInPictureMode) {
+            mYouTubePlayerView.enterFullScreen();
             mYouTubePlayerView.getPlayerUiController().showUi(false);
         } else {
+            mYouTubePlayerView.exitFullScreen();
+            if (newConfig.orientation == Configuration.ORIENTATION_PORTRAIT) {
+                mButtonLayout.setVisibility(View.VISIBLE);
+            } else if (newConfig.orientation == Configuration.ORIENTATION_LANDSCAPE) {
+                mButtonLayoutRight.setVisibility(View.VISIBLE);
+            }
+
             mYouTubePlayerView.getPlayerUiController().showUi(true);
         }
     }
 
     @RequiresApi(api = Build.VERSION_CODES.O)
     private void enterPipMode() {
+        if (width/height < 0.5 || width/height > 2.0 || height == 0) {
+            width = 16;
+            height = 9;
+        }
         Rational rational = new Rational(width, height);
+        mButtonLayout.setVisibility(View.GONE);
+        mButtonLayoutRight.setVisibility(View.GONE);
 
         PictureInPictureParams mParams =
                 new PictureInPictureParams.Builder()
@@ -147,5 +240,31 @@ public class YouTubeActivity extends AppCompatActivity {
         });
 
         youTubePlayerView.getPlayerUiController().addView(pictureInPictureIcon);
+    }
+
+    private VideoOnClickListener onClickListener(Video video, String cardAttribute) {
+        return new VideoOnClickListener(this, mApiKey, video, cardAttribute,
+                upVoteView, downVoteView, commentView, favView, shareView);
+    }
+
+    private VideoOnClickListener onClickListenerRight(Video video, String cardAttribute) {
+        return new VideoOnClickListener(this, mApiKey, video, cardAttribute,
+                upVoteViewRight, downVoteViewRight, commentViewRight, favViewRight, shareViewRight);
+    }
+
+    private void setListeners() {
+        String videoId = "yt:" + mVideoId;
+        mDataSource.getSingleVideo(videoId, video -> {
+            upVoteView.setOnClickListener(onClickListener(video, "upvote"));
+            downVoteView.setOnClickListener(onClickListener(video, "downvote"));
+            commentView.setOnClickListener(onClickListener(video, "comment"));
+            favView.setOnClickListener(onClickListener(video, "favourite"));
+            shareView.setOnClickListener(onClickListener(video, "share"));
+            upVoteViewRight.setOnClickListener(onClickListener(video, "upvote"));
+            downVoteViewRight.setOnClickListener(onClickListener(video, "downvote"));
+            commentViewRight.setOnClickListener(onClickListener(video, "comment"));
+            favViewRight.setOnClickListener(onClickListener(video, "favourite"));
+            shareViewRight.setOnClickListener(onClickListener(video, "share"));
+        });
     }
 }

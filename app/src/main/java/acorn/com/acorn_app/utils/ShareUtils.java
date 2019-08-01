@@ -7,6 +7,7 @@ import com.google.firebase.dynamiclinks.DynamicLink;
 import com.google.firebase.dynamiclinks.FirebaseDynamicLinks;
 import com.google.firebase.dynamiclinks.ShortDynamicLink;
 
+import java.net.URLEncoder;
 import java.util.function.Consumer;
 
 import static acorn.com.acorn_app.ui.activities.AcornActivity.mUid;
@@ -22,16 +23,13 @@ public class ShareUtils {
             url = url.substring(8);
         }
 
-//        Uri.Builder builder = new Uri.Builder();
-//        builder.scheme("https")
-//                .authority("acorncommunity.sg")
-//                .appendPath("article")
-//                .appendQueryParameter("id", articleId)
-//                .appendQueryParameter("url", url)
-//                .appendQueryParameter("sharerId", sharerId);
-//        return builder.build();
-
         return "https://acorncommunity.sg/article" + "?id=" + articleId + "&url=" + url + "&sharerId=" + sharerId;
+    }
+
+    public static String createVideoShareUri(String videoId, String sharerId) {
+        // Remove http:// and https:// from url
+        String youtubeId = videoId.substring(3);
+        return "https://acorncommunity.sg/video" + "?id=" + videoId + "&youtubeId=" + youtubeId + "&sharerId=" + sharerId;
     }
 
     public static void createShortDynamicLink(String url, Consumer<String> onComplete) {

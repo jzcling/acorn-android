@@ -52,6 +52,7 @@ import com.firebase.ui.database.FirebaseRecyclerOptions;
 import com.firebase.ui.database.SnapshotParser;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.firebase.analytics.FirebaseAnalytics;
+import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.database.ChildEventListener;
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
@@ -195,7 +196,12 @@ public class CommentActivity extends AppCompatActivity implements View.OnTouchLi
         mArticleId = intent.getStringExtra("id");
         boolean fromNotif = intent.getBooleanExtra("fromNotif", false);
         String notifType = intent.getStringExtra("notifType");
-        mLogger.logNotificationClicked(fromNotif, notifType, mUid, mArticleId);
+        if (mUid == null) mUid = FirebaseAuth.getInstance().getUid();
+        if (mUid != null) {
+            mLogger.logNotificationClicked(fromNotif, notifType, mUid, mArticleId);
+        } else {
+            mLogger.logNotificationError(fromNotif, notifType, "unknown", mArticleId);
+        }
 
         mCommentOpenObjectID = mArticleId;
 
@@ -453,7 +459,6 @@ public class CommentActivity extends AppCompatActivity implements View.OnTouchLi
                         if (dataSnapshot.getKey().equals(mUid)) {
                             followOption.setVisible(false);
                             unfollowOption.setVisible(true);
-//
                         }
                     }
                 }
@@ -467,7 +472,6 @@ public class CommentActivity extends AppCompatActivity implements View.OnTouchLi
                         if (dataSnapshot.getKey().equals(mUid)) {
                             followOption.setVisible(true);
                             unfollowOption.setVisible(false);
-//
                         }
                     }
                 }
@@ -619,14 +623,6 @@ public class CommentActivity extends AppCompatActivity implements View.OnTouchLi
         }
     }
 
-//    private void sendInvitation() {
-//        Intent intent = new AppInviteInvitation.IntentBuilder(getString(R.string.invitation_title))
-//                .setComment(getString(R.string.invitation_comment))
-//                .setCallToActionText(getString(R.string.invitation_cta))
-//                .build();
-//        startActivityForResult(intent, REQUEST_INVITE);
-//    }
-
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
@@ -661,7 +657,6 @@ public class CommentActivity extends AppCompatActivity implements View.OnTouchLi
     public void onPause() {
         super.onPause();
         mAdapter.stopListening();
-
     }
 
     @Override
@@ -694,7 +689,6 @@ public class CommentActivity extends AppCompatActivity implements View.OnTouchLi
     public void onSaveInstanceState(Bundle outState) {
         super.onSaveInstanceState(outState);
         outState.putInt(LLM_STATE, mLinearLayoutManager.findLastCompletelyVisibleItemPosition());
-
     }
 
     private FirebaseRecyclerOptions<Comment> getOptions(DatabaseReference ref) {

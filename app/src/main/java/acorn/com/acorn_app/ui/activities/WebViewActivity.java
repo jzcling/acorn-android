@@ -34,6 +34,7 @@ import androidx.core.view.MenuItemCompat;
 
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.firebase.analytics.FirebaseAnalytics;
+import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.database.ChildEventListener;
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
@@ -232,7 +233,12 @@ public class WebViewActivity extends AppCompatActivity {
             articleId = intent.getStringExtra("id");
             boolean fromNotif = intent.getBooleanExtra("fromNotif", false);
             String notifType = intent.getStringExtra("notifType");
-            mLogger.logNotificationClicked(fromNotif, notifType, mUid, articleId);
+            if (mUid == null) mUid = FirebaseAuth.getInstance().getUid();
+            if (mUid != null) {
+                mLogger.logNotificationClicked(fromNotif, notifType, mUid, articleId);
+            } else {
+                mLogger.logNotificationError(fromNotif, notifType, "unknown", articleId);
+            }
 
             loadArticle();
         }

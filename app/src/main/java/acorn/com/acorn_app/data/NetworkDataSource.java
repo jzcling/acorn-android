@@ -983,6 +983,22 @@ public class NetworkDataSource {
         return new VideoListLiveData(query);
     }
 
+    public void getSingleVideo(String videoId, Consumer<Video> onComplete) {
+        DatabaseReference ref = mDatabaseReference.child(VIDEO_REF).child(videoId);
+        ref.addListenerForSingleValueEvent(new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+                if (dataSnapshot.exists()) {
+                    Video video = dataSnapshot.getValue(Video.class);
+                    onComplete.accept(video);
+                }
+            }
+
+            @Override
+            public void onCancelled(@NonNull DatabaseError databaseError) { }
+        });
+    }
+
 
 
 
@@ -1323,6 +1339,19 @@ public class NetworkDataSource {
         data.put("type", type);
         data.put("date", (new Date()).getTime());
 
-        mDatabaseReference.child(userId).updateChildren(data);
+        String key = mDatabaseReference.child(NOTIFICATION_REF).child(userId).push().getKey();
+        if (key != null)
+            mDatabaseReference.child(NOTIFICATION_REF).child(userId).child(key).updateChildren(data);
+    }
+
+    public void logNotificationError(String userId, @Nullable String itemId, String type) {
+        Map<String, Object> data = new HashMap<>();
+        data.put("userId", userId);
+        if (itemId != null) data.put("itemId", itemId);
+        data.put("type", type);
+        data.put("date", (new Date()).getTime());
+
+        String key = mDatabaseReference.child("error").push().getKey();
+        if (key != null) mDatabaseReference.child("error").child(key).updateChildren(data);
     }
 }

@@ -1,5 +1,7 @@
 package acorn.com.acorn_app.ui.activities;
 
+import android.app.NotificationManager;
+import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageInfo;
@@ -10,6 +12,7 @@ import android.graphics.Point;
 import android.graphics.PorterDuff;
 import android.graphics.Typeface;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Parcelable;
@@ -18,10 +21,16 @@ import android.util.Base64;
 import android.util.Log;
 import android.util.TypedValue;
 import android.view.Display;
+import android.view.GestureDetector;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.MotionEvent;
 import android.view.View;
+import android.view.animation.AccelerateInterpolator;
+import android.view.animation.AlphaAnimation;
+import android.view.animation.Animation;
+import android.view.animation.AnimationUtils;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.ImageView;
@@ -104,6 +113,7 @@ import acorn.com.acorn_app.utils.InjectorUtils;
 import acorn.com.acorn_app.utils.InviteUtils;
 import acorn.com.acorn_app.utils.LocationPermissionsUtils;
 import acorn.com.acorn_app.utils.Logger;
+import acorn.com.acorn_app.utils.OnSwipeListener;
 import acorn.com.acorn_app.utils.UiUtils;
 
 import static acorn.com.acorn_app.data.NetworkDataSource.ALGOLIA_API_KEY;
@@ -125,6 +135,7 @@ public class AcornActivity extends AppCompatActivity
     private static final int RC_PREF = 1002;
     public static final int RC_THEME_PREF = 1003;
     public static final int RC_SHARE = 1004;
+    public static final int RC_NOTIF = 1005;
     private static final String ARTICLE_CARD_TYPE = "card";
     private static final String ARTICLE_LIST_TYPE = "list";
 
@@ -151,6 +162,7 @@ public class AcornActivity extends AppCompatActivity
     private SwipeRefreshLayout mSwipeRefreshLayout;
     private FloatingActionButton mScrollFab;
     private FloatingActionButton mPostFab;
+    private CardView mNewContentPrompt;
 
     //Firebase database
     private FirebaseDatabase mDatabase;
@@ -290,7 +302,11 @@ public class AcornActivity extends AppCompatActivity
             Log.d(TAG, "no dynamic link");
             boolean fromNotif = intent.getBooleanExtra("fromNotif", false);
             String notifType = intent.getStringExtra("notifType");
-            mLogger.logNotificationClicked(fromNotif, notifType, mUid, null);
+            if (mFirebaseUser != null) {
+                mLogger.logNotificationClicked(fromNotif, notifType, mFirebaseUser.getUid(), null);
+            } else {
+                mLogger.logNotificationError(fromNotif, notifType, "unknown", null);
+            }
         }
 
         // Initiate views
@@ -299,6 +315,7 @@ public class AcornActivity extends AppCompatActivity
         mDrawer = (DrawerLayout) findViewById(R.id.drawer_layout);
         mScrollFab = (FloatingActionButton) findViewById(R.id.scroll_fab);
         mPostFab = (FloatingActionButton) findViewById(R.id.post_fab);
+        mNewContentPrompt = (CardView) findViewById(R.id.new_content_message);
 
         // Set up recycler view
         mLinearLayoutManager = new LinearLayoutManager(this);
@@ -380,7 +397,13 @@ public class AcornActivity extends AppCompatActivity
         // Geofence
         mLocationPermissionsUtils = new LocationPermissionsUtils(this);
         mGeofenceUtils = GeofenceUtils.getInstance(this, mDataSource, this);
-        Log.d(TAG, this.getLocalClassName());
+
+        // TEMP: Clean up notification channels
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            NotificationManager notificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+            notificationManager.deleteNotificationChannel("geofence_mrt_channel");
+            notificationManager.deleteNotificationChannel("acorn_location_mrt_channel");
+        }
     }
 
     @Override
@@ -575,6 +598,13 @@ public class AcornActivity extends AppCompatActivity
         if (Intent.ACTION_VIEW.equals(appLinkAction) && appLinkData != null) {
             handleDynamicLink(intent);
         } else {
+            boolean fromNotif = intent.getBooleanExtra("fromNotif", false);
+            String notifType = intent.getStringExtra("notifType");
+            if (mFirebaseUser != null) {
+                mLogger.logNotificationClicked(fromNotif, notifType, mFirebaseUser.getUid(), null);
+            } else {
+                mLogger.logNotificationError(fromNotif, notifType, "unknown", null);
+            }
             handleIntent(intent);
         }
     }
@@ -720,6 +750,9 @@ public class AcornActivity extends AppCompatActivity
                 navMenu.findItem(R.id.nav_subscriptions).setChecked(true);
                 getThemeData();
             }
+        } else if (requestCode == RC_NOTIF) {
+            mSwipeRefreshLayout.setRefreshing(false);
+            mRecyclerView.setVisibility(View.VISIBLE);
         }
     }
 
@@ -735,7 +768,6 @@ public class AcornActivity extends AppCompatActivity
     public void onResume() {
         Log.d(TAG, "onResume");
         super.onResume();
-
     }
 
     @Override
@@ -802,7 +834,19 @@ public class AcornActivity extends AppCompatActivity
                             mReferredBy = deepLink.getQueryParameter("sharerId");
                             Intent webviewActivity = new Intent(this, WebViewActivity.class);
                             webviewActivity.putExtra("id", articleId);
-                            startActivity(webviewActivity);
+                            startActivityForResult(webviewActivity, RC_NOTIF);
+                        } else if (lastSegment != null && lastSegment.equals("video")) {
+                            String id = deepLink.getQueryParameter("id");
+                            if (id != null) {
+                                String videoId = id.substring(3);
+                                mReferredBy = deepLink.getQueryParameter("sharerId");
+                                Intent youtubeActivity = new Intent(this, YouTubeActivity.class);
+//                            mDataSource.getYoutubeApiKey((apiKey) -> {
+                                youtubeActivity.putExtra("videoId", videoId);
+//                                youtubeActivity.putExtra("apiKey", apiKey);
+                                startActivityForResult(youtubeActivity, RC_NOTIF);
+//                            });
+                            }
                         } else {
                             mReferredBy = deepLink.getQueryParameter("referrer");
                             Log.d(TAG, "handleDynamicLink: " + deepLink.toString() + ", referrer: " + mReferredBy);
@@ -817,7 +861,6 @@ public class AcornActivity extends AppCompatActivity
     private void handleIntent(Intent intent) {
         Log.d(TAG, "handle intent");
 
-        mSwipeRefreshLayout.setRefreshing(false);
         if (mArticleViewModel != null) {
             if (navMenu != null) {
                 MenuItem subscriptionsMenuItem = (MenuItem) navMenu.findItem(R.id.nav_subscriptions);
@@ -832,6 +875,8 @@ public class AcornActivity extends AppCompatActivity
                     getDealsData();
                 }
             }
+        } else {
+            getThemeData();
         }
     }
 
@@ -1462,15 +1507,36 @@ public class AcornActivity extends AppCompatActivity
 //                        mSwipeRefreshLayout.setRefreshing(false);
 //                    }
 //                });
-                mAdapter.setList(articles, () -> {
-                    if (mLlmState == null) {
-                        Log.d(TAG, "state: null");
-                        if (mRecyclerView.getVisibility() != View.VISIBLE) {
-                            mRecyclerView.setVisibility(View.VISIBLE);
-                            mSwipeRefreshLayout.setRefreshing(false);
+                if (mAdapter.getItemCount() == 0 || articles.get(0).getObjectID().equals("false")) {
+                    Log.d(TAG, "refresh or article change: " + articles.get(0).getObjectID());
+                    List<Article> articleList = new ArrayList<>(articles);
+                    articleList.remove(0);
+                    mAdapter.setList(articleList, () -> {
+                        if (mLlmState == null) {
+                            Log.d(TAG, "state: null");
+                            if (mRecyclerView.getVisibility() != View.VISIBLE) {
+                                mRecyclerView.setVisibility(View.VISIBLE);
+                                mSwipeRefreshLayout.setRefreshing(false);
+                            }
                         }
+                    });
+                } else {
+                    // new articles are available
+                    if (!mAdapter.getList().get(0).getObjectID().equals(articles.get(1).getObjectID()) ||
+                    !mAdapter.getList().get(4).getObjectID().equals(articles.get(5).getObjectID())) {
+                        Log.d(TAG, "new data: " + mAdapter.getList().get(0).getObjectID() +
+                                ", " + articles.get(1).getObjectID());
+                        mNewContentPrompt.setOnClickListener(v -> {
+                            List<Article> articleList = new ArrayList<>(articles);
+                            articleList.remove(0);
+                            mAdapter.setList(articleList);
+                            mRecyclerView.scrollToPosition(0);
+                            fadeOut(mNewContentPrompt);
+                        });
+
+                        fadeIn(mNewContentPrompt);
                     }
-                });
+                }
             }
         };
         articleListLD.observeForever(articleListObserver);
@@ -1486,6 +1552,24 @@ public class AcornActivity extends AppCompatActivity
                 }
             },500);
         }
+    }
+
+    private void fadeIn(View view) {
+        Animation fadeIn = new AlphaAnimation(0, 1);
+        fadeIn.setInterpolator(new AccelerateInterpolator());
+        fadeIn.setStartOffset(0);
+        fadeIn.setDuration(500);
+        view.setAnimation(fadeIn);
+        view.setVisibility(View.VISIBLE);
+    }
+
+    private void fadeOut(View view) {
+        Animation fadeOut = new AlphaAnimation(1, 0);
+        fadeOut.setInterpolator(new AccelerateInterpolator());
+        fadeOut.setStartOffset(0);
+        fadeOut.setDuration(500);
+        view.setAnimation(fadeOut);
+        view.setVisibility(View.GONE);
     }
 
     private int getDeviceWidth() {

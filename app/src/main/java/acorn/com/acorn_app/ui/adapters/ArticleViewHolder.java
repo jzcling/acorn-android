@@ -49,7 +49,7 @@ public class ArticleViewHolder extends RecyclerView.ViewHolder {
     private static final String TAG = "ArticleViewHolder";
     private final String mArticleType;
     private final Context mContext;
-    private final String mYoutubeApiKey;
+    private String mYoutubeApiKey;
     private final ArticleAdapter.OnLongClickListener longClickListener;
 
     private final TextView title;
@@ -94,7 +94,7 @@ public class ArticleViewHolder extends RecyclerView.ViewHolder {
         super(view);
         mContext = context;
         mArticleType = articleType;
-        mYoutubeApiKey = youtubeApiKey;
+//        mYoutubeApiKey = youtubeApiKey;
         this.longClickListener = longClickListener;
 
         mDataSource = NetworkDataSource.getInstance(mContext, mExecutors);

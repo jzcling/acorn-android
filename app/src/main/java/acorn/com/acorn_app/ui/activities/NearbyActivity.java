@@ -51,6 +51,7 @@ import com.google.android.gms.location.LocationSettingsStatusCodes;
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.android.gms.tasks.Task;
+import com.google.firebase.auth.FirebaseAuth;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -446,7 +447,12 @@ public class NearbyActivity extends AppCompatActivity {
                         String stationName = intent.getStringExtra("stationName");
                         boolean fromNotif = intent.getBooleanExtra("fromNotif", false);
                         String notifType = intent.getStringExtra("notifType");
-                        mLogger.logNotificationClicked(fromNotif, notifType, mUid, stationName);
+                        if (mUid == null) mUid = FirebaseAuth.getInstance().getUid();
+                        if (mUid != null) {
+                            mLogger.logNotificationClicked(fromNotif, notifType, mUid, stationName);
+                        } else {
+                            mLogger.logNotificationError(fromNotif, notifType, "unknown", stationName);
+                        }
                         if (stationName != null) {
                             mAddress = stationName;
                             if (mMrtStationMap != null) {

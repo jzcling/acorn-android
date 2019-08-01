@@ -156,9 +156,18 @@ public class ArticleListLiveData extends LiveData<List<Article>> {
                 TaskCompletionSource<List<Article>> articleSource = new TaskCompletionSource<>();
                 Task<List<Article>> articleTask = articleSource.getTask();
 
-                query.addListenerForSingleValueEvent(new ValueEventListener() {
+                query.addValueEventListener(new ValueEventListener() {
                     @Override
                     public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+                        // clear all data when getting refreshed feed
+                        mArticleList.clear();
+                        mArticleIds.clear();
+                        Article newDataIndicator = new Article();
+                        newDataIndicator.setObjectID("true");
+                        mArticleList.add(newDataIndicator);
+                        mArticleIds.add("true");
+                        boolean hasNewData = true;
+
                         List<Task<Boolean>> taskList = new ArrayList<>();
                         if (dataSnapshot.exists()) {
                             for (DataSnapshot snap : dataSnapshot.getChildren()) {
@@ -230,8 +239,9 @@ public class ArticleListLiveData extends LiveData<List<Article>> {
                             Collections.shuffle(selectedVideos, new Random(mSeed));
                             int sizeLimit = Math.min(mArticleList.size() / 5, selectedVideos.size());
                             for (int i = 0; i < sizeLimit; i++) {
-                                mArticleList.add((i + 1) * 5, selectedVideos.get(i));
-                                mArticleIds.add((i + 1) * 5, selectedVideos.get(i).getObjectID());
+                                // after every 5th article, accommodating the new data indicator
+                                mArticleList.add(1 + (i + 1) * 5, selectedVideos.get(i));
+                                mArticleIds.add(1 + (i + 1) * 5, selectedVideos.get(i).getObjectID());
                             }
                         }
                         setValue(mArticleList);
@@ -385,7 +395,14 @@ public class ArticleListLiveData extends LiveData<List<Article>> {
                 }
 
                 if (!dbSource.trySetResult(true)) {
-                   setValue(mArticleList);
+                    Log.d(TAG, "article changed");
+                    mArticleList.remove(0);
+                    mArticleIds.remove(0);
+                    Article newDataIndicator = new Article();
+                    newDataIndicator.setObjectID("false");
+                    mArticleList.add(0, newDataIndicator);
+                    mArticleIds.add(0, "false");
+                    setValue(mArticleList);
                 }
             } else {
                 dbSource.trySetException(new Exception("No data exists"));

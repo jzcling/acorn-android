@@ -146,8 +146,8 @@
     <string name="article_notification_channel_name" translatable="true">Recommended Articles</string>
     <string name="deals_notification_channel_id" translatable="false">fcm_deals_channel</string>
     <string name="deals_notification_channel_name" translatable="true">Recommended Deals</string>
-    <string name="geofence_notification_channel_id" translatable="false">acorn_location_mrt_channel</string>
-    <string name="geofence_notification_channel_name" translatable="true">Acorn Location MRT</string>
+    <string name="geofence_notification_channel_id" translatable="false">location_mrt_channel</string>
+    <string name="geofence_notification_channel_name" translatable="true">Location MRT</string>
     <string name="notif_clear_button">Clear all</string>
     <string name="notif_empty_text">You have no new notifications!</string>
     <string name="notif_delete">DELETE</string>

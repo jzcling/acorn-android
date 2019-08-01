@@ -50,7 +50,7 @@ public class ArticleAdapter extends RecyclerView.Adapter<ArticleViewHolder> {
         mContext = context;
         this.longClickListener = longClickListener;
         mDataSource = NetworkDataSource.getInstance(mContext, mExecutors);
-        mDataSource.getYoutubeApiKey((apiKey) -> mYoutubeApiKey = apiKey);
+//        mDataSource.getYoutubeApiKey((apiKey) -> mYoutubeApiKey = apiKey);
     }
 
     @Override
