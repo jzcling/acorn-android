@@ -22,9 +22,12 @@ import androidx.core.content.ContextCompat;
 import com.google.firebase.auth.FirebaseAuth;
 import com.pierfrancescosoffritti.androidyoutubeplayer.core.player.views.YouTubePlayerView;
 
+import java.util.Date;
+
 import acorn.com.acorn_app.R;
 import acorn.com.acorn_app.data.NetworkDataSource;
 import acorn.com.acorn_app.models.Article;
+import acorn.com.acorn_app.models.TimeLog;
 import acorn.com.acorn_app.models.Video;
 import acorn.com.acorn_app.ui.adapters.VideoOnClickListener;
 import acorn.com.acorn_app.utils.AppExecutors;
@@ -60,6 +63,8 @@ public class YouTubeActivity extends AppCompatActivity {
     private CheckBox shareViewRight;
 
     private Logger mLogger;
+
+    private TimeLog mTimeLog;
 
     private AppExecutors mExecutors = AppExecutors.getInstance();
     private NetworkDataSource mDataSource = NetworkDataSource.getInstance(this, mExecutors);
@@ -118,6 +123,12 @@ public class YouTubeActivity extends AppCompatActivity {
 
         initialisePlayer();
         setListeners();
+
+        mTimeLog = new TimeLog();
+        mTimeLog.openTime = (new Date()).getTime();
+        mTimeLog.userId = mUid;
+        mTimeLog.itemId = "yt:" + mVideoId;
+        mTimeLog.type = "video";
     }
 
     @Override
@@ -136,6 +147,10 @@ public class YouTubeActivity extends AppCompatActivity {
     protected void onStop() {
         Log.d(TAG, "onStop");
         super.onStop();
+
+        mTimeLog.closeTime = (new Date()).getTime();
+        mTimeLog.activeTime = mTimeLog.closeTime - mTimeLog.openTime;
+        mDataSource.logItemTimeLog(mTimeLog);
 
         finishAndRemoveTask();
     }
@@ -184,8 +199,6 @@ public class YouTubeActivity extends AppCompatActivity {
     private void initialisePlayer() {
         mYouTubePlayerView.getYouTubePlayerWhenReady(youTubePlayer -> {
             youTubePlayer.loadVideo(mVideoId, 0f);
-            width = mYouTubePlayerView.getWidth();
-            height = mYouTubePlayerView.getHeight();
         });
     }
 
@@ -209,10 +222,8 @@ public class YouTubeActivity extends AppCompatActivity {
 
     @RequiresApi(api = Build.VERSION_CODES.O)
     private void enterPipMode() {
-        if (width/height < 0.5 || width/height > 2.0 || height == 0) {
-            width = 16;
-            height = 9;
-        }
+        width = 16;
+        height = 9;
         Rational rational = new Rational(width, height);
         mButtonLayout.setVisibility(View.GONE);
         mButtonLayoutRight.setVisibility(View.GONE);

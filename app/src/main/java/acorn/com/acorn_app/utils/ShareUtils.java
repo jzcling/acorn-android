@@ -27,7 +27,6 @@ public class ShareUtils {
     }
 
     public static String createVideoShareUri(String videoId, String sharerId) {
-        // Remove http:// and https:// from url
         String youtubeId = videoId.substring(3);
         return "https://acorncommunity.sg/video" + "?id=" + videoId + "&youtubeId=" + youtubeId + "&sharerId=" + sharerId;
     }

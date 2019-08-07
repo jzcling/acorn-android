@@ -53,6 +53,7 @@ public class ArticleListLiveData extends LiveData<List<Article>> {
     private List<Query> queryList;
     public Map<Query, ValueEventListener> savedArticlesQueryList = new HashMap<>();
     private Map<Query, ValueEventListener> algoliaArticlesQueryList = new HashMap<>();
+    private Map<Query, ValueEventListener> videosQueryList = new HashMap<>();
 
     // States: 0 = Recent, 1 = Trending, 2 = Saved articles, 3 = Search, 4 = Deals
     // -1 = mainTheme, -2 = source
@@ -68,9 +69,7 @@ public class ArticleListLiveData extends LiveData<List<Article>> {
 
     private boolean listenerRemovePending = false;
     private final Handler handler = new Handler();
-    private final Runnable removeListener = new Runnable() {
-        @Override
-        public void run() {
+    private final Runnable removeListener = () -> {
             if (state == 2){
                 for (Query query : savedArticlesQueryList.keySet()) {
                     query.removeEventListener(savedArticlesQueryList.get(query));
@@ -80,11 +79,58 @@ public class ArticleListLiveData extends LiveData<List<Article>> {
                 for (Query query : algoliaArticlesQueryList.keySet()) {
                     query.removeEventListener(algoliaArticlesQueryList.get(query));
                 }
+                for (Query query : videosQueryList.keySet()) {
+                    query.removeEventListener(videosQueryList.get(query));
+                }
             } else {
                 query.removeEventListener(childListener);
             }
             Log.d(TAG, "all listeners removed");
             listenerRemovePending = false;
+    };
+
+    private DataSnapshot mHitsSnap;
+    private TaskCompletionSource<List<Article>> mArticleSource;
+    private boolean isPendingRefresh = false;
+    private final Runnable setArticleList = () -> {
+        mArticleList.clear();
+        mArticleIds.clear();
+
+        List<Task<Boolean>> taskList = new ArrayList<>();
+        if (mHitsSnap.exists()) {
+            for (DataSnapshot snap : mHitsSnap.getChildren()) {
+                Article article = snap.getValue(Article.class);
+                if (article != null) {
+                    String toLoadId = article.getObjectID();
+
+                    // show article from source that first published the news
+//                                    if (article.duplicates.size() > 0) {
+//                                        Long toLoadPubDate = article.getPubDate();
+//                                        for (Map.Entry<String, Long> entry : article.duplicates.entrySet()) {
+//                                            if (entry.getValue() > toLoadPubDate) {
+//                                                // article was published before target article
+//                                                // > because pubDates are all negative
+//                                                toLoadId = entry.getKey();
+//                                                toLoadPubDate = entry.getValue();
+//                                            }
+//                                        }
+//                                    }
+
+                    TaskCompletionSource<Boolean> dbSource = new TaskCompletionSource<>();
+                    Task<Boolean> dbTask = dbSource.getTask();
+                    taskList.add(dbTask);
+
+                    Query articleQuery = mDatabaseReference.child("article/" + toLoadId);
+                    MainFeedValueEventListener articleValueListener = new MainFeedValueEventListener(dbSource);
+                    algoliaArticlesQueryList.put(articleQuery, articleValueListener);
+                    articleQuery.addValueEventListener(articleValueListener);
+                }
+            }
+
+            Tasks.whenAll(taskList).addOnSuccessListener(aVoid -> {
+                mArticleSource.trySetResult(mArticleList);
+                isPendingRefresh = false;
+            });
         }
     };
 
@@ -115,6 +161,7 @@ public class ArticleListLiveData extends LiveData<List<Article>> {
                 query.addValueEventListener(new ValueEventListener() {
                     @Override
                     public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+                        // remove all articles that have been unsaved
                         List<String> articleIds = new ArrayList<>(mArticleIds);
                         for (DataSnapshot snap : dataSnapshot.getChildren()) {
                             articleIds.remove(snap.getKey());
@@ -126,6 +173,10 @@ public class ArticleListLiveData extends LiveData<List<Article>> {
                                     mArticleIds.remove(index);
                                     mArticleList.remove(index);
                                     Query articleQuery = mDatabaseReference.child("article/" + id);
+
+                                    ValueEventListener listener = savedArticlesQueryList.get(articleQuery);
+                                    if (listener != null)
+                                        articleQuery.removeEventListener(listener);
                                     savedArticlesQueryList.remove(articleQuery);
                                 }
                             }
@@ -153,56 +204,19 @@ public class ArticleListLiveData extends LiveData<List<Article>> {
                     }
                 });
             } else if (searchStates.contains(state)) { // Subscriptions, Trending, Deals
-                TaskCompletionSource<List<Article>> articleSource = new TaskCompletionSource<>();
-                Task<List<Article>> articleTask = articleSource.getTask();
+                mArticleSource = new TaskCompletionSource<>();
+                Task<List<Article>> articleTask = mArticleSource.getTask();
 
                 query.addValueEventListener(new ValueEventListener() {
                     @Override
                     public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
                         // clear all data when getting refreshed feed
-                        mArticleList.clear();
-                        mArticleIds.clear();
-                        Article newDataIndicator = new Article();
-                        newDataIndicator.setObjectID("true");
-                        mArticleList.add(newDataIndicator);
-                        mArticleIds.add("true");
-                        boolean hasNewData = true;
+                        Log.d(TAG, "hits data changed");
+                        if (isPendingRefresh) handler.removeCallbacks(setArticleList);
 
-                        List<Task<Boolean>> taskList = new ArrayList<>();
-                        if (dataSnapshot.exists()) {
-                            for (DataSnapshot snap : dataSnapshot.getChildren()) {
-                                Article article = snap.getValue(Article.class);
-                                if (article != null) {
-                                    String toLoadId = article.getObjectID();
-
-                                    // show article from source that first published the news
-//                                    if (article.duplicates.size() > 0) {
-//                                        Long toLoadPubDate = article.getPubDate();
-//                                        for (Map.Entry<String, Long> entry : article.duplicates.entrySet()) {
-//                                            if (entry.getValue() > toLoadPubDate) {
-//                                                // article was published before target article
-//                                                // > because pubDates are all negative
-//                                                toLoadId = entry.getKey();
-//                                                toLoadPubDate = entry.getValue();
-//                                            }
-//                                        }
-//                                    }
-
-                                    TaskCompletionSource<Boolean> dbSource = new TaskCompletionSource<>();
-                                    Task<Boolean> dbTask = dbSource.getTask();
-                                    taskList.add(dbTask);
-
-                                    Query articleQuery = mDatabaseReference.child("article/" + toLoadId);
-                                    MainFeedValueEventListener articleValueListener = new MainFeedValueEventListener(dbSource);
-                                    algoliaArticlesQueryList.put(articleQuery, articleValueListener);
-                                    articleQuery.addValueEventListener(articleValueListener);
-                                }
-                            }
-
-                            Tasks.whenAll(taskList).addOnSuccessListener(aVoid -> {
-                                articleSource.trySetResult(mArticleList);
-                            });
-                        }
+                        mHitsSnap = dataSnapshot;
+                        handler.postDelayed(setArticleList,500);
+                        isPendingRefresh = true;
                     }
 
                     @Override
@@ -229,8 +243,6 @@ public class ArticleListLiveData extends LiveData<List<Article>> {
                         List<Article> selectedVideos = new ArrayList<>();
                         if (videos != null) {
                             for (Article video : videos) {
-//                                Log.d(TAG, "videoId: " + video.getObjectID() + ", theme: " +
-//                                        video.getMainTheme() + ", pubDate: " + video.getPubDate());
                                 if (mThemeList.contains(video.getMainTheme()) &&
                                         !channelsToRemove.contains(video.getSource())) {
                                     selectedVideos.add(video);
@@ -242,6 +254,11 @@ public class ArticleListLiveData extends LiveData<List<Article>> {
                                 // after every 5th article, accommodating the new data indicator
                                 mArticleList.add(1 + (i + 1) * 5, selectedVideos.get(i));
                                 mArticleIds.add(1 + (i + 1) * 5, selectedVideos.get(i).getObjectID());
+
+                                Query selectedVideoQuery = mDatabaseReference.child("video/" + selectedVideos.get(i).getObjectID());
+                                SelectedVideoValueEventListener selectedVideoValueListener = new SelectedVideoValueEventListener();
+                                videosQueryList.put(selectedVideoQuery, selectedVideoValueListener);
+                                selectedVideoQuery.addValueEventListener(selectedVideoValueListener);
                             }
                         }
                         setValue(mArticleList);
@@ -339,10 +356,7 @@ public class ArticleListLiveData extends LiveData<List<Article>> {
         }
 
         @Override
-        public void onCancelled(@NonNull DatabaseError databaseError) {
-
-        }
-
+        public void onCancelled(@NonNull DatabaseError databaseError) { }
     }
 
     private class MainFeedValueEventListener implements ValueEventListener {
@@ -354,7 +368,7 @@ public class ArticleListLiveData extends LiveData<List<Article>> {
 
         @Override
         public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
-//            Log.d(TAG, "onDataChanged");
+            Log.d(TAG, "article data changed");
             if (dataSnapshot.exists()) {
                 Article article = dataSnapshot.getValue(Article.class);
                 String articleId = dataSnapshot.getKey();
@@ -396,12 +410,6 @@ public class ArticleListLiveData extends LiveData<List<Article>> {
 
                 if (!dbSource.trySetResult(true)) {
                     Log.d(TAG, "article changed");
-                    mArticleList.remove(0);
-                    mArticleIds.remove(0);
-                    Article newDataIndicator = new Article();
-                    newDataIndicator.setObjectID("false");
-                    mArticleList.add(0, newDataIndicator);
-                    mArticleIds.add(0, "false");
                     setValue(mArticleList);
                 }
             } else {
@@ -481,6 +489,37 @@ public class ArticleListLiveData extends LiveData<List<Article>> {
         public void onCancelled(@NonNull DatabaseError databaseError) {
             dbSource.trySetException(databaseError.toException());
         }
+    }
+
+    private class SelectedVideoValueEventListener implements ValueEventListener {
+        @Override
+        public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+            if (dataSnapshot.exists()) {
+                Video video = dataSnapshot.getValue(Video.class);
+                String videoId = dataSnapshot.getKey();
+                if (video != null) {
+                    Article convertedVideo = video.toArticle();
+                    int index = mArticleIds.indexOf(videoId);
+                    if (index > -1) {
+                        mArticleIds.set(index, videoId);
+                        mArticleList.set(index, convertedVideo);
+                    }
+                } else {
+                    int index = mArticleIds.indexOf(videoId);
+                    if (index > -1) {
+                        // Remove data from the list
+                        mArticleIds.remove(index);
+                        mArticleList.remove(index);
+                    }
+                }
+
+                Log.d(TAG, "video changed");
+                setValue(mArticleList);
+            }
+        }
+
+        @Override
+        public void onCancelled(@NonNull DatabaseError databaseError) { }
     }
 }
 

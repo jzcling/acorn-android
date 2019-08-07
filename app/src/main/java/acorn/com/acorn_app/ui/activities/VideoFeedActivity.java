@@ -68,12 +68,12 @@ public class VideoFeedActivity extends AppCompatActivity {
         mRecyclerView.setLayoutManager(mLinearLayoutManager);
         mAdapter = new VideoFeedAdapter(this, mDataSource);
         mRecyclerView.setAdapter(mAdapter);
-        mRecyclerView.addOnScrollListener(new RecyclerView.OnScrollListener() {
-            @Override
-            public void onScrolled(RecyclerView recyclerView, int dx, int dy) {
-                loadMoreVideos();
-            }
-        });
+//        mRecyclerView.addOnScrollListener(new RecyclerView.OnScrollListener() {
+//            @Override
+//            public void onScrolled(RecyclerView recyclerView, int dx, int dy) {
+//                loadMoreVideos();
+//            }
+//        });
 
         setUpInitialViewModelObserver();
     }
@@ -115,34 +115,14 @@ public class VideoFeedActivity extends AppCompatActivity {
         mVideoListLD = mVideoViewModel.getVideos(null);
         Observer<List<Video>> VideoListObserver = videos -> {
             if (videos != null) {
-                /*
-                1 - While child listener adds Videos incrementally to live data list,
-                we add to adapter list if it had not already been added.
-                2 - On any changes to live data list after adapter list is set,
-                update changes in-situ.
-                This way, adapter list expands up to size of all observed live data lists
-                (includes all loadMoreVideos lists), with no repeat Videos on changes.
-                */
-                List<Video> currentList = mAdapter.getList();
-                for (int i = 0; i < videos.size(); i++) {
-                    if (currentList.size() < i+1) {
-                        //1
-                        currentList.add(i, videos.get(i));
-                        Log.d(TAG, "added: " + currentList.size());
-                    } else {
-                        //2
-                        currentList.set(i, videos.get(i));
-                        Log.d(TAG, "set: " + currentList.size());
-                    }
-                }
-                mAdapter.setList(currentList, () -> {
+                mAdapter.setList(videos, () -> {
                     if (mLlmState != null) {
                         mLinearLayoutManager.onRestoreInstanceState(mLlmState);
                     }
                 });
             }
         };
-        mVideoListLD.observeForever(VideoListObserver);
+        mVideoListLD.observe(this, VideoListObserver);
         mObservedList.put(mVideoListLD, VideoListObserver);
     }
 

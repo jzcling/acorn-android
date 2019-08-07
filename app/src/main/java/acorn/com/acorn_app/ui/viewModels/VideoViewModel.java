@@ -7,7 +7,7 @@ import acorn.com.acorn_app.data.NetworkDataSource;
 import acorn.com.acorn_app.data.VideoListLiveData;
 
 public class VideoViewModel extends ViewModel {
-    public static final int QUERY_LIMIT = 10;
+    public static final int QUERY_LIMIT = 50;
     private final NetworkDataSource mDataSource;
 
     public VideoViewModel(NetworkDataSource dataSource) {

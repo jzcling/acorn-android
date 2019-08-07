@@ -228,28 +228,29 @@ public class SavedArticlesActivity extends AppCompatActivity
                 This way, adapter list expands up to size of all observed live data lists
                 (includes all loadMoreArticles lists), with no repeat articles on changes.
                 */
-                List<Article> currentList = mAdapter.getList();
-                for (int i = 0; i < articles.size(); i++) {
-                    if (currentList.size() < i+1) {
-                        //1
-                        currentList.add(i, articles.get(i));
-                        Log.d(TAG, "added: " + currentList.size());
-                    } else {
-                        //2
-                        currentList.set(i, articles.get(i));
-                        Log.d(TAG, "set: " + currentList.size());
+//                List<Article> currentList = mAdapter.getList();
+//                for (int i = 0; i < articles.size(); i++) {
+//                    if (currentList.size() < i+1) {
+//                        //1
+//                        currentList.add(i, articles.get(i));
+//                        Log.d(TAG, "added: " + currentList.size());
+//                    } else {
+//                        //2
+//                        currentList.set(i, articles.get(i));
+//                        Log.d(TAG, "set: " + currentList.size());
+//                    }
+//                }
+                mAdapter.setList(articles, mThemeFilterList, mSearchText, () -> {
+                    if (mLlmState != null) {
+                        mLinearLayoutManager.onRestoreInstanceState(mLlmState);
+                        mLlmState = null;
                     }
-                }
-                mAdapter.setList(currentList, mThemeFilterList, mSearchText);
+                });
                 mProgressBar.setVisibility(View.GONE);
             }
         };
-        articleListLD.observeForever(articleListObserver);
+        articleListLD.observe(this, articleListObserver);
         mObservedList.put(articleListLD, articleListObserver);
-        if (mLlmState != null) {
-            mLinearLayoutManager.onRestoreInstanceState(mLlmState);
-        }
-
     }
 
     @Override

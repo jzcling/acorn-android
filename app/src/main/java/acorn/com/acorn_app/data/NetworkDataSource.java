@@ -25,6 +25,7 @@ import android.preference.PreferenceManager;
 import acorn.com.acorn_app.models.Address;
 import acorn.com.acorn_app.models.MrtStation;
 import acorn.com.acorn_app.models.PremiumStatus;
+import acorn.com.acorn_app.models.TimeLog;
 import acorn.com.acorn_app.models.Video;
 import acorn.com.acorn_app.utils.DateUtils;
 import androidx.annotation.NonNull;
@@ -1353,5 +1354,23 @@ public class NetworkDataSource {
 
         String key = mDatabaseReference.child("error").push().getKey();
         if (key != null) mDatabaseReference.child("error").child(key).updateChildren(data);
+    }
+
+    public void logSeenItemEvent(String uid, String itemId, String type) {
+        Long now = (new Date()).getTime();
+        if (type.equals("article") || type.equals("post")) {
+            mDatabaseReference.child(ARTICLE_REF).child(itemId).child("seenBy").child(uid).setValue(now);
+        } else if (type.equals("video")) {
+            mDatabaseReference.child(VIDEO_REF).child(itemId).child("seenBy").child(uid).setValue(now);
+        }
+    }
+
+    public void logItemTimeLog(TimeLog timeLog) {
+        String key = mDatabaseReference.child("timeLog").push().getKey();
+        mDatabaseReference.child("timeLog/" + key).setValue(timeLog);
+    }
+
+    public void logSurveyResponse(boolean response) {
+        mDatabaseReference.child("survey").child(mUid).setValue(response);
     }
 }

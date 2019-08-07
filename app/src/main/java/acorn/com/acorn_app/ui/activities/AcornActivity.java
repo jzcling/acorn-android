@@ -2,6 +2,7 @@ package acorn.com.acorn_app.ui.activities;
 
 import android.app.NotificationManager;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageInfo;
@@ -93,6 +94,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
+import java.util.function.Consumer;
 
 import acorn.com.acorn_app.R;
 import acorn.com.acorn_app.data.ArticleListLiveData;
@@ -179,6 +181,7 @@ public class AcornActivity extends AppCompatActivity
     private LinearLayoutManager mLinearLayoutManager;
     private boolean isLoadingMore = false;
     private static Parcelable mLlmState;
+    private boolean mPendingRestoreState;
 
     //View Models
     private ArticleViewModel mArticleViewModel;
@@ -243,6 +246,7 @@ public class AcornActivity extends AppCompatActivity
 
     private Bundle mSavedInstanceState;
     private Logger mLogger;
+    private Handler mHandler = new Handler();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -411,6 +415,10 @@ public class AcornActivity extends AppCompatActivity
         if (mDrawer.isDrawerOpen(GravityCompat.START)) {
             mDrawer.closeDrawer(GravityCompat.START);
         } else {
+            if (navMenu == null) {
+                NavigationView navigationView = (NavigationView) findViewById(R.id.nav_view);
+                navMenu = navigationView.getMenu();
+            }
             createBackPressedDialog();
         }
     }
@@ -816,9 +824,9 @@ public class AcornActivity extends AppCompatActivity
     protected void onRestoreInstanceState(Bundle savedInstanceState) {
         Log.d(TAG,"onRestoreInstanceState");
         super.onRestoreInstanceState(savedInstanceState);
-        new Handler().postDelayed(() -> {
-            mLinearLayoutManager.onRestoreInstanceState(mLlmState);
-        }, 100);
+//        mHandler.postDelayed(() -> {
+//            mLinearLayoutManager.onRestoreInstanceState(mLlmState);
+//        }, 2000);
     }
 
     private void handleDynamicLink(Intent intent) {
@@ -943,7 +951,7 @@ public class AcornActivity extends AppCompatActivity
             addListLD.observeForever(addListObserver);
             mObservedList.put(addListLD, addListObserver);
 
-            new Handler().postDelayed(()->isLoadingMore = false,1000);
+            mHandler.postDelayed(()->isLoadingMore = false,1000);
         }
     }
 
@@ -958,6 +966,7 @@ public class AcornActivity extends AppCompatActivity
 
     private void resetView() {
         Log.d(TAG, "resetView");
+        clearView();
 
         mAdapter = new ArticleAdapter(this, this);
         mRecyclerView.setAdapter(mAdapter);
@@ -985,6 +994,9 @@ public class AcornActivity extends AppCompatActivity
                 .signOut(this)
                 .addOnCompleteListener(task -> {
                     // user is now signed out
+                    mAdapter.clear();
+                    if (mUserStatusRef != null) mUserStatusRef.removeEventListener(mUserStatusListener);
+                    if (mUserPremiumStatusRef != null) mUserPremiumStatusRef.removeEventListener(mUserPremiumStatusListener);
                     launchLogin();
                 });
     }
@@ -1203,6 +1215,16 @@ public class AcornActivity extends AppCompatActivity
                         mSharedPreferences.edit().putString(getString(R.string.pref_key_night_mode), "0").apply();
                     if (!mSharedPreferences.contains(getString(R.string.pref_key_feed_videos)))
                         mSharedPreferences.edit().putBoolean(getString(R.string.pref_key_feed_videos), true).apply();
+
+                    if (retrievedUser.openedArticles.keySet().size() > 50) {
+                        boolean hasSeenSurveyRequest = mSharedPreferences.getBoolean("hasSeenSurveyRequest", false);
+                        if (!hasSeenSurveyRequest) {
+                            sendSurveyRequest();
+                            mSharedPreferences.edit()
+                                    .putBoolean("hasSeenSurveyRequest", true)
+                                    .apply();
+                        }
+                    }
                 }
 
                 // put uid in sharedPrefs
@@ -1251,6 +1273,27 @@ public class AcornActivity extends AppCompatActivity
         }
     }
 
+    private void sendSurveyRequest() {
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle("Help Shape the Future of Acorn!");
+        builder.setIcon(R.drawable.ic_launcher);
+        String message = "Thanks for supporting Acorn, " + mUsername.split(" ")[0] +
+                "! Having reached 50 articles read, we would love to hear your opinion on the app. " +
+                "Would you like to help improve Acorn?";
+        builder.setMessage(message);
+        builder.setNegativeButton("No", (dialog, which) -> {
+            mDataSource.logSurveyResponse(false);
+            dialog.dismiss();
+        });
+        builder.setPositiveButton("Yes", (dialog, which) -> {
+            mDataSource.logSurveyResponse(true);
+            Intent browserIntent = new Intent(Intent.ACTION_VIEW,
+                    Uri.parse("https://docs.google.com/forms/d/e/1FAIpQLSdrEHdVUB5M7ouMTihf5Y02yGhGytPK0-xjY427TcedfBMCBQ/viewform?usp=sf_link"));
+            startActivity(browserIntent);
+        });
+        builder.show();
+    }
+
     private void setupUserStatusListeners(DatabaseReference userRef) {
         Log.d(TAG, "setupUserStatusListeners");
         NavigationView navigationView = (NavigationView) findViewById(R.id.nav_view);
@@ -1280,7 +1323,6 @@ public class AcornActivity extends AppCompatActivity
             public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
                 PremiumStatus premiumStatus = dataSnapshot.getValue(PremiumStatus.class);
                 if (premiumStatus != null) {
-                    Log.d(TAG, "premiumStatus: " + premiumStatus.toString());
                     Long end = premiumStatus.end;
                     if (end != null && end > (new Date()).getTime()) {
                         if (mUserPremiumStatusCardView != null && mUserPremiumStatusTextView != null) {
@@ -1507,51 +1549,40 @@ public class AcornActivity extends AppCompatActivity
 //                        mSwipeRefreshLayout.setRefreshing(false);
 //                    }
 //                });
-                if (mAdapter.getItemCount() == 0 || articles.get(0).getObjectID().equals("false")) {
-                    Log.d(TAG, "refresh or article change: " + articles.get(0).getObjectID());
-                    List<Article> articleList = new ArrayList<>(articles);
-                    articleList.remove(0);
-                    mAdapter.setList(articleList, () -> {
-                        if (mLlmState == null) {
-                            Log.d(TAG, "state: null");
-                            if (mRecyclerView.getVisibility() != View.VISIBLE) {
-                                mRecyclerView.setVisibility(View.VISIBLE);
-                                mSwipeRefreshLayout.setRefreshing(false);
-                            }
-                        }
+
+                Long lastFeedRefreshTime = mSharedPreferences.getLong("lastFeedRefreshTime", 0L);
+                Long now = (new Date()).getTime();
+                if (mAdapter.getItemCount() == 0 || lastFeedRefreshTime < (now - 60 * 60 * 1000)) {
+                    Log.d(TAG, "refresh: " + articles.get(0).getObjectID());
+                    mAdapter.setList(articles, () -> {
+                        if (mPendingRestoreState) mHandler.removeCallbacks(restoreLlmState);
+                        mHandler.postDelayed(restoreLlmState, 200);
+                        mPendingRestoreState = true;
                     });
+                    mSharedPreferences.edit().putLong("lastFeedRefreshTime", now).apply();
                 } else {
                     // new articles are available
-                    if (!mAdapter.getList().get(0).getObjectID().equals(articles.get(1).getObjectID()) ||
-                    !mAdapter.getList().get(4).getObjectID().equals(articles.get(5).getObjectID())) {
-                        Log.d(TAG, "new data: " + mAdapter.getList().get(0).getObjectID() +
-                                ", " + articles.get(1).getObjectID());
+                    if (!mAdapter.getList().get(0).getObjectID().equals(articles.get(0).getObjectID()) ||
+                            !mAdapter.getLastItem().getObjectID().equals(articles.get(articles.size()-1).getObjectID())) {
+                        Log.d(TAG, "new articles available: " + mAdapter.getList().get(0).getObjectID() +
+                                ", " + articles.get(1).getObjectID() + "; " + mAdapter.getLastItem().getObjectID() +
+                                ", " + articles.get(articles.size()-1).getObjectID());
                         mNewContentPrompt.setOnClickListener(v -> {
-                            List<Article> articleList = new ArrayList<>(articles);
-                            articleList.remove(0);
-                            mAdapter.setList(articleList);
+                            mAdapter.setList(articles);
                             mRecyclerView.scrollToPosition(0);
                             fadeOut(mNewContentPrompt);
                         });
 
                         fadeIn(mNewContentPrompt);
+                    } else {
+                        Log.d(TAG, "article change: " + articles.get(0).getObjectID());
+                        mAdapter.setList(articles);
                     }
                 }
             }
         };
-        articleListLD.observeForever(articleListObserver);
+        articleListLD.observe(this, articleListObserver);
         mObservedList.put(articleListLD, articleListObserver);
-        if (mLlmState != null) {
-            new Handler().postDelayed(() -> {
-                Log.d(TAG, "restore instance state");
-                mLinearLayoutManager.onRestoreInstanceState(mLlmState);
-
-                if (mRecyclerView.getVisibility() != View.VISIBLE) {
-                    mRecyclerView.setVisibility(View.VISIBLE);
-                    mSwipeRefreshLayout.setRefreshing(false);
-                }
-            },500);
-        }
     }
 
     private void fadeIn(View view) {
@@ -1571,6 +1602,20 @@ public class AcornActivity extends AppCompatActivity
         view.setAnimation(fadeOut);
         view.setVisibility(View.GONE);
     }
+
+    private Runnable restoreLlmState = () -> {
+        if (mLlmState != null) {
+            mLinearLayoutManager.onRestoreInstanceState(mLlmState);
+            mLlmState = null;
+        }
+
+        if (mRecyclerView.getVisibility() != View.VISIBLE) {
+            mRecyclerView.setVisibility(View.VISIBLE);
+            mSwipeRefreshLayout.setRefreshing(false);
+        }
+        mPendingRestoreState = false;
+        Log.d(TAG, "restore instance state");
+    };
 
     private int getDeviceWidth() {
         Display display = getWindowManager().getDefaultDisplay();

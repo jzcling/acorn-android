@@ -296,7 +296,6 @@ public class GeofenceTransitionsJobIntentService extends JobIntentService {
                 notificationManager.createNotificationChannel(channel);
             } else {
                 mDataSource.logNotificationError(auth.getUid(), "null_notif_manager", "location");
-                Log.d(TAG, "notification manager is null");
                 return;
             }
         }

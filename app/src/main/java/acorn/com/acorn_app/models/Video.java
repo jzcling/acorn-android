@@ -39,6 +39,7 @@ public class Video {
     public Integer starRatingCount = 0;
     public Long starRatingAverage = 0L;
     public Integer youtubeViewCount = 0;
+    public final Map<String, Long> seenBy = new HashMap<>();
 
     public Video() {}
 
@@ -153,6 +154,7 @@ public class Video {
         article.changedSinceLastJob = changedSinceLastJob;
         article.isReported = isReported;
         article.setReadTime(youtubeViewCount);
+        article.seenBy.putAll(seenBy);
 
         return article;
     }

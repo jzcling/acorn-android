@@ -3,9 +3,11 @@ package acorn.com.acorn_app.ui.activities;
 import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.graphics.Point;
 import android.net.Uri;
 import android.os.Bundle;
+import android.preference.PreferenceManager;
 import android.util.Log;
 import android.view.Display;
 import android.view.Menu;
@@ -45,10 +47,13 @@ import com.google.firebase.database.Transaction;
 import com.google.firebase.database.ValueEventListener;
 import com.google.firebase.dynamiclinks.FirebaseDynamicLinks;
 
+import java.util.Date;
+
 import acorn.com.acorn_app.R;
 import acorn.com.acorn_app.data.ArticleRoomDatabase;
 import acorn.com.acorn_app.data.NetworkDataSource;
 import acorn.com.acorn_app.models.Article;
+import acorn.com.acorn_app.models.TimeLog;
 import acorn.com.acorn_app.models.dbArticle;
 import acorn.com.acorn_app.ui.adapters.ArticleOnClickListener;
 import acorn.com.acorn_app.ui.views.ObservableWebView;
@@ -107,10 +112,15 @@ public class WebViewActivity extends AppCompatActivity {
     private final AppExecutors mExecutors = AppExecutors.getInstance();
 
     private static float lastScrollPercent = 0f;
+    private float maxScrollPercent = 0f;
     private static boolean hasDisplayedMessageOverlay = false;
     private boolean hasLoggedSelectContent = false;
 
     private Logger mLogger;
+
+    private TimeLog mTimeLog;
+    private long mActiveTime = 0L;
+    private long mResumeTime = 0L;
 
     @SuppressLint("SetJavaScriptEnabled")
     @Override
@@ -177,6 +187,7 @@ public class WebViewActivity extends AppCompatActivity {
         webView.setOnScrollChangeListener(
                 (ObservableWebView.OnScrollChangeListener) (v, scrollX, scrollY, oldScrollX, oldScrollY) -> {
                     lastScrollPercent = getScrollPercent(webView);
+                    if (lastScrollPercent > maxScrollPercent) maxScrollPercent = lastScrollPercent;
                 });
 
         // Set up action buttons
@@ -224,6 +235,12 @@ public class WebViewActivity extends AppCompatActivity {
 //                            Log.d(TAG, "articleId: " + articleId);
                             String sharerId = deepLink.getQueryParameter("sharerId");
                             loadArticle();
+
+                            mTimeLog = new TimeLog();
+                            mTimeLog.openTime = (new Date()).getTime();
+                            mTimeLog.userId = mUid;
+                            mTimeLog.itemId = articleId;
+                            mTimeLog.type = "article";
                         }
                     })
                     .addOnFailureListener(this, e -> {
@@ -241,6 +258,12 @@ public class WebViewActivity extends AppCompatActivity {
             }
 
             loadArticle();
+
+            mTimeLog = new TimeLog();
+            mTimeLog.openTime = (new Date()).getTime();
+            mTimeLog.userId = mUid;
+            mTimeLog.itemId = articleId;
+            mTimeLog.type = "article";
         }
     }
 
@@ -335,7 +358,6 @@ public class WebViewActivity extends AppCompatActivity {
                         if (dataSnapshot.getKey().equals(mUid)) {
                             followOption.setVisible(true);
                             unfollowOption.setVisible(false);
-//
                         }
                     }
                 }
@@ -393,12 +415,16 @@ public class WebViewActivity extends AppCompatActivity {
     protected void onResume() {
         Log.d(TAG, "onResume");
         super.onResume();
+        mResumeTime = (new Date()).getTime();
+        Log.d(TAG, "resume time: " + mResumeTime);
     }
 
     @Override
     protected void onPause() {
         Log.d(TAG, "onPause");
         super.onPause();
+        long now = (new Date()).getTime();
+        mActiveTime += now - mResumeTime;
     }
 
     @Override
@@ -430,6 +456,12 @@ public class WebViewActivity extends AppCompatActivity {
                 mDataSource.recordArticleOpenDetails(mArticle);
             });
         }
+
+        mTimeLog.closeTime = (new Date()).getTime();
+        mTimeLog.activeTime = mActiveTime;
+        mTimeLog.percentReadTimeActive = mActiveTime / (60f * 1000f) / mArticle.getReadTime();
+        mTimeLog.percentScroll = maxScrollPercent;
+        mDataSource.logItemTimeLog(mTimeLog);
     }
 
     private void loadFromLocalDb() {
@@ -622,7 +654,6 @@ public class WebViewActivity extends AppCompatActivity {
                     public Transaction.Result doTransaction(@NonNull MutableData mutableData) {
                         Article article = mutableData.getValue(Article.class);
                         if (article == null) {
-//
                             return Transaction.success(mutableData);
                         }
 

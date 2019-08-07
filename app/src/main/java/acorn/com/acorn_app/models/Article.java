@@ -44,6 +44,7 @@ public class Article {
     public Long reminderDate;
     public boolean hasAddress = false;
     public final Map<String, Long> duplicates = new HashMap<>();
+    public final Map<String, Long> seenBy = new HashMap<>();
 
     public Article() {}
 
@@ -195,6 +196,7 @@ public class Article {
         video.isReported = isReported;
         video.youtubeVideoId = objectID.replace("yt:", "");
         video.youtubeViewCount = readTime;
+        video.seenBy.putAll(seenBy);
 
         return video;
     }

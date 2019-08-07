@@ -9,10 +9,14 @@ import android.view.View;
 import android.view.ViewGroup;
 
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 
 import acorn.com.acorn_app.R;
 import acorn.com.acorn_app.models.Article;
+
+import static acorn.com.acorn_app.ui.activities.AcornActivity.mUid;
 
 public class SavedArticleAdapter extends RecyclerView.Adapter<SavedArticleViewHolder> {
     private static final String TAG = "SavedArticleAdapter";
@@ -57,10 +61,18 @@ public class SavedArticleAdapter extends RecyclerView.Adapter<SavedArticleViewHo
         return mFilteredArticleList.size();
     }
 
-    public void setList(List<Article> newList, List<String> themeList, String searchText) {
+    public void setList(List<Article> newList, List<String> themeList, String searchText, Runnable onComplete) {
         mUnfilteredArticleList = new ArrayList<>(newList);
+        Collections.sort(mUnfilteredArticleList, (o1, o2) -> {
+            Long o1SaveTime = o1.savers.get(mUid);
+            Long o2SaveTime = o2.savers.get(mUid);
+            if (o1SaveTime == null) o1SaveTime = 0L;
+            if (o2SaveTime == null) o2SaveTime = 0L;
+            return o2SaveTime.compareTo(o1SaveTime);
+        });
         filterByThemes(themeList);
         filterBySearchText(searchText);
+        onComplete.run();
     }
 
     public void appendList(List<Article> addList, List<String> themeList, String searchText) {
