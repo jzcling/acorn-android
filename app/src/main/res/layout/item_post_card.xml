@@ -83,6 +83,14 @@
             app:layout_constraintBottom_toBottomOf="@id/post_author"
             app:layout_constraintStart_toEndOf="@id/post_separator"/>
 
+        <ImageView
+            android:id="@+id/card_banner_new"
+            android:layout_width="25dp"
+            android:layout_height="21dp"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            app:srcCompat="@drawable/banner_new" />
+
         <androidx.constraintlayout.widget.ConstraintLayout
             android:id="@+id/metrics_layout"
             android:layout_width="wrap_content"

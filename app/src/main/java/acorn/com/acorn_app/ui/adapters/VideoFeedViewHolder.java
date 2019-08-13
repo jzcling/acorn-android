@@ -22,6 +22,7 @@ public class VideoFeedViewHolder extends RecyclerView.ViewHolder {
     private final String mVideoType;
     private final String mYoutubeApiKey;
 
+    private final ImageView banner;
     private final TextView theme;
     private final TextView top_separator;
     private final TextView youtubeViewCount;
@@ -48,6 +49,7 @@ public class VideoFeedViewHolder extends RecyclerView.ViewHolder {
         mVideoType = videoType;
         mYoutubeApiKey = youtubeApiKey;
 
+        banner = (ImageView) view.findViewById(R.id.card_banner_new);
         theme = (TextView) view.findViewById(R.id.card_theme);
         top_separator = (TextView) view.findViewById(R.id.card_top_separator);
         youtubeViewCount = (TextView) view.findViewById(R.id.card_youtube_view_count);
@@ -73,6 +75,11 @@ public class VideoFeedViewHolder extends RecyclerView.ViewHolder {
     }
 
     public void bind(Video video) {
+        if (video.seenBy.keySet().contains(mUid)) {
+            banner.setVisibility(View.GONE);
+        } else {
+            banner.setVisibility(View.VISIBLE);
+        }
         if (video.getMainTheme() != null && !video.getMainTheme().equals("")) {
             theme.setText(video.getMainTheme());
         } else {

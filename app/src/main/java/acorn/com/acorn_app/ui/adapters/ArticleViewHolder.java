@@ -64,6 +64,7 @@ public class ArticleViewHolder extends RecyclerView.ViewHolder {
     private final ImageView mainImageCard;
     private ImageView postImage;
 
+    private ImageView banner;
     private TextView theme;
     private TextView readTime;
     private TextView youtubeViewCount;
@@ -110,6 +111,7 @@ public class ArticleViewHolder extends RecyclerView.ViewHolder {
         mainImage = (ImageView) view.findViewById(R.id.card_image);
         mainImageCard = (ImageView) view.findViewById(R.id.card_image_card);
 
+        banner = (ImageView) view.findViewById(R.id.card_banner_new);
         theme = (TextView) view.findViewById(R.id.card_theme);
         readTime = (TextView) view.findViewById(R.id.card_read_time);
         topSeparator = (TextView) view.findViewById(R.id.card_top_separator);
@@ -173,6 +175,11 @@ public class ArticleViewHolder extends RecyclerView.ViewHolder {
     public void bind(Article article) {
         if (mContext != null) {
             title.setText(article.getTitle());
+            if (article.openedBy.keySet().contains(mUid)) {
+                title.setTextColor(mContext.getColor(R.color.card_read_text_color));
+            } else {
+                title.setTextColor(mContext.getColor(R.color.card_text_color));
+            }
             if (article.getSource() != null && !article.getSource().equals(""))
                 contributor.setText(article.getSource().length() > 20 ?
                         article.getSource().substring(0, 17) + "..." : article.getSource());
@@ -299,6 +306,12 @@ public class ArticleViewHolder extends RecyclerView.ViewHolder {
                     popup.show();
                 });
             }
+
+            if (article.seenBy.keySet().contains(mUid)) {
+                banner.setVisibility(View.GONE);
+            } else {
+                banner.setVisibility(View.VISIBLE);
+            }
             theme.setText(article.getMainTheme());
             theme.setOnClickListener(v -> {
                 createToast(mContext, "Hold to filter by theme", 1000);
@@ -413,6 +426,11 @@ public class ArticleViewHolder extends RecyclerView.ViewHolder {
     }
 
     public void bindVideo(Article video) {
+        if (video.seenBy.keySet().contains(mUid)) {
+            banner.setVisibility(View.GONE);
+        } else {
+            banner.setVisibility(View.VISIBLE);
+        }
         if (video.getMainTheme() != null && !video.getMainTheme().equals("")) {
             theme.setText(video.getMainTheme());
         } else {
@@ -422,6 +440,11 @@ public class ArticleViewHolder extends RecyclerView.ViewHolder {
         String viewCount = String.format("%,d",video.getReadTime()) + " YouTube views";
         youtubeViewCount.setText(viewCount);
         title.setText(video.getTitle());
+        if (video.openedBy.keySet().contains(mUid)) {
+            title.setTextColor(mContext.getColor(R.color.card_read_text_color));
+        } else {
+            title.setTextColor(mContext.getColor(R.color.card_text_color));
+        }
         if (video.getSource() != null && !video.getSource().equals(""))
             contributor.setText(video.getSource().length() > 20 ?
                     video.getSource().substring(0, 17) + "..." : video.getSource());

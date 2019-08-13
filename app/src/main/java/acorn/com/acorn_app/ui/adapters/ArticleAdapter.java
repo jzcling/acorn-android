@@ -30,6 +30,7 @@ import acorn.com.acorn_app.utils.AppExecutors;
 import acorn.com.acorn_app.utils.UiUtils;
 
 import static acorn.com.acorn_app.ui.activities.AcornActivity.mQuery;
+import static acorn.com.acorn_app.ui.activities.AcornActivity.mUid;
 
 public class ArticleAdapter extends RecyclerView.Adapter<ArticleViewHolder> {
     private static final String TAG = "ArticleAdapter";
@@ -38,6 +39,7 @@ public class ArticleAdapter extends RecyclerView.Adapter<ArticleViewHolder> {
     private String mArticleType;
     private final OnLongClickListener longClickListener;
     private List<Article> mArticleList = new ArrayList<>();
+    private List<String> mSeenList = new ArrayList<>();
 
     //Data source
     private NetworkDataSource mDataSource;
@@ -159,6 +161,7 @@ public class ArticleAdapter extends RecyclerView.Adapter<ArticleViewHolder> {
 
     public void clear() {
         mArticleList.clear();
+        mSeenList.clear();
         if (mRefObservedList.size() > 0) {
             for (DatabaseReference ref : mRefObservedList.keySet()) {
                 ref.removeEventListener(mRefObservedList.get(ref));
@@ -169,5 +172,27 @@ public class ArticleAdapter extends RecyclerView.Adapter<ArticleViewHolder> {
 
     public interface OnLongClickListener {
         void onLongClick(Article article, int id, String text);
+    }
+
+    @Override
+    public void onViewAttachedToWindow(@NonNull ArticleViewHolder holder) {
+        super.onViewAttachedToWindow(holder);
+        int position = holder.getAdapterPosition();
+        Article article = mArticleList.get(position);
+        if (!mSeenList.contains(article.getObjectID())) {
+            mSeenList.add(article.getObjectID());
+        }
+    }
+
+    @Override
+    public void onViewDetachedFromWindow(@NonNull ArticleViewHolder holder) {
+        super.onViewDetachedFromWindow(holder);
+        int position = holder.getAdapterPosition();
+        if (position >= 0 && position < mArticleList.size()) {
+            Article article = mArticleList.get(position);
+            if (mSeenList.contains(article.getObjectID())) {
+                mDataSource.logSeenItemEvent(mUid, article.getObjectID(), article.getType());
+            }
+        }
     }
 }

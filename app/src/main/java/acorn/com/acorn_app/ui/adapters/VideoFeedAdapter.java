@@ -13,6 +13,9 @@ import java.util.List;
 import acorn.com.acorn_app.R;
 import acorn.com.acorn_app.data.NetworkDataSource;
 import acorn.com.acorn_app.models.Video;
+import acorn.com.acorn_app.utils.AppExecutors;
+
+import static acorn.com.acorn_app.ui.activities.AcornActivity.mUid;
 
 public class VideoFeedAdapter extends RecyclerView.Adapter<VideoFeedViewHolder> {
     private static final String TAG = "VideoFeedAdapter";
@@ -20,10 +23,14 @@ public class VideoFeedAdapter extends RecyclerView.Adapter<VideoFeedViewHolder> 
     private String mYoutubeApiKey;
     private String mVideoType;
     private List<Video> mVideoList = new ArrayList<>();
+    private List<String> mSeenList = new ArrayList<>();
+
+    private NetworkDataSource mDataSource;
 
     public VideoFeedAdapter(final Context context, NetworkDataSource dataSource) {
         mContext = context;
-        dataSource.getYoutubeApiKey((apiKey) -> mYoutubeApiKey = apiKey);
+        mDataSource = dataSource;
+//        dataSource.getYoutubeApiKey((apiKey) -> mYoutubeApiKey = apiKey);
     }
 
     @Override
@@ -80,5 +87,27 @@ public class VideoFeedAdapter extends RecyclerView.Adapter<VideoFeedViewHolder> 
         Video video = mVideoList.get(position);
         mVideoList.remove(video);
         notifyDataSetChanged();
+    }
+
+    @Override
+    public void onViewAttachedToWindow(@NonNull VideoFeedViewHolder holder) {
+        super.onViewAttachedToWindow(holder);
+        int position = holder.getAdapterPosition();
+        Video video = mVideoList.get(position);
+        if (!mSeenList.contains(video.getObjectID())) {
+            mSeenList.add(video.getObjectID());
+        }
+    }
+
+    @Override
+    public void onViewDetachedFromWindow(@NonNull VideoFeedViewHolder holder) {
+        super.onViewDetachedFromWindow(holder);
+        int position = holder.getAdapterPosition();
+        if (position >= 0 && position < mVideoList.size()) {
+            Video article = mVideoList.get(position);
+            if (mSeenList.contains(article.getObjectID())) {
+                mDataSource.logSeenItemEvent(mUid, article.getObjectID(), article.getType());
+            }
+        }
     }
 }
