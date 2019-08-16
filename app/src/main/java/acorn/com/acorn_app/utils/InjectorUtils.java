@@ -19,7 +19,7 @@ package acorn.com.acorn_app.utils;
 import android.content.Context;
 
 import acorn.com.acorn_app.data.NetworkDataSource;
-import acorn.com.acorn_app.ui.viewModels.ArticleViewModelFactory;
+import acorn.com.acorn_app.ui.viewModels.FeedViewModelFactory;
 import acorn.com.acorn_app.ui.viewModels.VideoViewModelFactory;
 
 public class InjectorUtils {
@@ -28,9 +28,9 @@ public class InjectorUtils {
         return NetworkDataSource.getInstance(context.getApplicationContext(), executors);
     }
 
-    public static ArticleViewModelFactory provideArticleViewModelFactory(Context context) {
+    public static FeedViewModelFactory provideArticleViewModelFactory(Context context) {
         NetworkDataSource dataSource = provideNetworkDataSource(context.getApplicationContext());
-        return new ArticleViewModelFactory(dataSource);
+        return new FeedViewModelFactory(dataSource);
     }
 
     public static VideoViewModelFactory provideVideoViewModelFactory(Context context) {

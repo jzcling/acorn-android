@@ -254,12 +254,12 @@ public class YouTubeActivity extends AppCompatActivity {
     }
 
     private VideoOnClickListener onClickListener(Video video, String cardAttribute) {
-        return new VideoOnClickListener(this, mApiKey, video, cardAttribute,
+        return new VideoOnClickListener(this, video, cardAttribute,
                 upVoteView, downVoteView, commentView, favView, shareView);
     }
 
     private VideoOnClickListener onClickListenerRight(Video video, String cardAttribute) {
-        return new VideoOnClickListener(this, mApiKey, video, cardAttribute,
+        return new VideoOnClickListener(this, video, cardAttribute,
                 upVoteViewRight, downVoteViewRight, commentViewRight, favViewRight, shareViewRight);
     }
 

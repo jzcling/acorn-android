@@ -32,8 +32,11 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.SearchView;
 import androidx.appcompat.widget.Toolbar;
 import androidx.cardview.widget.CardView;
+import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.core.view.MenuItemCompat;
 
+import com.google.android.gms.ads.AdRequest;
+import com.google.android.gms.ads.AdView;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.firebase.analytics.FirebaseAnalytics;
 import com.google.firebase.auth.FirebaseAuth;
@@ -46,6 +49,9 @@ import com.google.firebase.database.MutableData;
 import com.google.firebase.database.Transaction;
 import com.google.firebase.database.ValueEventListener;
 import com.google.firebase.dynamiclinks.FirebaseDynamicLinks;
+import com.smaato.soma.AdDimension;
+import com.smaato.soma.BannerView;
+import com.smaato.soma.ErrorCode;
 
 import java.util.Date;
 
@@ -121,6 +127,12 @@ public class WebViewActivity extends AppCompatActivity {
     private TimeLog mTimeLog;
     private long mActiveTime = 0L;
     private long mResumeTime = 0L;
+
+    // Ad
+    private ConstraintLayout mAdLayoutSmaato;
+    private BannerView mBannerViewSmaato;
+    private ConstraintLayout mAdLayoutAdmob;
+    private AdView mBannerViewAdmob;
 
     @SuppressLint("SetJavaScriptEnabled")
     @Override
@@ -205,6 +217,35 @@ public class WebViewActivity extends AppCompatActivity {
 
         Intent intent = getIntent();
         handleIntent(intent);
+
+        // Set up ad banner
+//        mBannerViewSmaato = (BannerView) findViewById(R.id.ad_banner_smaato);
+//        mAdLayoutSmaato = (ConstraintLayout) findViewById(R.id.ad_banner_layout_smaato);
+        mAdLayoutAdmob = (ConstraintLayout) findViewById(R.id.ad_banner_layout_admob);
+        mBannerViewAdmob = (AdView) findViewById(R.id.ad_banner_admob);
+        loadAdmobBannerAd();
+//        mBannerViewSmaato.addAdListener((sender, receivedBanner) -> {
+//            if(receivedBanner.getErrorCode() != ErrorCode.NO_ERROR){
+//                mAdLayoutSmaato.setVisibility(View.GONE);
+//                Log.d(TAG, receivedBanner.getErrorMessage());
+//            } else {
+//                mAdLayoutSmaato.setVisibility(View.VISIBLE);
+//            }
+//        });
+//        mBannerViewSmaato.getAdSettings().setAdDimension(AdDimension.DEFAULT);
+////        mBannerViewSmaato.getAdSettings().setPublisherId(0); // testing
+////        mBannerViewSmaato.getAdSettings().setAdspaceId(0); // testing
+//        mBannerViewSmaato.getAdSettings().setPublisherId(Integer.parseInt(getString(R.string.smaato_publisher_id)));
+//        mBannerViewSmaato.getAdSettings().setAdspaceId(Integer.parseInt(getString(R.string.smaato_banner_webview_ad_space_id)));
+//        mBannerViewSmaato.setAutoReloadEnabled(true);
+//        mBannerViewSmaato.setAutoReloadFrequency(30);
+//        mBannerViewSmaato.setLocationUpdateEnabled(true);
+//        mBannerViewSmaato.asyncLoadNewBanner();
+    }
+
+    public void loadAdmobBannerAd() {
+        AdRequest adRequest = new AdRequest.Builder().build();
+        mBannerViewAdmob.loadAd(adRequest);
     }
 
     @Override
@@ -454,12 +495,14 @@ public class WebViewActivity extends AppCompatActivity {
             lastScrollPercent = 0f;
             if (mArticle != null) mExecutors.networkIO().execute(() -> {
                 mDataSource.recordArticleOpenDetails(mArticle);
+                mDataSource.logSeenItemEvent(mUid, mArticle.getObjectID(), mArticle.getType());
             });
         }
 
         mTimeLog.closeTime = (new Date()).getTime();
         mTimeLog.activeTime = mActiveTime;
-        mTimeLog.percentReadTimeActive = mActiveTime / (60f * 1000f) / mArticle.getReadTime();
+        if (mArticle.getReadTime() != null)
+            mTimeLog.percentReadTimeActive = mActiveTime / (60f * 1000f) / mArticle.getReadTime();
         mTimeLog.percentScroll = maxScrollPercent;
         mDataSource.logItemTimeLog(mTimeLog);
     }

@@ -1,0 +1,157 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/card_root"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content">
+
+    <androidx.cardview.widget.CardView
+        android:id="@+id/card_view"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        app:cardUseCompatPadding="true"
+        app:cardCornerRadius="8dp"
+        app:cardElevation="2dp"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
+        
+        <com.google.android.gms.ads.formats.UnifiedNativeAdView
+            android:id="@+id/card_ad_view"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content">
+        
+            <androidx.constraintlayout.widget.ConstraintLayout
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:background="@color/card_background">
+
+                <TextView
+                    android:id="@+id/card_theme"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="12dp"
+                    android:layout_marginTop="@dimen/card_margin_top_medium"
+                    android:background="@drawable/ripple"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:text="Ad"
+                    android:textColor="@color/red"
+                    android:textSize="@dimen/font_size_small"
+                    android:textStyle="italic|bold"
+                    app:layout_constraintBottom_toTopOf="@id/card_title"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintEnd_toStartOf="@id/card_top_separator"
+                    app:layout_constraintTop_toTopOf="parent" />
+
+                <TextView
+                    android:id="@+id/card_top_separator"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="@dimen/card_margin_in_between"
+                    android:text="·"
+                    android:textColor="@color/card_text_color_faint"
+                    android:textSize="@dimen/font_size_small"
+                    android:textStyle="italic"
+                    app:layout_constraintBottom_toBottomOf="@id/card_theme"
+                    app:layout_constraintEnd_toStartOf="@id/card_ad_title"
+                    app:layout_constraintStart_toEndOf="@id/card_theme"
+                    app:layout_constraintTop_toTopOf="@id/card_theme" />
+
+                <TextView
+                    android:id="@+id/card_ad_title"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="@dimen/card_margin_in_between"
+                    android:text="adTitle"
+                    android:textColor="@color/card_text_color_faint"
+                    android:textSize="@dimen/font_size_small"
+                    android:textStyle="italic"
+                    app:layout_constraintBottom_toBottomOf="@id/card_theme"
+                    app:layout_constraintStart_toEndOf="@id/card_top_separator"
+                    app:layout_constraintTop_toTopOf="@id/card_theme" />
+
+                <TextView
+                    android:id="@+id/card_title"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginEnd="12dp"
+                    android:layout_marginStart="12dp"
+                    android:layout_marginTop="@dimen/card_margin_top_small"
+                    android:background="@drawable/ripple"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:text="title"
+                    android:textColor="@color/card_text_color"
+                    android:textSize="@dimen/font_size_large"
+                    app:layout_constraintBottom_toTopOf="@id/card_call_to_action"
+                    app:layout_constraintEnd_toEndOf="parent"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintTop_toBottomOf="@id/card_theme" />
+
+                <androidx.constraintlayout.widget.ConstraintLayout
+                    android:id="@+id/metadata_layout"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    app:layout_constraintBottom_toBottomOf="@id/card_call_to_action"
+                    app:layout_constraintStart_toStartOf="@id/card_title"
+                    app:layout_constraintTop_toTopOf="@id/card_call_to_action">
+
+                    <ImageView
+                        android:id="@+id/card_icon"
+                        android:layout_width="30dp"
+                        android:layout_height="30dp"
+                        android:background="@android:color/transparent"
+                        app:layout_constraintBottom_toBottomOf="parent"
+                        app:layout_constraintEnd_toStartOf="@id/card_contributor"
+                        app:layout_constraintStart_toStartOf="parent"
+                        app:layout_constraintTop_toTopOf="parent"
+                        />
+
+                    <TextView
+                        android:id="@+id/card_contributor"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="@dimen/card_margin_in_between"
+                        android:text="contributor"
+                        android:textColor="@color/card_text_color"
+                        android:textSize="@dimen/font_size_small"
+                        android:background="@drawable/ripple"
+                        android:clickable="true"
+                        android:focusable="true"
+                        app:layout_constraintBottom_toBottomOf="parent"
+                        app:layout_constraintStart_toEndOf="@id/card_icon"
+                        app:layout_constraintTop_toTopOf="parent" />
+                </androidx.constraintlayout.widget.ConstraintLayout>
+
+                <Button
+                    android:id="@+id/card_call_to_action"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textSize="12sp"
+                    android:layout_marginTop="@dimen/card_margin_top_medium"
+                    app:layout_constraintBottom_toTopOf="@id/card_image"
+                    app:layout_constraintEnd_toEndOf="@id/card_title"
+                    app:layout_constraintTop_toBottomOf="@id/card_title" />
+
+                <com.google.android.gms.ads.formats.MediaView
+                    android:id="@+id/card_image"
+                    android:layout_width="0dp"
+                    android:layout_height="0dp"
+                    android:layout_marginTop="@dimen/card_margin_top_large"
+                    android:clickable="true"
+                    android:contentDescription="main image"
+                    android:focusable="true"
+                    android:foreground="@drawable/ripple"
+                    android:scaleType="centerCrop"
+                    app:layout_constraintBottom_toBottomOf="parent"
+                    app:layout_constraintDimensionRatio="H,16:9"
+                    app:layout_constraintEnd_toEndOf="parent"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintTop_toBottomOf="@id/card_call_to_action"
+                    app:srcCompat="@android:color/transparent" />
+            </androidx.constraintlayout.widget.ConstraintLayout>
+        </com.google.android.gms.ads.formats.UnifiedNativeAdView>
+    </androidx.cardview.widget.CardView>
+</androidx.constraintlayout.widget.ConstraintLayout>

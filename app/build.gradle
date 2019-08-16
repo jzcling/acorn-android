@@ -18,8 +18,8 @@ android {
         applicationId 'acorn.com.acorn_app'
         minSdkVersion 24
         targetSdkVersion 28
-        versionCode 86
-        versionName "1.9.1a"
+        versionCode 89
+        versionName "1.9.3"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         resConfigs "en"
     }
@@ -43,14 +43,14 @@ android {
 }
 
 dependencies {
-    implementation fileTree(include: ['*.jar'], dir: 'libs')
+    implementation fileTree(include: ['*.jar', '*.aar'], dir: 'libs')
 
-    testImplementation 'junit:junit:4.12'
-    androidTestImplementation 'androidx.test:runner:1.2.0'
-    androidTestImplementation 'androidx.test.espresso:espresso-core:3.2.0'
+    testImplementation 'junit:junit:4.13-beta-3'
+    androidTestImplementation 'androidx.test:runner:1.3.0-alpha02'
+    androidTestImplementation 'androidx.test.espresso:espresso-core:3.3.0-alpha02'
     implementation 'org.jsoup:jsoup:1.12.1'
-    implementation 'androidx.lifecycle:lifecycle-extensions:2.2.0-alpha02'
-    annotationProcessor "androidx.lifecycle:lifecycle-compiler:2.2.0-alpha02"
+    implementation 'androidx.lifecycle:lifecycle-extensions:2.2.0-alpha03'
+    annotationProcessor "androidx.lifecycle:lifecycle-compiler:2.2.0-alpha03"
     implementation 'com.github.bumptech.glide:glide:4.8.0'
     implementation 'com.github.bumptech.glide:recyclerview-integration:4.8.0'
     annotationProcessor 'com.github.bumptech.glide:compiler:4.8.0'
@@ -60,8 +60,8 @@ dependencies {
     implementation 'com.firebaseui:firebase-ui-database:5.0.0'
     implementation 'com.firebaseui:firebase-ui-storage:5.0.0'
     implementation 'com.google.firebase:firebase-auth:18.1.0'
-    implementation 'com.google.firebase:firebase-database:18.0.0'
-    implementation 'com.google.firebase:firebase-storage:18.1.0'
+    implementation 'com.google.firebase:firebase-database:18.0.1'
+    implementation 'com.google.firebase:firebase-storage:18.1.1'
     implementation 'com.google.firebase:firebase-messaging:19.0.1'
     implementation 'com.facebook.android:facebook-android-sdk:4.38.1'
     implementation 'com.github.chrisbanes:PhotoView:2.3.0'
@@ -72,12 +72,12 @@ dependencies {
     implementation 'com.nex3z:notification-badge:1.0.2'
     implementation 'de.hdodenhof:circleimageview:3.0.0'
     implementation 'com.google.firebase:firebase-perf:18.0.1'
-    implementation 'com.jaredrummler:android-device-names:1.1.8'
+    implementation 'com.jaredrummler:android-device-names:1.1.9'
     implementation 'com.crashlytics.sdk.android:crashlytics:2.10.1'
     implementation 'com.google.firebase:firebase-dynamic-links:18.0.0'
-    implementation 'androidx.room:room-runtime:2.1.0'
-    annotationProcessor 'androidx.room:room-compiler:2.1.0'
-    testImplementation 'androidx.room:room-testing:2.1.0'
+    implementation 'androidx.room:room-runtime:2.2.0-alpha02'
+    annotationProcessor 'androidx.room:room-compiler:2.2.0-alpha02'
+    testImplementation 'androidx.room:room-testing:2.2.0-alpha02'
     implementation 'com.google.android.gms:play-services-flags:17.0.0'
     implementation 'androidx.constraintlayout:constraintlayout:1.1.3'
     implementation 'com.google.android.material:material:1.1.0-beta01'
@@ -87,14 +87,15 @@ dependencies {
     implementation 'androidx.preference:preference:1.1.0-rc01'
     implementation 'com.google.android.gms:play-services-location:17.0.0'
     implementation 'com.google.android.gms:play-services-maps:17.0.0'
-    implementation 'com.squareup.retrofit2:retrofit:2.6.0'
-    implementation 'com.squareup.retrofit2:converter-gson:2.6.0'
-    implementation 'com.squareup.retrofit2:adapter-rxjava2:2.6.0'
+    implementation 'com.squareup.retrofit2:retrofit:2.6.1'
+    implementation 'com.squareup.retrofit2:converter-gson:2.6.1'
+    implementation 'com.squareup.retrofit2:adapter-rxjava2:2.6.1'
     implementation 'io.reactivex.rxjava2:rxandroid:2.1.1'
-    implementation 'io.reactivex.rxjava2:rxjava:2.2.9'
-    implementation 'io.sgr:s2-geometry-library-java:1.0.0'
+    implementation 'io.reactivex.rxjava2:rxjava:2.2.11'
+    implementation 'io.sgr:s2-geometry-library-java:1.0.1'
     implementation 'com.github.mreram:showcaseview:1.1'
     implementation 'com.pierfrancescosoffritti.androidyoutubeplayer:core:10.0.3'
+    implementation 'com.google.firebase:firebase-ads:18.1.1'
 }
 
 apply plugin: 'com.google.gms.google-services'

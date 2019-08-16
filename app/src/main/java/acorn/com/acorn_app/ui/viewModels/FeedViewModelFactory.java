@@ -6,11 +6,11 @@ import androidx.annotation.NonNull;
 
 import acorn.com.acorn_app.data.NetworkDataSource;
 
-public class ArticleViewModelFactory extends ViewModelProvider.NewInstanceFactory {
+public class FeedViewModelFactory extends ViewModelProvider.NewInstanceFactory {
 
     private final NetworkDataSource mDataSource;
 
-    public ArticleViewModelFactory(NetworkDataSource dataSource) {
+    public FeedViewModelFactory(NetworkDataSource dataSource) {
         this.mDataSource = dataSource;
     }
 
@@ -18,6 +18,6 @@ public class ArticleViewModelFactory extends ViewModelProvider.NewInstanceFactor
     @Override
     public <T extends ViewModel> T create(@NonNull Class<T> modelClass) {
         //noinspection unchecked
-        return (T) new ArticleViewModel(mDataSource);
+        return (T) new FeedViewModel(mDataSource);
     }
 }

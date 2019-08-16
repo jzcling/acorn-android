@@ -16,7 +16,7 @@ import androidx.annotation.Nullable;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
-import androidx.lifecycle.ViewModelProviders;
+import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -95,8 +95,7 @@ public class ThemeSelectionActivity extends AppCompatActivity {
         mListView.setLayoutManager(mLayoutManager);
 
         // Set up view model
-        mUserThemeViewModel = ViewModelProviders
-                .of(ThemeSelectionActivity.this).get(UserThemeViewModel.class);
+        mUserThemeViewModel = new ViewModelProvider(ThemeSelectionActivity.this).get(UserThemeViewModel.class);
         mUserThemeViewModel.getThemes().observe(ThemeSelectionActivity.this, list -> {
 
             mAdapter.notifyDataSetChanged();

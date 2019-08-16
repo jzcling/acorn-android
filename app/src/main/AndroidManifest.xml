@@ -11,6 +11,8 @@
 
     <uses-feature android:name="android.hardware.camera"
         android:required="true" />
+    <uses-feature android:name="android.hardware.location.gps" />
+    <uses-feature android:name="android.hardware.location.network" />
 
     <application
         android:name=".ui.AcornApplication"
@@ -27,6 +29,11 @@
         <meta-data
             android:name="com.facebook.sdk.AutoLogAppEventsEnabled"
             android:value="false" />
+        <meta-data android:name="com.google.android.gms.version"
+            android:value="@integer/google_play_services_version"/>
+        <meta-data
+            android:name="com.google.android.gms.ads.APPLICATION_ID"
+            android:value="@string/admob_app_id"/>
 
          <!--<provider android:authorities="com.facebook.app.FacebookContentProvider120640472147728"-->
          <!--android:name="com.facebook.FacebookContentProvider"-->

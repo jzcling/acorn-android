@@ -208,9 +208,21 @@
         Click notification to return to app
     </string>
 
+    <!-- Permissions -->
     <string name="insufficient_permissions">Insufficient permissions.</string>
     <string name="permission_rationale">Location permission is needed for core functionality</string>
     <string name="permission_denied_explanation">Permission was denied, but is needed for core
         functionality.</string>
     <string name="settings">Settings</string>
+
+    <!-- Ads -->
+    <string name="smaato_publisher_id">1100044060</string>
+    <string name="smaato_banner_main_ad_space_id">130692916</string>
+    <string name="smaato_banner_webview_ad_space_id">130692934</string>
+    <string name="smaato_native_ad_space_id">130692917</string>
+    <string name="admob_app_id">ca-app-pub-9396779536944241~1758927432</string>
+    <string name="admob_test_adunit_id">ca-app-pub-3940256099942544/6300978111</string>
+    <string name="admob_banner_main_adunit_id">ca-app-pub-9396779536944241/2530302172</string>
+    <string name="admob_banner_webview_adunit_id">ca-app-pub-9396779536944241/3171825223</string>
+    <string name="admob_native_adunit_id">ca-app-pub-9396779536944241/3339346182</string>
 </resources>

@@ -14,7 +14,6 @@ import android.view.animation.Animation;
 import android.view.animation.AnimationUtils;
 import android.widget.Toast;
 
-import com.google.android.youtube.player.YouTubeStandalonePlayer;
 import com.google.firebase.analytics.FirebaseAnalytics;
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
@@ -54,7 +53,6 @@ public class VideoOnClickListener implements View.OnClickListener {
     private Video mVideo;
     private Article mArticle;
     private final String mCardAttribute;
-    private String mYoutubeApiKey;
 
     private final View mUpvoteView;
     private final View mDownvoteView;
@@ -70,13 +68,12 @@ public class VideoOnClickListener implements View.OnClickListener {
     private NetworkDataSource mDataSource;
     private final AppExecutors mExecutors = AppExecutors.getInstance();
 
-    public VideoOnClickListener(Context context, String youtubeApiKey, Video video, String cardAttribute,
+    public VideoOnClickListener(Context context, Video video, String cardAttribute,
                                 View upvoteView, View downvoteView, View commentView,
                                 View favView, View shareView) {
         mContext = context;
         mVideo = video;
         mCardAttribute = cardAttribute;
-//        mYoutubeApiKey = youtubeApiKey;
 
         mDataSource = NetworkDataSource.getInstance(context, mExecutors);
 
@@ -108,10 +105,7 @@ public class VideoOnClickListener implements View.OnClickListener {
                 bundle.putString(FirebaseAnalytics.Param.CONTENT_TYPE, mVideo.getType());
                 mFirebaseAnalytics.logEvent(FirebaseAnalytics.Event.SELECT_CONTENT, bundle);
 
-//                Intent intent = YouTubeStandalonePlayer
-//                        .createVideoIntent((Activity) mContext, mYoutubeApiKey, mVideo.youtubeVideoId);
                 Intent intent = new Intent(mContext, YouTubeActivity.class);
-//                intent.putExtra("apiKey", mYoutubeApiKey);
                 intent.putExtra("videoId", mVideo.youtubeVideoId);
                 mExecutors.networkIO().execute(() -> mDataSource.recordVideoOpenDetails(mVideo));
                 mContext.startActivity(intent);

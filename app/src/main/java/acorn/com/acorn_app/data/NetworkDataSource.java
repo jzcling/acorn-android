@@ -15,23 +15,18 @@
  */
 package acorn.com.acorn_app.data;
 
-import android.app.Activity;
 import android.content.Context;
 import android.content.SharedPreferences;
-import android.graphics.Point;
-import android.location.Location;
 import android.preference.PreferenceManager;
 
 import acorn.com.acorn_app.models.Address;
 import acorn.com.acorn_app.models.MrtStation;
-import acorn.com.acorn_app.models.PremiumStatus;
 import acorn.com.acorn_app.models.TimeLog;
 import acorn.com.acorn_app.models.Video;
 import acorn.com.acorn_app.utils.DateUtils;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import android.util.Log;
-import android.view.Display;
 
 import com.algolia.search.saas.Client;
 import com.algolia.search.saas.Index;
@@ -43,7 +38,6 @@ import com.firebase.jobdispatcher.Job;
 import com.firebase.jobdispatcher.Lifetime;
 import com.firebase.jobdispatcher.RetryStrategy;
 import com.firebase.jobdispatcher.Trigger;
-import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.Task;
 import com.google.android.gms.tasks.TaskCompletionSource;
 import com.google.android.gms.tasks.Tasks;
@@ -71,12 +65,9 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Random;
-import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
@@ -157,7 +148,7 @@ public class NetworkDataSource {
         return sInstance;
     }
 
-    public ArticleListLiveData getArticles(FbQuery query, List<String> themeList, @Nullable Integer seed) {
+    public FeedListLiveData getArticles(FbQuery query, List<String> themeList, @Nullable Integer seed) {
         Query articleQuery;
         switch (query.state) {
             case -2: // source
@@ -166,20 +157,17 @@ public class NetworkDataSource {
                 articleQuery = mDatabaseReference.child(query.dbRef)
                         .orderByChild(query.orderByChild)
                         .limitToFirst(query.limit);
-//                articleQuery.keepSynced(true);
-                return new ArticleListLiveData(articleQuery, themeList, seed);
+                return new FeedListLiveData(articleQuery, themeList, seed);
             case 2: // saved
                 articleQuery = mDatabaseReference.child(USER_REF + "/" + mUid + "/savedItems")
                         .orderByKey()
                         .limitToFirst(query.limit);
-//                articleQuery.keepSynced(true);
-                return new ArticleListLiveData(articleQuery, query.state);
+                return new FeedListLiveData(articleQuery, query.state);
             default:
                 articleQuery = mDatabaseReference.child(query.dbRef)
                         .orderByChild(query.orderByChild)
                         .limitToFirst(query.limit);
-//                articleQuery.keepSynced(true);
-                return new ArticleListLiveData(articleQuery, themeList, seed);
+                return new FeedListLiveData(articleQuery, themeList, seed);
         }
     }
 
@@ -260,9 +248,9 @@ public class NetworkDataSource {
         }
     }
 
-    public ArticleListLiveData getSavedArticles(FbQuery query) {
+    public FeedListLiveData getSavedArticles(FbQuery query) {
         Query savedItemsQuery = mDatabaseReference.child(USER_REF + "/" + mUid + "/savedItems");
-        return new ArticleListLiveData(savedItemsQuery, query.state);
+        return new FeedListLiveData(savedItemsQuery, query.state);
     }
 
     public void getNearbyArticles(double lat, double lng, double radius,
@@ -342,8 +330,8 @@ public class NetworkDataSource {
         }
     }
 
-    public ArticleListLiveData getAdditionalArticles(FbQuery query, Object index, int indexType,
-                                                     List<String> themeList, int seed) {
+    public FeedListLiveData getAdditionalArticles(FbQuery query, Object index, int indexType,
+                                                  List<String> themeList, int seed) {
         Query articleQuery;
         switch (query.state) {
             case -2: // source
@@ -353,13 +341,13 @@ public class NetworkDataSource {
                         .orderByChild(query.orderByChild)
                         .limitToFirst(query.limit + 1);
                 articleQuery = articleQuery.startAt((String) index);
-                return new ArticleListLiveData(articleQuery, themeList, seed);
+                return new FeedListLiveData(articleQuery, themeList, seed);
             case 2: // saved
                 articleQuery = mDatabaseReference.child(USER_REF + "/" + mUid + "/savedItems")
                         .orderByKey()
                         .limitToFirst(query.limit + 1);
                 articleQuery = articleQuery.startAt((String) index);
-                return new ArticleListLiveData(articleQuery, query.state);
+                return new FeedListLiveData(articleQuery, query.state);
             default:
                 articleQuery = mDatabaseReference.child(query.dbRef)
                         .orderByChild(query.orderByChild)
@@ -373,7 +361,7 @@ public class NetworkDataSource {
                     if (index instanceof Number)
                         articleQuery = articleQuery.equalTo(((Number) index).longValue());
                 }
-                return new ArticleListLiveData(articleQuery, themeList, seed);
+                return new FeedListLiveData(articleQuery, themeList, seed);
         }
     }
 
@@ -440,7 +428,7 @@ public class NetworkDataSource {
                         if (lastQueryTimestamp == null) {
                             searchThemeArticles(mThemeSearchKey, mThemeSearchFilter, bindToUi);
                         } else {
-                            if (timeNow - lastQueryTimestamp < 3L * 60L * 60L * 1000L) { // 3 hours
+                            if (timeNow - lastQueryTimestamp < 1L * 60L * 60L * 1000L) { // 1 hour
                                 mExecutors.mainThread().execute(bindToUi);
                             } else {
                                 searchThemeArticles(mThemeSearchKey, mThemeSearchFilter, bindToUi);
@@ -471,7 +459,7 @@ public class NetworkDataSource {
                         if (lastQueryTimestamp == null) {
                             searchThemeArticles(cleanedSearchKey, searchFilter, bindToUi);
                         } else {
-                            if (timeNow - lastQueryTimestamp < 3L * 60L * 60L * 1000L) { // 3 hours
+                            if (timeNow - lastQueryTimestamp < 1L * 60L * 60L * 1000L) { // 1 hour
                                 mExecutors.mainThread().execute(bindToUi);
                             } else {
                                 searchThemeArticles(cleanedSearchKey, searchFilter, bindToUi);
@@ -530,7 +518,7 @@ public class NetworkDataSource {
                         if (lastQueryTimestamp == null) {
                             searchThemeArticles(dealsSearchKey, dealsSearchFilter, bindToUi);
                         } else {
-                            if (timeNow - lastQueryTimestamp < 3L * 60L * 60L * 1000L) { // 3 hours
+                            if (timeNow - lastQueryTimestamp < 1L * 60L * 60L * 1000L) { // 1 hour
                                 mExecutors.mainThread().execute(bindToUi);
                             } else {
                                 searchThemeArticles(dealsSearchKey, dealsSearchFilter, bindToUi);
@@ -886,9 +874,7 @@ public class NetworkDataSource {
             }
 
             @Override
-            public void onCancelled(@NonNull DatabaseError databaseError) {
-
-            }
+            public void onCancelled(@NonNull DatabaseError databaseError) { }
         });
     }
 

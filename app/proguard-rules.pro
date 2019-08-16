@@ -38,3 +38,15 @@
 -keepclassmembers class acorn.com.acorn_app.models.** {
   *;
 }
+-keepclassmembers class acorn.com.acorn_app.ui.activities.WebViewActivity {
+   public *;
+}
+-assumenosideeffects class android.util.Log {
+    public static *** d(...);
+    public static *** v(...);
+    public static *** i(...);
+}
+-dontwarn com.smaato.soma.SomaUnityPlugin*
+-dontwarn com.millennialmedia**
+-dontwarn com.facebook.**
+-keep class com.smaato.soma.** { *; }

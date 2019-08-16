@@ -12,6 +12,8 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 
+import com.google.android.gms.ads.formats.UnifiedNativeAd;
+import com.google.android.gms.ads.formats.UnifiedNativeAdView;
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
@@ -26,19 +28,19 @@ import java.util.Map;
 import acorn.com.acorn_app.R;
 import acorn.com.acorn_app.data.NetworkDataSource;
 import acorn.com.acorn_app.models.Article;
+import acorn.com.acorn_app.models.Video;
 import acorn.com.acorn_app.utils.AppExecutors;
 import acorn.com.acorn_app.utils.UiUtils;
 
 import static acorn.com.acorn_app.ui.activities.AcornActivity.mQuery;
 import static acorn.com.acorn_app.ui.activities.AcornActivity.mUid;
 
-public class ArticleAdapter extends RecyclerView.Adapter<ArticleViewHolder> {
-    private static final String TAG = "ArticleAdapter";
+public class FeedAdapter extends RecyclerView.Adapter<FeedViewHolder> {
+    private static final String TAG = "FeedAdapter";
     private final Context mContext;
-    private String mYoutubeApiKey;
-    private String mArticleType;
+    private String mItemType;
     private final OnLongClickListener longClickListener;
-    private List<Article> mArticleList = new ArrayList<>();
+    private List<Object> mItemList = new ArrayList<>();
     private List<String> mSeenList = new ArrayList<>();
 
     //Data source
@@ -47,27 +49,28 @@ public class ArticleAdapter extends RecyclerView.Adapter<ArticleViewHolder> {
 
     private final Map<DatabaseReference, ValueEventListener> mRefObservedList = new HashMap<>();
 
-    public ArticleAdapter(final Context context,
-                          @Nullable OnLongClickListener longClickListener) {
+    public FeedAdapter(final Context context,
+                       @Nullable OnLongClickListener longClickListener) {
         mContext = context;
         this.longClickListener = longClickListener;
         mDataSource = NetworkDataSource.getInstance(mContext, mExecutors);
-//        mDataSource.getYoutubeApiKey((apiKey) -> mYoutubeApiKey = apiKey);
     }
 
     @Override
     public int getItemViewType(int position) {
-        Article article = mArticleList.get(position);
-        if (article.getType() == null || article.getType().equals("article")) {
-            if (article.duplicates.size() > 0) {
+        Object item = mItemList.get(position);
+        if (item instanceof Article) {
+            if (((Article) item).getType().equals("post")) {
+                return 2;
+            } else if (((Article) item).duplicates.size() > 0) {
                 return 1;
             } else {
                 return 0;
             }
-        } else if (article.getType().equals("post")) {
-            return 2;
-        } else if (article.getType().equals("video")) {
+        } else if (item instanceof Video) {
             return 3;
+        } else if (item instanceof UnifiedNativeAd) {
+            return 4;
         } else {
             return 0;
         }
@@ -75,37 +78,42 @@ public class ArticleAdapter extends RecyclerView.Adapter<ArticleViewHolder> {
 
     @NonNull
     @Override
-    public ArticleViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
+    public FeedViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
         View view;
         LayoutInflater inflater = LayoutInflater.from(mContext);
         if (viewType == 0) {
-            mArticleType = "article";
+            mItemType = "article";
             view = inflater.inflate(R.layout.item_article_card, parent, false);
         } else if (viewType == 1) {
-            mArticleType = "article";
+            mItemType = "article";
             view = inflater.inflate(R.layout.item_article_card_with_duplicates, parent, false);
         } else if (viewType == 2) {
-            mArticleType = "post";
+            mItemType = "post";
             view = inflater.inflate(R.layout.item_post_card, parent, false);
         } else if (viewType == 3) {
-            mArticleType = "video";
+            mItemType = "video";
             view = inflater.inflate(R.layout.item_video_card, parent, false);
+        } else if (viewType == 4) {
+            mItemType = "ad";
+            view = inflater.inflate(R.layout.item_ad_card, parent, false);
         } else {
-            mArticleType = "article";
+            mItemType = "article";
             view = inflater.inflate(R.layout.item_article_card, parent, false);
         }
-        return new ArticleViewHolder(mContext, view, mArticleType, mYoutubeApiKey, longClickListener);
+        return new FeedViewHolder(mContext, view, mItemType, longClickListener);
     }
 
     @Override
-    public void onBindViewHolder(@NonNull ArticleViewHolder holder, int position) {
+    public void onBindViewHolder(@NonNull FeedViewHolder holder, int position) {
         SharedPreferences sharedPrefs = PreferenceManager.getDefaultSharedPreferences(mContext);
 
-        Article article = mArticleList.get(position);
-        if (article.getType().equals("video")) {
-            holder.bindVideo(article);
-        } else {
-            holder.bind(article);
+        Object item = mItemList.get(position);
+        if (item instanceof Video) {
+            holder.bindVideo((Video) item);
+        } else if (item instanceof Article) {
+            holder.bindArticle((Article) item);
+        } else if (item instanceof UnifiedNativeAd) {
+            holder.bindAd((UnifiedNativeAd) item);
         }
 
         if (position == 0) {
@@ -124,43 +132,47 @@ public class ArticleAdapter extends RecyclerView.Adapter<ArticleViewHolder> {
 
     @Override
     public int getItemCount() {
-        return mArticleList.size();
+        return mItemList.size();
     }
 
-    public void setList(List<Article> newList, Runnable onComplete) {
-        mArticleList = new ArrayList<>(newList);
+    public void setList(List<Object> newList, Runnable onComplete) {
+        mItemList = new ArrayList<>(newList);
         notifyDataSetChanged();
         onComplete.run();
     }
 
-    public void setList(List<Article> newList) {
-        mArticleList = new ArrayList<>(newList);
+    public void setList(List<Object> newList) {
+        mItemList = new ArrayList<>(newList);
         notifyDataSetChanged();
     }
 
-    public void appendList(List<Article> addList) {
-        mArticleList.addAll(addList);
+    public void appendList(List<Object> addList) {
+        mItemList.addAll(addList);
         notifyDataSetChanged();
     }
 
-    public List<Article> getList() {
-        return mArticleList;
+    public List<Object> getList() {
+        return mItemList;
     }
 
     public List<String> getIdList() {
         List<String> idList = new ArrayList<>();
-        for (Article article : mArticleList) {
-            idList.add(article.getObjectID());
+        for (Object item : mItemList) {
+            if (item instanceof Article) {
+                idList.add(((Article) item).getObjectID());
+            } else if (item instanceof Video) {
+                idList.add(((Video) item).getObjectID());
+            }
         }
         return idList;
     }
 
-    public Article getLastItem() {
-        return mArticleList.get(mArticleList.size()-1);
+    public Object getLastItem() {
+        return mItemList.get(mItemList.size()-1);
     }
 
     public void clear() {
-        mArticleList.clear();
+        mItemList.clear();
         mSeenList.clear();
         if (mRefObservedList.size() > 0) {
             for (DatabaseReference ref : mRefObservedList.keySet()) {
@@ -175,23 +187,35 @@ public class ArticleAdapter extends RecyclerView.Adapter<ArticleViewHolder> {
     }
 
     @Override
-    public void onViewAttachedToWindow(@NonNull ArticleViewHolder holder) {
+    public void onViewAttachedToWindow(@NonNull FeedViewHolder holder) {
         super.onViewAttachedToWindow(holder);
         int position = holder.getAdapterPosition();
-        Article article = mArticleList.get(position);
-        if (!mSeenList.contains(article.getObjectID())) {
-            mSeenList.add(article.getObjectID());
+        Object item = mItemList.get(position);
+        if (item instanceof Article) {
+            if (!mSeenList.contains(((Article) item).getObjectID())) {
+                mSeenList.add(((Article) item).getObjectID());
+            }
+        } else if (item instanceof Video) {
+            if (!mSeenList.contains(((Video) item).getObjectID())) {
+                mSeenList.add(((Video) item).getObjectID());
+            }
         }
     }
 
     @Override
-    public void onViewDetachedFromWindow(@NonNull ArticleViewHolder holder) {
+    public void onViewDetachedFromWindow(@NonNull FeedViewHolder holder) {
         super.onViewDetachedFromWindow(holder);
         int position = holder.getAdapterPosition();
-        if (position >= 0 && position < mArticleList.size()) {
-            Article article = mArticleList.get(position);
-            if (mSeenList.contains(article.getObjectID())) {
-                mDataSource.logSeenItemEvent(mUid, article.getObjectID(), article.getType());
+        if (position >= 0 && position < mItemList.size()) {
+            Object item = mItemList.get(position);
+            if (item instanceof Article) {
+                if (mSeenList.contains(((Article) item).getObjectID())) {
+                    mDataSource.logSeenItemEvent(mUid, ((Article) item).getObjectID(), ((Article) item).getType());
+                }
+            } else if (item instanceof Video) {
+                if (mSeenList.contains(((Video) item).getObjectID())) {
+                    mDataSource.logSeenItemEvent(mUid, ((Video) item).getObjectID(), ((Video) item).getType());
+                }
             }
         }
     }

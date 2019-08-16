@@ -2,7 +2,6 @@ package acorn.com.acorn_app.ui.activities;
 
 import android.app.NotificationManager;
 import android.content.Context;
-import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageInfo;
@@ -22,16 +21,13 @@ import android.util.Base64;
 import android.util.Log;
 import android.util.TypedValue;
 import android.view.Display;
-import android.view.GestureDetector;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
-import android.view.MotionEvent;
 import android.view.View;
 import android.view.animation.AccelerateInterpolator;
 import android.view.animation.AlphaAnimation;
 import android.view.animation.Animation;
-import android.view.animation.AnimationUtils;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.ImageView;
@@ -53,7 +49,7 @@ import androidx.core.view.GravityCompat;
 import androidx.core.view.MenuItemCompat;
 import androidx.drawerlayout.widget.DrawerLayout;
 import androidx.lifecycle.Observer;
-import androidx.lifecycle.ViewModelProviders;
+import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.recyclerview.widget.SimpleItemAnimator;
@@ -64,6 +60,12 @@ import com.crashlytics.android.Crashlytics;
 import com.firebase.ui.auth.AuthUI;
 import com.firebase.ui.auth.ErrorCodes;
 import com.firebase.ui.auth.IdpResponse;
+import com.google.android.gms.ads.AdListener;
+import com.google.android.gms.ads.AdLoader;
+import com.google.android.gms.ads.AdRequest;
+import com.google.android.gms.ads.AdView;
+import com.google.android.gms.ads.MobileAds;
+import com.google.android.gms.ads.formats.UnifiedNativeAd;
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.Task;
 import com.google.android.gms.tasks.TaskCompletionSource;
@@ -83,6 +85,7 @@ import com.google.firebase.iid.FirebaseInstanceId;
 import com.google.firebase.messaging.FirebaseMessaging;
 import com.jaredrummler.android.device.DeviceName;
 import com.nex3z.notificationbadge.NotificationBadge;
+import com.smaato.soma.BannerView;
 
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -94,19 +97,19 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
-import java.util.function.Consumer;
 
 import acorn.com.acorn_app.R;
-import acorn.com.acorn_app.data.ArticleListLiveData;
+import acorn.com.acorn_app.data.FeedListLiveData;
 import acorn.com.acorn_app.data.NetworkDataSource;
 import acorn.com.acorn_app.models.Article;
 import acorn.com.acorn_app.models.FbQuery;
 import acorn.com.acorn_app.models.PremiumStatus;
 import acorn.com.acorn_app.models.User;
-import acorn.com.acorn_app.ui.adapters.ArticleAdapter;
+import acorn.com.acorn_app.models.Video;
+import acorn.com.acorn_app.ui.adapters.FeedAdapter;
 import acorn.com.acorn_app.ui.fragments.NotificationsDialogFragment;
-import acorn.com.acorn_app.ui.viewModels.ArticleViewModel;
-import acorn.com.acorn_app.ui.viewModels.ArticleViewModelFactory;
+import acorn.com.acorn_app.ui.viewModels.FeedViewModel;
+import acorn.com.acorn_app.ui.viewModels.FeedViewModelFactory;
 import acorn.com.acorn_app.ui.viewModels.NotificationViewModel;
 import acorn.com.acorn_app.utils.AppExecutors;
 import acorn.com.acorn_app.utils.GeofenceErrorMessages;
@@ -115,7 +118,6 @@ import acorn.com.acorn_app.utils.InjectorUtils;
 import acorn.com.acorn_app.utils.InviteUtils;
 import acorn.com.acorn_app.utils.LocationPermissionsUtils;
 import acorn.com.acorn_app.utils.Logger;
-import acorn.com.acorn_app.utils.OnSwipeListener;
 import acorn.com.acorn_app.utils.UiUtils;
 
 import static acorn.com.acorn_app.data.NetworkDataSource.ALGOLIA_API_KEY;
@@ -125,7 +127,7 @@ import static acorn.com.acorn_app.utils.UiUtils.createToast;
 
 public class AcornActivity extends AppCompatActivity
         implements NavigationView.OnNavigationItemSelectedListener,
-        ArticleAdapter.OnLongClickListener, OnCompleteListener<Void>,
+        FeedAdapter.OnLongClickListener, OnCompleteListener<Void>,
         AdapterView.OnItemSelectedListener {
 
     private static final String TAG = "AcornActivity";
@@ -177,15 +179,15 @@ public class AcornActivity extends AppCompatActivity
 
     //RecyclerView
     private RecyclerView mRecyclerView;
-    private ArticleAdapter mAdapter;
+    private FeedAdapter mAdapter;
     private LinearLayoutManager mLinearLayoutManager;
     private boolean isLoadingMore = false;
     private static Parcelable mLlmState;
     private boolean mPendingRestoreState;
 
     //View Models
-    private ArticleViewModel mArticleViewModel;
-    private final Map<ArticleListLiveData, Observer<List<Article>>> mObservedList = new HashMap<>();
+    private FeedViewModel mFeedViewModel;
+    private final Map<FeedListLiveData, Observer<List<Object>>> mObservedList = new HashMap<>();
     private NotificationViewModel mNotifViewModel;
 
     //User
@@ -248,6 +250,14 @@ public class AcornActivity extends AppCompatActivity
     private Logger mLogger;
     private Handler mHandler = new Handler();
 
+    // Ad
+    private ConstraintLayout mAdLayoutSmaato;
+    private BannerView mBannerViewSmaato;
+    private ConstraintLayout mAdLayoutAdmob;
+    private AdView mBannerViewAdmob;
+    private AdLoader mAdLoader;
+    private List<UnifiedNativeAd> mNativeAds = new ArrayList<>();
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         Log.d(TAG,"onCreate");
@@ -269,6 +279,7 @@ public class AcornActivity extends AppCompatActivity
         setSupportActionBar(mToolbar);
 
         mFirebaseAnalytics.logEvent(FirebaseAnalytics.Event.APP_OPEN, null);
+        MobileAds.initialize(this, getString(R.string.admob_app_id));
 
         // For facebook
         try {
@@ -325,7 +336,7 @@ public class AcornActivity extends AppCompatActivity
         mLinearLayoutManager = new LinearLayoutManager(this);
         mLinearLayoutManager.setOrientation(RecyclerView.VERTICAL);
         mRecyclerView.setLayoutManager(mLinearLayoutManager);
-        mAdapter = new ArticleAdapter(this, this);
+        mAdapter = new FeedAdapter(this, this);
         mRecyclerView.setAdapter(mAdapter);
         mRecyclerView.setVisibility(View.INVISIBLE);
         ((SimpleItemAnimator) mRecyclerView.getItemAnimator()).setSupportsChangeAnimations(false);
@@ -408,6 +419,41 @@ public class AcornActivity extends AppCompatActivity
             notificationManager.deleteNotificationChannel("geofence_mrt_channel");
             notificationManager.deleteNotificationChannel("acorn_location_mrt_channel");
         }
+
+        mNotifViewModel = new ViewModelProvider(this).get(NotificationViewModel.class);
+
+        // Set up ad banner
+//        mAdLayoutSmaato = (ConstraintLayout) findViewById(R.id.ad_banner_layout_smaato);
+//        mBannerViewSmaato = (BannerView) findViewById(R.id.ad_banner_smaato);
+        mAdLayoutAdmob = (ConstraintLayout) findViewById(R.id.ad_banner_layout_admob);
+        mBannerViewAdmob = (AdView) findViewById(R.id.ad_banner_admob);
+        loadAdmobBannerAd();
+//        mSharedPreferences.edit().putString("IABConsent_SubjectToGDPR", "0").apply();
+//        mBannerViewSmaato.addAdListener((sender, receivedBanner) -> {
+//            if(receivedBanner.getErrorCode() != ErrorCode.NO_ERROR){
+//                mAdLayoutSmaato.setVisibility(View.GONE);
+//                loadAdmobBannerAd();
+//                Log.d(TAG, receivedBanner.getErrorMessage());
+//            } else {
+//                mAdLayoutSmaato.setVisibility(View.VISIBLE);
+//                mAdLayoutAdmob.setVisibility(View.GONE);
+//            }
+//        });
+//        mBannerViewSmaato.getUserSettings().setCOPPA(false);
+//        mBannerViewSmaato.getAdSettings().setAdDimension(AdDimension.DEFAULT);
+////        mBannerViewSmaato.getAdSettings().setPublisherId(0); // testing
+////        mBannerViewSmaato.getAdSettings().setAdspaceId(0); // testing
+//        mBannerViewSmaato.getAdSettings().setPublisherId(Integer.parseInt(getString(R.string.smaato_publisher_id)));
+//        mBannerViewSmaato.getAdSettings().setAdspaceId(Integer.parseInt(getString(R.string.smaato_banner_main_ad_space_id)));
+//        mBannerViewSmaato.setAutoReloadEnabled(true);
+//        mBannerViewSmaato.setAutoReloadFrequency(30);
+//        mBannerViewSmaato.setLocationUpdateEnabled(true);
+//        mBannerViewSmaato.asyncLoadNewBanner();
+    }
+
+    public void loadAdmobBannerAd() {
+        AdRequest adRequest = new AdRequest.Builder().build();
+        mBannerViewAdmob.loadAd(adRequest);
     }
 
     @Override
@@ -445,7 +491,6 @@ public class AcornActivity extends AppCompatActivity
         mSearchButton = menu.findItem(R.id.action_search);
         ConstraintLayout notificationView = (ConstraintLayout) MenuItemCompat.getActionView(notificationItem);
         notificationBadge = (NotificationBadge) notificationView.findViewById(R.id.notification_badge);
-        mNotifViewModel = ViewModelProviders.of(this).get(NotificationViewModel.class);
         mNotifViewModel.getNotificationList().observe(this,
                 notificationList -> notificationBadge.setNumber(notificationList.size()));
         NotificationViewModel.sharedPrefs.postValue(mNotificationsPref);
@@ -640,7 +685,7 @@ public class AcornActivity extends AppCompatActivity
                     signOutMenuItem.setVisible(true);
                 }
 
-                if (mArticleViewModel != null) resetView();
+                if (mFeedViewModel != null) resetView();
             } else {
                 // Sign in failed
                 if (response == null) {
@@ -805,7 +850,7 @@ public class AcornActivity extends AppCompatActivity
 
     private void removeAllObservers() {
         if (mObservedList.size() > 0) {
-            for (ArticleListLiveData liveData : mObservedList.keySet()) {
+            for (FeedListLiveData liveData : mObservedList.keySet()) {
                 liveData.removeObserver(mObservedList.get(liveData));
             }
             mObservedList.clear();
@@ -849,11 +894,8 @@ public class AcornActivity extends AppCompatActivity
                                 String videoId = id.substring(3);
                                 mReferredBy = deepLink.getQueryParameter("sharerId");
                                 Intent youtubeActivity = new Intent(this, YouTubeActivity.class);
-//                            mDataSource.getYoutubeApiKey((apiKey) -> {
                                 youtubeActivity.putExtra("videoId", videoId);
-//                                youtubeActivity.putExtra("apiKey", apiKey);
                                 startActivityForResult(youtubeActivity, RC_NOTIF);
-//                            });
                             }
                         } else {
                             mReferredBy = deepLink.getQueryParameter("referrer");
@@ -869,7 +911,7 @@ public class AcornActivity extends AppCompatActivity
     private void handleIntent(Intent intent) {
         Log.d(TAG, "handle intent");
 
-        if (mArticleViewModel != null) {
+        if (mFeedViewModel != null) {
             if (navMenu != null) {
                 MenuItem subscriptionsMenuItem = (MenuItem) navMenu.findItem(R.id.nav_subscriptions);
                 MenuItem trendingMenuItem = (MenuItem) navMenu.findItem(R.id.nav_trending);
@@ -888,72 +930,72 @@ public class AcornActivity extends AppCompatActivity
         }
     }
 
-    private void loadMoreArticles() {
-        if (isLoadingMore) return;
-
-        int currentPosition = mLinearLayoutManager.findLastCompletelyVisibleItemPosition();
-        final int trigger = 5;
-        final int initialListCount = mAdapter.getItemCount();
-        List<Article> currentList = mAdapter.getList();
-        final Object index;
-
-        if (initialListCount <= trigger) return;
-
-        if (currentPosition > mAdapter.getItemCount() - trigger) {
-            isLoadingMore = true;
-
-            Article lastArticle = mAdapter.getLastItem();
-
-            switch (mQuery.state) {
-                case 0:
-                    index = lastArticle.getPubDate();
-                    break;
-                case 1:
-                    index = lastArticle.getTrendingIndex();
-                    break;
-                default:
-                case 3:
-                    index = lastArticle.getTrendingIndex();
-                    break;
-                case 4:
-                    index = lastArticle.getTrendingIndex();
-                    break;
-                case -1:
-                    index = lastArticle.getTrendingIndex();
-                    break;
-                case -2:
-                    index = lastArticle.getTrendingIndex();
-                    break;
-            }
-
-            int indexType = 0;
-            ArticleListLiveData addListLD = mArticleViewModel.getAdditionalArticles(index, indexType, mThemeList, mSeed);
-            Observer<List<Article>> addListObserver = articles -> {
-                if (articles != null) {
-                    /*
-                    initialListCount marks where the end of the list was before additional
-                    articles are loaded. Live data list of additional articles will start
-                    from the last article in the current list, so startIndex is initialListCount - 1
-                    */
-                    int startIndex = initialListCount - 1;
-                    for (int i = 0; i < articles.size(); i++) {
-                        if (currentList.size() < startIndex + i + 1) {
-                            Log.d(TAG, "add: " + (startIndex + i));
-                            currentList.add(startIndex + i, articles.get(i));
-                        } else {
-                            Log.d(TAG, "set: " + (startIndex + i));
-                            currentList.set(startIndex + i, articles.get(i));
-                        }
-                    }
-                    mAdapter.setList(currentList);
-                }
-            };
-            addListLD.observeForever(addListObserver);
-            mObservedList.put(addListLD, addListObserver);
-
-            mHandler.postDelayed(()->isLoadingMore = false,1000);
-        }
-    }
+//    private void loadMoreArticles() {
+//        if (isLoadingMore) return;
+//
+//        int currentPosition = mLinearLayoutManager.findLastCompletelyVisibleItemPosition();
+//        final int trigger = 5;
+//        final int initialListCount = mAdapter.getItemCount();
+//        List<Object> currentList = mAdapter.getList();
+//        final Object index;
+//
+//        if (initialListCount <= trigger) return;
+//
+//        if (currentPosition > mAdapter.getItemCount() - trigger) {
+//            isLoadingMore = true;
+//
+//            Article lastArticle = mAdapter.getLastItem();
+//
+//            switch (mQuery.state) {
+//                case 0:
+//                    index = lastArticle.getPubDate();
+//                    break;
+//                case 1:
+//                    index = lastArticle.getTrendingIndex();
+//                    break;
+//                default:
+//                case 3:
+//                    index = lastArticle.getTrendingIndex();
+//                    break;
+//                case 4:
+//                    index = lastArticle.getTrendingIndex();
+//                    break;
+//                case -1:
+//                    index = lastArticle.getTrendingIndex();
+//                    break;
+//                case -2:
+//                    index = lastArticle.getTrendingIndex();
+//                    break;
+//            }
+//
+//            int indexType = 0;
+//            ArticleListLiveData addListLD = mArticleViewModel.getAdditionalArticles(index, indexType, mThemeList, mSeed);
+//            Observer<List<Object>> addListObserver = articles -> {
+//                if (articles != null) {
+//                    /*
+//                    initialListCount marks where the end of the list was before additional
+//                    articles are loaded. Live data list of additional articles will start
+//                    from the last article in the current list, so startIndex is initialListCount - 1
+//                    */
+//                    int startIndex = initialListCount - 1;
+//                    for (int i = 0; i < articles.size(); i++) {
+//                        if (currentList.size() < startIndex + i + 1) {
+//                            Log.d(TAG, "add: " + (startIndex + i));
+//                            currentList.add(startIndex + i, articles.get(i));
+//                        } else {
+//                            Log.d(TAG, "set: " + (startIndex + i));
+//                            currentList.set(startIndex + i, articles.get(i));
+//                        }
+//                    }
+//                    mAdapter.setList(currentList);
+//                }
+//            };
+//            addListLD.observeForever(addListObserver);
+//            mObservedList.put(addListLD, addListObserver);
+//
+//            mHandler.postDelayed(()->isLoadingMore = false,1000);
+//        }
+//    }
 
     private void clearView() {
         mRecyclerView.setVisibility(View.INVISIBLE);
@@ -968,10 +1010,13 @@ public class AcornActivity extends AppCompatActivity
         Log.d(TAG, "resetView");
         clearView();
 
-        mAdapter = new ArticleAdapter(this, this);
+        mAdapter = new FeedAdapter(this, this);
         mRecyclerView.setAdapter(mAdapter);
 
-        setUpInitialViewModelObserver();
+        mNativeAds.clear();
+        loadNativeAds(() -> {
+            setUpInitialViewModelObserver();
+        });
     }
 
     private void launchLogin() {
@@ -995,6 +1040,7 @@ public class AcornActivity extends AppCompatActivity
                 .addOnCompleteListener(task -> {
                     // user is now signed out
                     mAdapter.clear();
+                    mNativeAds.clear();
                     if (mUserStatusRef != null) mUserStatusRef.removeEventListener(mUserStatusListener);
                     if (mUserPremiumStatusRef != null) mUserPremiumStatusRef.removeEventListener(mUserPremiumStatusListener);
                     launchLogin();
@@ -1161,7 +1207,10 @@ public class AcornActivity extends AppCompatActivity
                     if (mLlmState == null) {
                         getThemeData();
                     } else {
-                        setUpInitialViewModelObserver();
+                        mNativeAds.clear();
+                        loadNativeAds(() -> {
+                            setUpInitialViewModelObserver();
+                        });
                     }
 
                     // set up toolbar
@@ -1435,6 +1484,7 @@ public class AcornActivity extends AppCompatActivity
 
     private void getThemeData() {
         mRecyclerView.setVisibility(View.INVISIBLE);
+        mNewContentPrompt.setVisibility(View.GONE);
         mSwipeRefreshLayout.setRefreshing(true);
         String hitsRef = SEARCH_REF + "/" + mThemeSearchKey + "/hits";
         mDataSource.getThemeData(()->{
@@ -1449,6 +1499,7 @@ public class AcornActivity extends AppCompatActivity
 
     private void getTrendingData() {
         mRecyclerView.setVisibility(View.INVISIBLE);
+        mNewContentPrompt.setVisibility(View.GONE);
         mSwipeRefreshLayout.setRefreshing(true);
 
         StringBuilder searchKeyBuilder = new StringBuilder();
@@ -1479,6 +1530,7 @@ public class AcornActivity extends AppCompatActivity
 
     private void getDealsData() {
         mRecyclerView.setVisibility(View.INVISIBLE);
+        mNewContentPrompt.setVisibility(View.GONE);
         mSwipeRefreshLayout.setRefreshing(true);
         String hitsRef = SEARCH_REF + "/Deals/hits";
         mDataSource.getDealsData(()->{
@@ -1516,45 +1568,32 @@ public class AcornActivity extends AppCompatActivity
         Log.d(TAG, "setUpInitialViewModelObserver: theme:" + mThemeList + ", seed: " + mSeed);
 
         // Set up view model
-        ArticleViewModelFactory factory = InjectorUtils.provideArticleViewModelFactory(this.getApplicationContext());
-        mArticleViewModel = ViewModelProviders.of(this, factory).get(ArticleViewModel.class);
+        FeedViewModelFactory factory = InjectorUtils.provideArticleViewModelFactory(this.getApplicationContext());
+        mFeedViewModel = new ViewModelProvider(this, factory).get(FeedViewModel.class);
 
-        ArticleListLiveData articleListLD = mArticleViewModel.getArticles(mQuery, mThemeList, mSeed);
-        Observer<List<Article>> articleListObserver = articles -> {
-            if (articles != null) {
-                /*
-                1 - While child listener adds articles incrementally to live data list,
-                we add to adapter list if it had not already been added.
-                2 - On any changes to live data list after adapter list is set,
-                update changes in-situ.
-                This way, adapter list expands up to size of all observed live data lists
-                (includes all loadMoreArticles lists), with no repeat articles on changes.
-                */
-//                List<Article> currentList = mAdapter.getList();
-//                List<String> currentIdList = mAdapter.getIdList();
-//                for (int i = 0; i < articles.size(); i++) {
-//                    if (currentList.size() < i+1) {
-//                        //1
-//                        currentList.add(i, articles.get(i));
-//                        Log.d(TAG, "added: " + currentList.size());
-//                    } else {
-//                        //2
-//                        currentList.set(i, articles.get(i));
-//                        Log.d(TAG, "set: " + currentList.size());
-//                    }
-//                }
-//                mAdapter.setList(currentList, () -> {
-//                    if (mRecyclerView.getVisibility() != View.VISIBLE) {
-//                        mRecyclerView.setVisibility(View.VISIBLE);
-//                        mSwipeRefreshLayout.setRefreshing(false);
-//                    }
-//                });
+        FeedListLiveData itemListLD = mFeedViewModel.getArticles(mQuery, mThemeList, mSeed);
+        Observer<List<Object>> itemListObserver = items -> {
+            if (items != null) {
+                // add ads into feed
+                List<Object> feedWithAds = new ArrayList<>(items);
+                int index = 3;
+                int interval = 10;
+                for (UnifiedNativeAd ad : mNativeAds) {
+                    Log.d(TAG, "advertiser: " + ad.getAdvertiser() +
+                            ", headline: " + ad.getHeadline() +
+                            ", body: " + ad.getBody() +
+                            ", cta: " + ad.getCallToAction() +
+                            ", price: " + ad.getPrice() +
+                            ", store: " + ad.getStore());
+                    feedWithAds.add(index, ad);
+                    index += interval;
+                }
 
                 Long lastFeedRefreshTime = mSharedPreferences.getLong("lastFeedRefreshTime", 0L);
                 Long now = (new Date()).getTime();
                 if (mAdapter.getItemCount() == 0 || lastFeedRefreshTime < (now - 60 * 60 * 1000)) {
-                    Log.d(TAG, "refresh: " + articles.get(0).getObjectID());
-                    mAdapter.setList(articles, () -> {
+                    Log.d(TAG, "refresh feed");
+                    mAdapter.setList(feedWithAds, () -> {
                         if (mPendingRestoreState) mHandler.removeCallbacks(restoreLlmState);
                         mHandler.postDelayed(restoreLlmState, 200);
                         mPendingRestoreState = true;
@@ -1562,27 +1601,36 @@ public class AcornActivity extends AppCompatActivity
                     mSharedPreferences.edit().putLong("lastFeedRefreshTime", now).apply();
                 } else {
                     // new articles are available
-                    if (!mAdapter.getList().get(0).getObjectID().equals(articles.get(0).getObjectID()) ||
-                            !mAdapter.getLastItem().getObjectID().equals(articles.get(articles.size()-1).getObjectID())) {
-                        Log.d(TAG, "new articles available: " + mAdapter.getList().get(0).getObjectID() +
-                                ", " + articles.get(1).getObjectID() + "; " + mAdapter.getLastItem().getObjectID() +
-                                ", " + articles.get(articles.size()-1).getObjectID());
+                    Object firstItem = items.get(0);
+                    Object lastItem = items.get(items.size() - 1);
+                    Object adapterFirstItem = mAdapter.getList().get(0);
+                    Object adapterLastItem = mAdapter.getLastItem();
+                    boolean firstItemsEqual = (firstItem instanceof Article && adapterFirstItem instanceof Article)
+                            && ((Article) firstItem).getObjectID().equals(((Article) adapterFirstItem).getObjectID());
+                    boolean lastItemsArticleAndEqual = (lastItem instanceof Article && adapterLastItem instanceof Article)
+                            && ((Article) lastItem).getObjectID().equals(((Article) adapterLastItem).getObjectID());
+                    boolean lastItemsVideoAndEqual = (lastItem instanceof Video && adapterLastItem instanceof Video)
+                            && ((Video) lastItem).getObjectID().equals(((Video) adapterLastItem).getObjectID());
+                    boolean lastItemsEqual = lastItemsArticleAndEqual || lastItemsVideoAndEqual;
+
+                    if (!firstItemsEqual || !lastItemsEqual) {
+                        Log.d(TAG, "new articles available");
                         mNewContentPrompt.setOnClickListener(v -> {
-                            mAdapter.setList(articles);
+                            mAdapter.setList(feedWithAds);
                             mRecyclerView.scrollToPosition(0);
                             fadeOut(mNewContentPrompt);
                         });
 
                         fadeIn(mNewContentPrompt);
                     } else {
-                        Log.d(TAG, "article change: " + articles.get(0).getObjectID());
-                        mAdapter.setList(articles);
+                        Log.d(TAG, "article change");
+                        mAdapter.setList(feedWithAds);
                     }
                 }
             }
         };
-        articleListLD.observe(this, articleListObserver);
-        mObservedList.put(articleListLD, articleListObserver);
+        itemListLD.observe(this, itemListObserver);
+        mObservedList.put(itemListLD, itemListObserver);
     }
 
     private void fadeIn(View view) {
@@ -1601,6 +1649,31 @@ public class AcornActivity extends AppCompatActivity
         fadeOut.setDuration(500);
         view.setAnimation(fadeOut);
         view.setVisibility(View.GONE);
+    }
+
+    private void loadNativeAds(Runnable onComplete) {
+        AdLoader.Builder builder = new AdLoader.Builder(this, getString(R.string.admob_native_adunit_id));
+        mAdLoader = builder.forUnifiedNativeAd(unifiedNativeAd -> {
+            // A native ad loaded successfully, check if the ad loader has finished loading
+            // and if so, insert the ads into the list.
+            mNativeAds.add(unifiedNativeAd);
+            if (!mAdLoader.isLoading()) {
+                onComplete.run();
+            }
+        }).withAdListener(new AdListener() {
+            @Override
+            public void onAdFailedToLoad(int errorCode) {
+                // A native ad failed to load, check if the ad loader has finished loading
+                // and if so, insert the ads into the list.
+                Log.e(TAG, "Previous native ad failed to load. Attempting to load another.");
+                if (!mAdLoader.isLoading()) {
+                    onComplete.run();
+                }
+            }
+        }).build();
+
+        // Load the Native ads.
+        mAdLoader.loadAds(new AdRequest.Builder().build(), 5);
     }
 
     private Runnable restoreLlmState = () -> {
@@ -1627,26 +1700,6 @@ public class AcornActivity extends AppCompatActivity
 
     private void checkReferral() {
         // check to see if user opened an invite link
-//        Intent intent = getIntent();
-//        String appLinkAction = intent.getAction();
-//        Uri appLinkData = intent.getData();
-//        if (Intent.ACTION_VIEW.equals(appLinkAction) && appLinkData != null) {
-//            FirebaseDynamicLinks.getInstance().getDynamicLink(intent)
-//                    .addOnSuccessListener(this, pendingDynamicLinkData -> {
-//                        Uri deepLink;
-//                        if (pendingDynamicLinkData != null) {
-//                            deepLink = pendingDynamicLinkData.getLink();
-//                            mReferredBy = deepLink.getQueryParameter("referrer");
-//                            Log.d(TAG, "checkReferral: " + deepLink.toString() + ", user: " +
-//                                    mFirebaseUser.getUid() + ", referrer: " + mReferredBy);
-//                            mDataSource.setReferrer(mFirebaseUser.getUid(), mReferredBy);
-//                        }
-//                    })
-//                    .addOnFailureListener(this, e -> {
-//                        Log.d(TAG, "Failed to get deep link: " + e);
-//                    });
-//        }
-
         if (mReferredBy != null) {
             Log.d(TAG, "checkReferral: user: " + mFirebaseUser.getUid() + ", referrer: " + mReferredBy);
             mDataSource.setReferrer(mFirebaseUser.getUid(), mReferredBy);

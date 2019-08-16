@@ -44,8 +44,8 @@ import static acorn.com.acorn_app.ui.activities.AcornActivity.mSharedPreferences
 import static acorn.com.acorn_app.ui.activities.AcornActivity.mUid;
 import static acorn.com.acorn_app.ui.activities.AcornActivity.mUserThemePrefs;
 
-public class ArticleListLiveData extends LiveData<List<Article>> {
-    private static final String TAG = "ArticleListLiveData";
+public class FeedListLiveData extends LiveData<List<Object>> {
+    private static final String TAG = "FeedListLiveData";
 
     private final DatabaseReference mDatabaseReference = FirebaseDatabase.getInstance().getReference();
 
@@ -62,8 +62,8 @@ public class ArticleListLiveData extends LiveData<List<Article>> {
 
     private final MyChildEventListener childListener = new MyChildEventListener();
 
-    private final List<String> mArticleIds = new ArrayList<>();
-    private final List<Article> mArticleList = new ArrayList<>();
+    private final List<String> mItemIds = new ArrayList<>();
+    private final List<Object> mItemList = new ArrayList<>();
     private List<String> mThemeList = new ArrayList<>();
     private int mSeed = 1;
 
@@ -90,11 +90,11 @@ public class ArticleListLiveData extends LiveData<List<Article>> {
     };
 
     private DataSnapshot mHitsSnap;
-    private TaskCompletionSource<List<Article>> mArticleSource;
+    private TaskCompletionSource<List<Object>> mArticleSource;
     private boolean isPendingRefresh = false;
     private final Runnable setArticleList = () -> {
-        mArticleList.clear();
-        mArticleIds.clear();
+        mItemList.clear();
+        mItemIds.clear();
 
         List<Task<Boolean>> taskList = new ArrayList<>();
         if (mHitsSnap.exists()) {
@@ -102,19 +102,6 @@ public class ArticleListLiveData extends LiveData<List<Article>> {
                 Article article = snap.getValue(Article.class);
                 if (article != null) {
                     String toLoadId = article.getObjectID();
-
-                    // show article from source that first published the news
-//                                    if (article.duplicates.size() > 0) {
-//                                        Long toLoadPubDate = article.getPubDate();
-//                                        for (Map.Entry<String, Long> entry : article.duplicates.entrySet()) {
-//                                            if (entry.getValue() > toLoadPubDate) {
-//                                                // article was published before target article
-//                                                // > because pubDates are all negative
-//                                                toLoadId = entry.getKey();
-//                                                toLoadPubDate = entry.getValue();
-//                                            }
-//                                        }
-//                                    }
 
                     TaskCompletionSource<Boolean> dbSource = new TaskCompletionSource<>();
                     Task<Boolean> dbTask = dbSource.getTask();
@@ -128,13 +115,13 @@ public class ArticleListLiveData extends LiveData<List<Article>> {
             }
 
             Tasks.whenAll(taskList).addOnSuccessListener(aVoid -> {
-                mArticleSource.trySetResult(mArticleList);
+                mArticleSource.trySetResult(mItemList);
                 isPendingRefresh = false;
             });
         }
     };
 
-    public ArticleListLiveData(Query query, List<String> themeList, int seed) {
+    public FeedListLiveData(Query query, List<String> themeList, int seed) {
         this.query = query;
         this.mThemeList = themeList;
         this.mSeed = seed;
@@ -143,7 +130,7 @@ public class ArticleListLiveData extends LiveData<List<Article>> {
         this.searchStates.add(3);
     }
 
-    public ArticleListLiveData(Query query, int state) {
+    public FeedListLiveData(Query query, int state) {
         this.query = query;
         this.state = state;
         this.searchStates.add(-2);
@@ -162,16 +149,16 @@ public class ArticleListLiveData extends LiveData<List<Article>> {
                     @Override
                     public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
                         // remove all articles that have been unsaved
-                        List<String> articleIds = new ArrayList<>(mArticleIds);
+                        List<String> articleIds = new ArrayList<>(mItemIds);
                         for (DataSnapshot snap : dataSnapshot.getChildren()) {
                             articleIds.remove(snap.getKey());
                         }
                         if (articleIds.size() > 0) {
                             for (String id : articleIds) {
-                                int index = mArticleIds.indexOf(id);
+                                int index = mItemIds.indexOf(id);
                                 if (index > -1) {
-                                    mArticleIds.remove(index);
-                                    mArticleList.remove(index);
+                                    mItemIds.remove(index);
+                                    mItemList.remove(index);
                                     Query articleQuery = mDatabaseReference.child("article/" + id);
 
                                     ValueEventListener listener = savedArticlesQueryList.get(articleQuery);
@@ -195,7 +182,7 @@ public class ArticleListLiveData extends LiveData<List<Article>> {
                             savedArticlesQueryList.put(articleQuery, articleValueListener);
                             articleQuery.addValueEventListener(articleValueListener);
                         }
-                        Tasks.whenAll(taskList).addOnCompleteListener(task -> setValue(mArticleList));
+                        Tasks.whenAll(taskList).addOnCompleteListener(task -> setValue(mItemList));
                     }
 
                     @Override
@@ -205,7 +192,7 @@ public class ArticleListLiveData extends LiveData<List<Article>> {
                 });
             } else if (searchStates.contains(state)) { // Subscriptions, Trending, Deals
                 mArticleSource = new TaskCompletionSource<>();
-                Task<List<Article>> articleTask = mArticleSource.getTask();
+                Task<List<Object>> articleTask = mArticleSource.getTask();
 
                 query.addValueEventListener(new ValueEventListener() {
                     @Override
@@ -227,8 +214,8 @@ public class ArticleListLiveData extends LiveData<List<Article>> {
 
                 boolean showVideos = mSharedPreferences.getBoolean("videosInFeed", true);
                 if (showVideos) {
-                    TaskCompletionSource<List<Article>> videoSource = new TaskCompletionSource<>();
-                    Task<List<Article>> videoTask = videoSource.getTask();
+                    TaskCompletionSource<List<Video>> videoSource = new TaskCompletionSource<>();
+                    Task<List<Video>> videoTask = videoSource.getTask();
                     Long cutoffDate = -DateUtils.getThreeDaysAgoMidnight();
                     Query videoQuery = mDatabaseReference.child("video").orderByChild("pubDate").endAt(cutoffDate);
                     VideoValueEventListener videoValueListener = new VideoValueEventListener(videoSource);
@@ -239,21 +226,21 @@ public class ArticleListLiveData extends LiveData<List<Article>> {
 
 
                     Tasks.whenAll(articleTask, videoTask).addOnSuccessListener(aVoid -> {
-                        List<Article> videos = videoTask.getResult();
-                        List<Article> selectedVideos = new ArrayList<>();
+                        List<Video> videos = videoTask.getResult();
+                        List<Video> selectedVideos = new ArrayList<>();
                         if (videos != null) {
-                            for (Article video : videos) {
+                            for (Video video : videos) {
                                 if (mThemeList.contains(video.getMainTheme()) &&
                                         !channelsToRemove.contains(video.getSource())) {
                                     selectedVideos.add(video);
                                 }
                             }
                             Collections.shuffle(selectedVideos, new Random(mSeed));
-                            int sizeLimit = Math.min(mArticleList.size() / 5, selectedVideos.size());
+                            int sizeLimit = Math.min(mItemList.size() / 5, selectedVideos.size());
                             for (int i = 0; i < sizeLimit; i++) {
                                 // after every 5th article, accommodating the new data indicator
-                                mArticleList.add(1 + (i + 1) * 5, selectedVideos.get(i));
-                                mArticleIds.add(1 + (i + 1) * 5, selectedVideos.get(i).getObjectID());
+                                mItemList.add(1 + (i + 1) * 5, selectedVideos.get(i));
+                                mItemIds.add(1 + (i + 1) * 5, selectedVideos.get(i).getObjectID());
 
                                 Query selectedVideoQuery = mDatabaseReference.child("video/" + selectedVideos.get(i).getObjectID());
                                 SelectedVideoValueEventListener selectedVideoValueListener = new SelectedVideoValueEventListener();
@@ -261,11 +248,11 @@ public class ArticleListLiveData extends LiveData<List<Article>> {
                                 selectedVideoQuery.addValueEventListener(selectedVideoValueListener);
                             }
                         }
-                        setValue(mArticleList);
+                        setValue(mItemList);
                     });
                 } else {
                     Tasks.whenAll(articleTask).addOnSuccessListener(
-                            aVoid -> setValue(mArticleList));
+                            aVoid -> setValue(mItemList));
                 }
             } else {
                 query.addChildEventListener(childListener);
@@ -288,13 +275,13 @@ public class ArticleListLiveData extends LiveData<List<Article>> {
             Log.d(TAG, "onChildAdded");
             Article article = dataSnapshot.getValue(Article.class);
 
-            if (!mArticleIds.contains(dataSnapshot.getKey())) {
+            if (!mItemIds.contains(dataSnapshot.getKey())) {
                 if (article != null && !article.isReported) {
-                    mArticleIds.add(dataSnapshot.getKey());
-                    mArticleList.add(article);
+                    mItemIds.add(dataSnapshot.getKey());
+                    mItemList.add(article);
                 }
             }
-            setValue(mArticleList);
+            setValue(mItemList);
         }
 
         @Override
@@ -303,20 +290,20 @@ public class ArticleListLiveData extends LiveData<List<Article>> {
             Article newArticle = dataSnapshot.getValue(Article.class);
             String articleKey = dataSnapshot.getKey();
 
-            int articleIndex = mArticleIds.indexOf(articleKey);
+            int articleIndex = mItemIds.indexOf(articleKey);
             if (articleIndex > -1) {
                 if (newArticle != null) {
                     if (newArticle.isReported) {
-                        mArticleIds.remove(articleIndex);
-                        mArticleList.remove(articleIndex);
+                        mItemIds.remove(articleIndex);
+                        mItemList.remove(articleIndex);
                     } else {
                         // Replace with the new data
-                        mArticleList.set(articleIndex, newArticle);
+                        mItemList.set(articleIndex, newArticle);
                     }
                 }
             }
 
-            setValue(mArticleList);
+            setValue(mItemList);
         }
 
         @Override
@@ -324,14 +311,14 @@ public class ArticleListLiveData extends LiveData<List<Article>> {
             Log.d(TAG, "onChildRemoved");
             String articleKey = dataSnapshot.getKey();
 
-            int articleIndex = mArticleIds.indexOf(articleKey);
+            int articleIndex = mItemIds.indexOf(articleKey);
             if (articleIndex > -1) {
                 // Remove data from the list
-                mArticleIds.remove(articleIndex);
-                mArticleList.remove(articleIndex);
+                mItemIds.remove(articleIndex);
+                mItemList.remove(articleIndex);
             }
 
-            setValue(mArticleList);
+            setValue(mItemList);
         }
 
         @Override
@@ -340,19 +327,19 @@ public class ArticleListLiveData extends LiveData<List<Article>> {
             Article movedArticle = dataSnapshot.getValue(Article.class);
             String articleKey = dataSnapshot.getKey();
 
-            int oldIndex = mArticleIds.indexOf(articleKey);
+            int oldIndex = mItemIds.indexOf(articleKey);
             if (oldIndex > -1) {
                 // Remove data from old position
-                mArticleIds.remove(oldIndex);
-                mArticleList.remove(oldIndex);
+                mItemIds.remove(oldIndex);
+                mItemList.remove(oldIndex);
 
                 // Add data in new position
-                int newIndex = previousChildKey == null ? 0 : mArticleIds.indexOf(previousChildKey) + 1;
-                mArticleIds.add(articleKey);
-                mArticleList.add(newIndex, movedArticle);
+                int newIndex = previousChildKey == null ? 0 : mItemIds.indexOf(previousChildKey) + 1;
+                mItemIds.add(articleKey);
+                mItemList.add(newIndex, movedArticle);
             }
 
-            setValue(mArticleList);
+            setValue(mItemList);
         }
 
         @Override
@@ -376,41 +363,41 @@ public class ArticleListLiveData extends LiveData<List<Article>> {
                     boolean duplicateExists = false;
                     if (article.duplicates.size() > 0) {
                         for (String id : article.duplicates.keySet()) {
-                            if (mArticleIds.contains(id)) {
+                            if (mItemIds.contains(id)) {
                                 duplicateExists = true;
                             }
                         }
                     }
 
                     if (!duplicateExists) {
-                        int index = mArticleIds.indexOf(articleId);
+                        int index = mItemIds.indexOf(articleId);
                         if (index > -1) {
-                            mArticleIds.set(index, articleId);
-                            mArticleList.set(index, article);
+                            mItemIds.set(index, articleId);
+                            mItemList.set(index, article);
                         } else {
-                            mArticleIds.add(articleId);
-                            mArticleList.add(article);
+                            mItemIds.add(articleId);
+                            mItemList.add(article);
                         }
                     } else {
-                        int index = mArticleIds.indexOf(articleId);
+                        int index = mItemIds.indexOf(articleId);
                         if (index > -1) {
                             // Remove data from the list
-                            mArticleIds.remove(index);
-                            mArticleList.remove(index);
+                            mItemIds.remove(index);
+                            mItemList.remove(index);
                         }
                     }
                 } else {
-                    int index = mArticleIds.indexOf(articleId);
+                    int index = mItemIds.indexOf(articleId);
                     if (index > -1) {
                         // Remove data from the list
-                        mArticleIds.remove(index);
-                        mArticleList.remove(index);
+                        mItemIds.remove(index);
+                        mItemList.remove(index);
                     }
                 }
 
                 if (!dbSource.trySetResult(true)) {
                     Log.d(TAG, "article changed");
-                    setValue(mArticleList);
+                    setValue(mItemList);
                 }
             } else {
                 dbSource.trySetException(new Exception("No data exists"));
@@ -437,25 +424,25 @@ public class ArticleListLiveData extends LiveData<List<Article>> {
                 Article article = dataSnapshot.getValue(Article.class);
                 String articleId = dataSnapshot.getKey();
                 if (article != null) {
-                    int index = mArticleIds.indexOf(articleId);
+                    int index = mItemIds.indexOf(articleId);
                     if (index > -1) {
-                        mArticleIds.set(index, articleId);
-                        mArticleList.set(index, article);
+                        mItemIds.set(index, articleId);
+                        mItemList.set(index, article);
                     } else {
-                        mArticleIds.add(articleId);
-                        mArticleList.add(article);
+                        mItemIds.add(articleId);
+                        mItemList.add(article);
                     }
                 } else {
-                    int index = mArticleIds.indexOf(articleId);
+                    int index = mItemIds.indexOf(articleId);
                     if (index > -1) {
                         // Remove data from the list
-                        mArticleIds.remove(index);
-                        mArticleList.remove(index);
+                        mItemIds.remove(index);
+                        mItemList.remove(index);
                     }
                 }
 
                 if (!dbSource.trySetResult(true)) {
-                    setValue(mArticleList);
+                    setValue(mItemList);
                 }
             } else {
                 dbSource.trySetException(new Exception("No data exists"));
@@ -469,10 +456,10 @@ public class ArticleListLiveData extends LiveData<List<Article>> {
     }
 
     private class VideoValueEventListener implements ValueEventListener {
-        private TaskCompletionSource<List<Article>> dbSource;
-        private List<Article> videoList = new ArrayList<>();
+        private TaskCompletionSource<List<Video>> dbSource;
+        private List<Video> videoList = new ArrayList<>();
 
-        private VideoValueEventListener(TaskCompletionSource<List<Article>> dbSource) {
+        private VideoValueEventListener(TaskCompletionSource<List<Video>> dbSource) {
             this.dbSource = dbSource;
         }
 
@@ -480,7 +467,7 @@ public class ArticleListLiveData extends LiveData<List<Article>> {
         public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
             for (DataSnapshot snap : dataSnapshot.getChildren()) {
                 Video video = snap.getValue(Video.class);
-                videoList.add(video.toArticle());
+                videoList.add(video);
             }
             dbSource.trySetResult(videoList);
         }
@@ -498,23 +485,22 @@ public class ArticleListLiveData extends LiveData<List<Article>> {
                 Video video = dataSnapshot.getValue(Video.class);
                 String videoId = dataSnapshot.getKey();
                 if (video != null) {
-                    Article convertedVideo = video.toArticle();
-                    int index = mArticleIds.indexOf(videoId);
+                    int index = mItemIds.indexOf(videoId);
                     if (index > -1) {
-                        mArticleIds.set(index, videoId);
-                        mArticleList.set(index, convertedVideo);
+                        mItemIds.set(index, videoId);
+                        mItemList.set(index, video);
                     }
                 } else {
-                    int index = mArticleIds.indexOf(videoId);
+                    int index = mItemIds.indexOf(videoId);
                     if (index > -1) {
                         // Remove data from the list
-                        mArticleIds.remove(index);
-                        mArticleList.remove(index);
+                        mItemIds.remove(index);
+                        mItemList.remove(index);
                     }
                 }
 
                 Log.d(TAG, "video changed");
-                setValue(mArticleList);
+                setValue(mItemList);
             }
         }
 

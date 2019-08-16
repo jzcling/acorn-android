@@ -1,7 +1,7 @@
 package acorn.com.acorn_app.ui.activities;
 
 import androidx.lifecycle.Observer;
-import androidx.lifecycle.ViewModelProviders;
+import androidx.lifecycle.ViewModelProvider;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Parcelable;
@@ -110,7 +110,7 @@ public class VideoFeedActivity extends AppCompatActivity {
     private void setUpInitialViewModelObserver() {
         // Set up view model
         VideoViewModelFactory factory = InjectorUtils.provideVideoViewModelFactory(this.getApplicationContext());
-        mVideoViewModel = ViewModelProviders.of(this, factory).get(VideoViewModel.class);
+        mVideoViewModel = new ViewModelProvider(this, factory).get(VideoViewModel.class);
 
         mVideoListLD = mVideoViewModel.getVideos(null);
         Observer<List<Video>> VideoListObserver = videos -> {

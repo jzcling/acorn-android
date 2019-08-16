@@ -20,7 +20,6 @@ public class VideoFeedViewHolder extends RecyclerView.ViewHolder {
     private static final String TAG = "VideoFeedViewHolder";
     private final Context mContext;
     private final String mVideoType;
-    private final String mYoutubeApiKey;
 
     private final ImageView banner;
     private final TextView theme;
@@ -43,11 +42,10 @@ public class VideoFeedViewHolder extends RecyclerView.ViewHolder {
 
     private final AppExecutors mExecutors = AppExecutors.getInstance();
 
-    public VideoFeedViewHolder(Context context, View view, String videoType, String youtubeApiKey) {
+    public VideoFeedViewHolder(Context context, View view, String videoType) {
         super(view);
         mContext = context;
         mVideoType = videoType;
-        mYoutubeApiKey = youtubeApiKey;
 
         banner = (ImageView) view.findViewById(R.id.card_banner_new);
         theme = (TextView) view.findViewById(R.id.card_theme);
@@ -70,7 +68,7 @@ public class VideoFeedViewHolder extends RecyclerView.ViewHolder {
     }
 
     private VideoOnClickListener onClickListener(Video video, String cardAttribute) {
-        return new VideoOnClickListener(mContext, mYoutubeApiKey, video, cardAttribute,
+        return new VideoOnClickListener(mContext, video, cardAttribute,
                 upVoteView, downVoteView, commentView, favView, shareView);
     }
 

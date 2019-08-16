@@ -2,7 +2,6 @@ package acorn.com.acorn_app.ui.activities;
 
 import android.content.Context;
 import android.os.Bundle;
-import android.os.Handler;
 import android.os.Parcelable;
 import android.util.Log;
 import android.view.Menu;
@@ -20,7 +19,7 @@ import androidx.appcompat.widget.SearchView;
 import androidx.appcompat.widget.Toolbar;
 import androidx.core.view.MenuItemCompat;
 import androidx.lifecycle.Observer;
-import androidx.lifecycle.ViewModelProviders;
+import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.ItemTouchHelper;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -31,19 +30,17 @@ import java.util.List;
 import java.util.Map;
 
 import acorn.com.acorn_app.R;
-import acorn.com.acorn_app.data.ArticleListLiveData;
+import acorn.com.acorn_app.data.FeedListLiveData;
 import acorn.com.acorn_app.data.NetworkDataSource;
 import acorn.com.acorn_app.models.Article;
 import acorn.com.acorn_app.models.FbQuery;
 import acorn.com.acorn_app.ui.adapters.SavedArticleAdapter;
 import acorn.com.acorn_app.ui.adapters.SavedArticleViewHolder;
-import acorn.com.acorn_app.ui.viewModels.ArticleViewModel;
-import acorn.com.acorn_app.ui.viewModels.ArticleViewModelFactory;
+import acorn.com.acorn_app.ui.viewModels.FeedViewModel;
+import acorn.com.acorn_app.ui.viewModels.FeedViewModelFactory;
 import acorn.com.acorn_app.utils.AppExecutors;
 import acorn.com.acorn_app.utils.InjectorUtils;
 import acorn.com.acorn_app.utils.SavedArticleTouchHelper;
-
-import static acorn.com.acorn_app.ui.activities.AcornActivity.mUserThemePrefs;
 
 
 public class SavedArticlesActivity extends AppCompatActivity
@@ -56,8 +53,8 @@ public class SavedArticlesActivity extends AppCompatActivity
     private final AppExecutors mExecutors = AppExecutors.getInstance();
 
     //View Models
-    private ArticleViewModel mArticleViewModel;
-    private final Map<ArticleListLiveData, Observer<List<Article>>> mObservedList = new HashMap<>();
+    private FeedViewModel mFeedViewModel;
+    private final Map<FeedListLiveData, Observer<List<Object>>> mObservedList = new HashMap<>();
 
     //RecyclerView
     private RecyclerView mRecyclerView;
@@ -186,7 +183,7 @@ public class SavedArticlesActivity extends AppCompatActivity
     protected void onDestroy() {
         super.onDestroy();
         if (mObservedList.size() > 0) {
-            for (ArticleListLiveData liveData : mObservedList.keySet()) {
+            for (FeedListLiveData liveData : mObservedList.keySet()) {
                 liveData.removeObserver(mObservedList.get(liveData));
             }
             mObservedList.clear();
@@ -213,34 +210,18 @@ public class SavedArticlesActivity extends AppCompatActivity
 
     private void setUpInitialViewModelObserver() {
         // Set up view model
-        ArticleViewModelFactory factory = InjectorUtils.provideArticleViewModelFactory(this.getApplicationContext());
-        mArticleViewModel = ViewModelProviders.of(this, factory).get(ArticleViewModel.class);
+        FeedViewModelFactory factory = InjectorUtils.provideArticleViewModelFactory(this.getApplicationContext());
+        mFeedViewModel = new ViewModelProvider(this, factory).get(FeedViewModel.class);
         mQuery = new FbQuery(2, 0, 0);
 
-        ArticleListLiveData articleListLD = mArticleViewModel.getArticles(mQuery);
-        Observer<List<Article>> articleListObserver = articles -> {
-            if (articles != null) {
-                /*
-                1 - While child listener adds articles incrementally to live data list,
-                we add to adapter list if it had not already been added.
-                2 - On any changes to live data list after adapter list is set,
-                update changes in-situ.
-                This way, adapter list expands up to size of all observed live data lists
-                (includes all loadMoreArticles lists), with no repeat articles on changes.
-                */
-//                List<Article> currentList = mAdapter.getList();
-//                for (int i = 0; i < articles.size(); i++) {
-//                    if (currentList.size() < i+1) {
-//                        //1
-//                        currentList.add(i, articles.get(i));
-//                        Log.d(TAG, "added: " + currentList.size());
-//                    } else {
-//                        //2
-//                        currentList.set(i, articles.get(i));
-//                        Log.d(TAG, "set: " + currentList.size());
-//                    }
-//                }
-                mAdapter.setList(articles, mThemeFilterList, mSearchText, () -> {
+        FeedListLiveData articleListLD = mFeedViewModel.getArticles(mQuery);
+        Observer<List<Object>> articleListObserver = items -> {
+            if (items != null) {
+                List<Article> articleList = new ArrayList<>();
+                for (Object item : items) {
+                    articleList.add((Article) item);
+                }
+                mAdapter.setList(articleList, mThemeFilterList, mSearchText, () -> {
                     if (mLlmState != null) {
                         mLinearLayoutManager.onRestoreInstanceState(mLlmState);
                         mLlmState = null;

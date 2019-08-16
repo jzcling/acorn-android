@@ -20,7 +20,6 @@ import static acorn.com.acorn_app.ui.activities.AcornActivity.mUid;
 public class VideoFeedAdapter extends RecyclerView.Adapter<VideoFeedViewHolder> {
     private static final String TAG = "VideoFeedAdapter";
     private final Context mContext;
-    private String mYoutubeApiKey;
     private String mVideoType;
     private List<Video> mVideoList = new ArrayList<>();
     private List<String> mSeenList = new ArrayList<>();
@@ -30,7 +29,6 @@ public class VideoFeedAdapter extends RecyclerView.Adapter<VideoFeedViewHolder> 
     public VideoFeedAdapter(final Context context, NetworkDataSource dataSource) {
         mContext = context;
         mDataSource = dataSource;
-//        dataSource.getYoutubeApiKey((apiKey) -> mYoutubeApiKey = apiKey);
     }
 
     @Override
@@ -50,7 +48,7 @@ public class VideoFeedAdapter extends RecyclerView.Adapter<VideoFeedViewHolder> 
         mVideoType = viewType == 0 ? "video" : "userGenerated";
         LayoutInflater inflater = LayoutInflater.from(mContext);
         view = inflater.inflate(R.layout.item_video_card, parent, false);
-        return new VideoFeedViewHolder(mContext, view, mVideoType, mYoutubeApiKey);
+        return new VideoFeedViewHolder(mContext, view, mVideoType);
     }
 
     @Override
