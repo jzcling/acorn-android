@@ -85,7 +85,6 @@ import com.google.firebase.iid.FirebaseInstanceId;
 import com.google.firebase.messaging.FirebaseMessaging;
 import com.jaredrummler.android.device.DeviceName;
 import com.nex3z.notificationbadge.NotificationBadge;
-import com.smaato.soma.BannerView;
 
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -251,9 +250,6 @@ public class AcornActivity extends AppCompatActivity
     private Handler mHandler = new Handler();
 
     // Ad
-    private ConstraintLayout mAdLayoutSmaato;
-    private BannerView mBannerViewSmaato;
-    private ConstraintLayout mAdLayoutAdmob;
     private AdView mBannerViewAdmob;
     private AdLoader mAdLoader;
     private List<UnifiedNativeAd> mNativeAds = new ArrayList<>();
@@ -425,7 +421,6 @@ public class AcornActivity extends AppCompatActivity
         // Set up ad banner
 //        mAdLayoutSmaato = (ConstraintLayout) findViewById(R.id.ad_banner_layout_smaato);
 //        mBannerViewSmaato = (BannerView) findViewById(R.id.ad_banner_smaato);
-        mAdLayoutAdmob = (ConstraintLayout) findViewById(R.id.ad_banner_layout_admob);
         mBannerViewAdmob = (AdView) findViewById(R.id.ad_banner_admob);
         loadAdmobBannerAd();
 //        mSharedPreferences.edit().putString("IABConsent_SubjectToGDPR", "0").apply();

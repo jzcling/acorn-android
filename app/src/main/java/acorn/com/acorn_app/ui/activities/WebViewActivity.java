@@ -49,9 +49,6 @@ import com.google.firebase.database.MutableData;
 import com.google.firebase.database.Transaction;
 import com.google.firebase.database.ValueEventListener;
 import com.google.firebase.dynamiclinks.FirebaseDynamicLinks;
-import com.smaato.soma.AdDimension;
-import com.smaato.soma.BannerView;
-import com.smaato.soma.ErrorCode;
 
 import java.util.Date;
 
@@ -129,9 +126,6 @@ public class WebViewActivity extends AppCompatActivity {
     private long mResumeTime = 0L;
 
     // Ad
-    private ConstraintLayout mAdLayoutSmaato;
-    private BannerView mBannerViewSmaato;
-    private ConstraintLayout mAdLayoutAdmob;
     private AdView mBannerViewAdmob;
 
     @SuppressLint("SetJavaScriptEnabled")
@@ -221,7 +215,6 @@ public class WebViewActivity extends AppCompatActivity {
         // Set up ad banner
 //        mBannerViewSmaato = (BannerView) findViewById(R.id.ad_banner_smaato);
 //        mAdLayoutSmaato = (ConstraintLayout) findViewById(R.id.ad_banner_layout_smaato);
-        mAdLayoutAdmob = (ConstraintLayout) findViewById(R.id.ad_banner_layout_admob);
         mBannerViewAdmob = (AdView) findViewById(R.id.ad_banner_admob);
         loadAdmobBannerAd();
 //        mBannerViewSmaato.addAdListener((sender, receivedBanner) -> {
