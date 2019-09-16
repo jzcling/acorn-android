@@ -24,12 +24,16 @@ import com.google.firebase.database.Transaction;
 import com.google.firebase.storage.FirebaseStorage;
 import com.google.firebase.storage.StorageReference;
 
+import java.util.ArrayList;
 import java.util.Date;
+import java.util.List;
 
 import acorn.com.acorn_app.R;
+import acorn.com.acorn_app.data.AddressRoomDatabase;
 import acorn.com.acorn_app.data.NetworkDataSource;
 import acorn.com.acorn_app.models.Article;
 import acorn.com.acorn_app.models.User;
+import acorn.com.acorn_app.models.dbAddress;
 import acorn.com.acorn_app.ui.activities.CommentActivity;
 import acorn.com.acorn_app.ui.activities.WebViewActivity;
 import acorn.com.acorn_app.utils.AppExecutors;
@@ -68,6 +72,7 @@ public class ArticleOnClickListener implements View.OnClickListener {
     //Data source
     private NetworkDataSource mDataSource;
     private final AppExecutors mExecutors = AppExecutors.getInstance();
+    private AddressRoomDatabase mAddressRoomDb;
 
     public ArticleOnClickListener(Context context, Article article, String cardAttribute,
                                   View upvoteView, View downvoteView, View commentView,
@@ -77,6 +82,7 @@ public class ArticleOnClickListener implements View.OnClickListener {
         mCardAttribute = cardAttribute;
 
         mDataSource = NetworkDataSource.getInstance(context, mExecutors);
+        mAddressRoomDb = AddressRoomDatabase.getInstance(context);
 
         mUpvoteView = upvoteView;
         mDownvoteView = downvoteView;
@@ -154,12 +160,22 @@ public class ArticleOnClickListener implements View.OnClickListener {
                         new UiUtils().configureImagePopUp(mContext, storageReference);
                 imagePopUp.show();
                 break;
+            case "nearby":
+                startWebViewActivityForNearby();
+                break;
         }
     }
 
     private void startWebViewActivity() {
         Intent intent = new Intent(mContext, WebViewActivity.class);
         intent.putExtra("id", mArticle.getObjectID());
+        mContext.startActivity(intent);
+    }
+
+    private void startWebViewActivityForNearby() {
+        Intent intent = new Intent(mContext, WebViewActivity.class);
+        intent.putExtra("id", mArticle.getObjectID());
+        intent.putExtra("postcode", mArticle.postcode.toArray(new String[(mArticle.postcode.size())]));
         mContext.startActivity(intent);
     }
 
@@ -518,9 +534,11 @@ public class ArticleOnClickListener implements View.OnClickListener {
                 if (user.savedItems.containsKey(articleId)) {
                     user.savedItems.remove(articleId);
                     user.setSavedItemsCount(currentSaveCount - 1);
+                    removeSavedItemAddressFor(articleId);
                 } else {
                     user.savedItems.put(articleId, clickTime);
                     user.setSavedItemsCount(currentSaveCount + 1);
+                    addSavedItemAddressFor(articleId);
                 }
                 mutableData.setValue(user);
                 return Transaction.success(mutableData);
@@ -632,6 +650,20 @@ public class ArticleOnClickListener implements View.OnClickListener {
                 }
             });
         }
+    }
+
+    private void addSavedItemAddressFor(String articleId) {
+        mDataSource.getSavedAddressFor(articleId, addresses -> {
+            mExecutors.diskWrite().execute(() -> {
+                mAddressRoomDb.addressDAO().insert(addresses);
+            });
+        });
+    }
+
+    private void removeSavedItemAddressFor(String articleId) {
+        mExecutors.diskWrite().execute(() -> {
+            mAddressRoomDb.addressDAO().deleteForArticle(articleId);
+        });
     }
 
     private void disableVoteViews(boolean b) {

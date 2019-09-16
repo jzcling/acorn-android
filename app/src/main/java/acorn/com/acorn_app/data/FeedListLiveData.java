@@ -149,6 +149,10 @@ public class FeedListLiveData extends LiveData<List<Object>> {
                     @Override
                     public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
                         // remove all articles that have been unsaved
+                        // when a delete happens, onDataChange is triggered as well, returning a null dataSnapshot
+                        // here we first remove any changed article, and add it back if there is any data
+                        // the net effect is that articles that are unsaved are removed and
+                        // saved articles that change are updated
                         List<String> articleIds = new ArrayList<>(mItemIds);
                         for (DataSnapshot snap : dataSnapshot.getChildren()) {
                             articleIds.remove(snap.getKey());

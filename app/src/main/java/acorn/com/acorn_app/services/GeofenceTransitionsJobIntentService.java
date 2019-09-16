@@ -8,35 +8,51 @@ import android.content.Context;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.Color;
+import android.location.Location;
 import android.os.Build;
 import android.text.TextUtils;
 import android.util.Log;
 
+import androidx.annotation.NonNull;
 import androidx.core.app.JobIntentService;
 import androidx.core.app.NotificationCompat;
 import androidx.core.app.NotificationManagerCompat;
 import androidx.core.app.TaskStackBuilder;
 
+import com.google.android.gms.location.FusedLocationProviderClient;
 import com.google.android.gms.location.Geofence;
 import com.google.android.gms.location.GeofencingEvent;
+import com.google.android.gms.location.LocationServices;
+import com.google.android.gms.tasks.OnSuccessListener;
+import com.google.android.gms.tasks.Task;
+import com.google.android.gms.tasks.TaskCompletionSource;
+import com.google.android.gms.tasks.Tasks;
 import com.google.firebase.auth.FirebaseAuth;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.regex.Pattern;
 
 import acorn.com.acorn_app.R;
 import acorn.com.acorn_app.data.NetworkDataSource;
 import acorn.com.acorn_app.models.Article;
+import acorn.com.acorn_app.models.dbAddress;
+import acorn.com.acorn_app.ui.activities.AcornActivity;
 import acorn.com.acorn_app.ui.activities.CommentActivity;
 import acorn.com.acorn_app.ui.activities.NearbyActivity;
+import acorn.com.acorn_app.ui.activities.SavedArticlesActivity;
 import acorn.com.acorn_app.ui.activities.WebViewActivity;
 import acorn.com.acorn_app.utils.AppExecutors;
 import acorn.com.acorn_app.utils.GeofenceErrorMessages;
+import acorn.com.acorn_app.utils.GeofenceUtils;
 import acorn.com.acorn_app.utils.IOUtils;
 
 import static acorn.com.acorn_app.ui.activities.NearbyActivity.RADIUS;
 import static androidx.core.app.NotificationCompat.CATEGORY_RECOMMENDATION;
 import static androidx.core.app.NotificationCompat.DEFAULT_SOUND;
+import static androidx.core.app.NotificationCompat.DEFAULT_VIBRATE;
 import static androidx.core.app.NotificationCompat.GROUP_ALERT_SUMMARY;
 import static androidx.core.app.NotificationCompat.PRIORITY_HIGH;
 import static androidx.core.app.NotificationCompat.VISIBILITY_PUBLIC;
@@ -56,6 +72,8 @@ public class GeofenceTransitionsJobIntentService extends JobIntentService {
 
     private static String CHANNEL_ID;
     private static String CHANNEL_NAME;
+    private static String SAVED_ADDRESS_CHANNEL_ID;
+    private static String SAVED_ADDRESS_CHANNEL_NAME;
     public static final int PENDINGINTENT_RC = 599;
 
     private AppExecutors mExecutors;
@@ -69,6 +87,8 @@ public class GeofenceTransitionsJobIntentService extends JobIntentService {
     public static void enqueueWork(Context context, Intent intent) {
         CHANNEL_ID = context.getString(R.string.geofence_notification_channel_id);
         CHANNEL_NAME = context.getString(R.string.geofence_notification_channel_name);
+        SAVED_ADDRESS_CHANNEL_ID = context.getString(R.string.saved_reminder_notification_channel_id);
+        SAVED_ADDRESS_CHANNEL_NAME = context.getString(R.string.saved_reminder_notification_channel_name);
         enqueueWork(context, GeofenceTransitionsJobIntentService.class, JOB_ID, intent);
     }
 
@@ -78,50 +98,132 @@ public class GeofenceTransitionsJobIntentService extends JobIntentService {
      *               Services (inside a PendingIntent) when addGeofences() is called.
      */
     @Override
-    protected void onHandleWork(Intent intent) {
+    protected void onHandleWork(@NonNull Intent intent) {
         Log.d(TAG, "onHandleWork");
         mExecutors = AppExecutors.getInstance();
         mDataSource = NetworkDataSource.getInstance(getApplicationContext(), mExecutors);
 
-        GeofencingEvent geofencingEvent = GeofencingEvent.fromIntent(intent);
-        if (geofencingEvent.hasError()) {
-            String errorMessage = GeofenceErrorMessages.getErrorString(getApplicationContext(),
-                    geofencingEvent.getErrorCode());
-            Log.e(TAG, errorMessage);
-            return;
-        }
+        FusedLocationProviderClient fusedLocationClient = LocationServices.getFusedLocationProviderClient(getApplicationContext());
+        GeofenceUtils geofenceUtils = GeofenceUtils.getInstance(this, mDataSource);
 
-        // Get the transition type.
-        int geofenceTransition = geofencingEvent.getGeofenceTransition();
-        if (geofenceTransition == Geofence.GEOFENCE_TRANSITION_DWELL
-                || geofenceTransition == Geofence.GEOFENCE_TRANSITION_ENTER) {
+        fusedLocationClient.getLastLocation().addOnSuccessListener(location -> {
+            boolean stationGeofenceHandled = false;
+            GeofencingEvent geofencingEvent = GeofencingEvent.fromIntent(intent);
+            if (geofencingEvent.hasError()) {
+                String errorMessage = GeofenceErrorMessages.getErrorString(getApplicationContext(),
+                        geofencingEvent.getErrorCode());
+                Log.e(TAG, errorMessage);
+                return;
+            }
 
-            // Get the geofences that were triggered. A single event can trigger multiple geofences.
-            List<Geofence> triggeringGeofences = geofencingEvent.getTriggeringGeofences();
+            // Get the transition type.
+            int geofenceTransition = geofencingEvent.getGeofenceTransition();
+            if (geofenceTransition == Geofence.GEOFENCE_TRANSITION_DWELL
+                    || geofenceTransition == Geofence.GEOFENCE_TRANSITION_ENTER) {
 
-            // Get the transition details.
-            String stationName = getFirstTriggeredStationName(triggeringGeofences);
-            Log.d(TAG, "geofence station name: " + stationName);
+                // Get the geofences that were triggered. A single event can trigger multiple geofences.
+                List<Geofence> triggeringGeofences = geofencingEvent.getTriggeringGeofences();
 
-            // Get articles near stationName
-            mExecutors.networkIO().execute(() -> {
-                mDataSource.getMrtStationByName(stationName, station -> {
-                    Log.d(TAG, "geofence station: " + station.toString());
-                    Double latitude = (Double) station.get(stationName).get("latitude");
-                    Double longitude = (Double) station.get(stationName).get("longitude");
-                    if (latitude != null && longitude != null)
-                        mDataSource.getNearbyArticles(latitude, longitude, RADIUS, true,
-                                3, (articles) -> {
-                                    mExecutors.networkIO().execute(() -> {
-                                        sendNotification(stationName, articles);
+                List<Article> savedArticleList = new ArrayList<>();
+                Map<String, List<String>> postcodeMap = new HashMap<>();
+                List<Task<Boolean>> taskList = new ArrayList<>();
+
+                // Get the transition details.
+                for (Geofence geofence : triggeringGeofences) {
+                    String geofenceId = geofence.getRequestId();
+                    Log.d(TAG, "geofence entered/dwelled: " + geofenceId);
+
+                    if (!geofenceId.startsWith("article")) {
+                        // mrt geofence triggered
+                        if (stationGeofenceHandled) continue;
+                        // Get articles near stationName
+                        mExecutors.networkIO().execute(() -> {
+                            mDataSource.getMrtStations(mrtStations -> {
+                                geofenceUtils.getNearestStationsFrom(location, 1, mrtStations, station -> {
+                                    Log.d(TAG, "geofence station: " + station.toString());
+                                    Map.Entry<String, Location> entry = station.entrySet().iterator().next();
+                                    double latitude = entry.getValue().getLatitude();
+                                    double longitude = entry.getValue().getLongitude();
+                                    mDataSource.getNearbyArticles(latitude, longitude, RADIUS, null, true,
+                                            3, articles -> {
+                                                mExecutors.networkIO().execute(() -> {
+                                                    sendNotification(entry.getKey(), articles);
+                                                });
                                     });
+                                });
+                            }, null);
                         });
+                        stationGeofenceHandled = true;
+                    } else {
+                        // saved address geofence triggered
+                        String articleId = geofenceId.substring(8);
+                        Log.d(TAG, "geofence articleId: " + articleId);
+                        // Get article triggered
+
+                        TaskCompletionSource<Boolean> savedArticleTaskSource = new TaskCompletionSource<>();
+                        Task<Boolean> savedArticleTask = savedArticleTaskSource.getTask();
+                        taskList.add(savedArticleTask);
+
+                        mExecutors.networkIO().execute(() -> {
+                            TaskCompletionSource<Boolean> articleTaskSource = new TaskCompletionSource<>();
+                            Task<Boolean> articleTask = articleTaskSource.getTask();
+                            mDataSource.getSingleArticle(articleId, article -> {
+                                savedArticleList.add(article);
+                                articleTaskSource.setResult(true);
+                            });
+
+                            TaskCompletionSource<Boolean> addressTaskSource = new TaskCompletionSource<>();
+                            Task<Boolean> addressTask = addressTaskSource.getTask();
+                            List<String> postcodeList = new ArrayList<>();
+                            mDataSource.getSavedAddressFor(articleId, addresses -> {
+                                for (dbAddress address : addresses) {
+                                    Location addressLoc = new Location("");
+                                    addressLoc.setLatitude(address.latitude);
+                                    addressLoc.setLongitude(address.longitude);
+
+                                    if (addressLoc.distanceTo(location) < 1000) {
+                                        Pattern postcodePattern = Pattern.compile(".*(Singapore [0-9]{6}|S[0-9]{6})", Pattern.CASE_INSENSITIVE);
+                                        String postcode = postcodePattern.matcher(address.address).replaceAll("$1");
+                                        postcodeList.add(postcode);
+                                    }
+                                }
+                                addressTaskSource.setResult(true);
+                            });
+
+                            Tasks.whenAll(articleTask, addressTask).addOnSuccessListener(aVoid -> {
+                                postcodeMap.put(articleId, postcodeList);
+                                savedArticleTaskSource.setResult(true);
+                            });
+                        });
+                    }
+                }
+
+                Tasks.whenAll(taskList).addOnSuccessListener(aVoid -> {
+                    mExecutors.networkIO().execute(() -> {
+                        sendSavedAddressNotification(savedArticleList, postcodeMap);
+                    });
                 });
-            });
-        } else {
-            // Log the error.
-            Log.e(TAG, getString(R.string.geofence_transition_invalid_type, geofenceTransition));
-        }
+            } else if (geofenceTransition == Geofence.GEOFENCE_TRANSITION_EXIT) {
+                boolean hasStationGeofence = false;
+                // Get the geofences that were triggered. A single event can trigger multiple geofences.
+                List<Geofence> triggeringGeofences = geofencingEvent.getTriggeringGeofences();
+                for (Geofence geofence : triggeringGeofences) {
+                    Log.d(TAG, "geofence exited: " + geofence);
+                    if (!geofence.getRequestId().startsWith("article")) hasStationGeofence = true;
+                }
+
+                if (hasStationGeofence) {
+                    geofenceUtils.mPendingGeofenceTask = GeofenceUtils.PendingGeofenceTask.REMOVE;
+                    geofenceUtils.performPendingGeofenceTask(this, () -> {
+                        geofenceUtils.mPendingGeofenceTask = GeofenceUtils.PendingGeofenceTask.ADD;
+                        geofenceUtils.performPendingGeofenceTask(this, location);
+                    });
+                }
+            } else {
+                // Log the error.
+                Log.e(TAG, getString(R.string.geofence_transition_invalid_type, geofenceTransition));
+            }
+        });
     }
 
     /**
@@ -147,7 +249,7 @@ public class GeofenceTransitionsJobIntentService extends JobIntentService {
         return geofenceTransitionString + ": " + triggeringGeofencesIdsString;
     }
 
-    private String getFirstTriggeredStationName(List<Geofence> triggeringGeofences) {
+    private String getFirstTriggeredGeofence(List<Geofence> triggeringGeofences) {
         return triggeringGeofences.get(0).getRequestId();
     }
 
@@ -215,7 +317,7 @@ public class GeofenceTransitionsJobIntentService extends JobIntentService {
                             .setSmallIcon(R.drawable.ic_notif_acorn)
                             .setColor(Color.RED)
                             .setLargeIcon(bitmap)
-                            .setContentTitle(article.getTitle())
+                            .setContentTitle(title)
                             .setContentText(contentText)
                             .setContentIntent(individualPendingIntent)
                             .setAutoCancel(true)
@@ -287,21 +389,19 @@ public class GeofenceTransitionsJobIntentService extends JobIntentService {
             channel.enableLights(true);
             channel.setLightColor(Color.YELLOW);
             channel.setVibrationPattern(new long[]{0});
-            channel.enableVibration(true);
+            channel.enableVibration(false);
 
             if (notificationManager == null)
                 notificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
 
-            if (notificationManager != null) {
+            try {
                 notificationManager.createNotificationChannel(channel);
-            } else {
-                mDataSource.logNotificationError(auth.getUid(), "null_notif_manager", "location");
-                return;
+            } catch (Exception e) {
+                if (auth.getUid() != null) {
+                    mDataSource.logNotificationError(auth.getUid(), "null_notif_manager: " + e.getLocalizedMessage(), "location");
+                    return;
+                }
             }
-        }
-
-        if (notificationManager == null) {
-            notificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
         }
 
         if (notificationManager != null) {
@@ -310,6 +410,130 @@ public class GeofenceTransitionsJobIntentService extends JobIntentService {
             }
             notificationManager.notify(NOTIFICATION_ID, summaryNotification);
         }
+    }
+
+    /**
+     * Posts a notification in the notification bar when a transition is detected.
+     * If the user clicks the notification, control goes to the WebViewActivity.
+     */
+    private void sendSavedAddressNotification(List<Article> articleList, Map<String, List<String>> postcodeMap) {
+        if (articleList.size() < 1) {
+            Log.d(TAG, "no saved address notifications");
+            return;
+        }
+
+        Log.d(TAG, "postcodeMap: " + postcodeMap);
+
+        final String GROUP_NAME = "savedAddressGeofenceGroup";
+        final int PENDINGINTENT_RC = 510;
+        final List<Notification> notifications = new ArrayList<>();
+
+        NotificationCompat.InboxStyle inboxStyle = new NotificationCompat.InboxStyle();
+        inboxStyle.setSummaryText("These items you saved are nearby!");
+
+        Intent intent = new Intent(this, SavedArticlesActivity.class);
+        intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
+        intent.putExtra("fromNotif", true);
+        intent.putExtra("notifType", "Saved Address Reminder");
+        PendingIntent summaryPendingIntent = PendingIntent.getActivity(this, PENDINGINTENT_RC, intent,
+                PendingIntent.FLAG_ONE_SHOT);
+
+        NotificationManagerCompat notificationManager = NotificationManagerCompat.from(getApplicationContext());
+
+        // create summary notification
+        NotificationCompat.Builder savedAddressSummaryNotificationBuilder =
+                new NotificationCompat.Builder(this, SAVED_ADDRESS_CHANNEL_ID)
+                        .setOnlyAlertOnce(true)
+                        .setGroup(GROUP_NAME)
+                        .setGroupSummary(true)
+                        .setDefaults(DEFAULT_SOUND|DEFAULT_VIBRATE)
+                        .setLights(Color.YELLOW, 700, 300)
+                        .setPriority(PRIORITY_HIGH)
+                        .setCategory(CATEGORY_RECOMMENDATION)
+                        .setVisibility(VISIBILITY_PUBLIC)
+                        .setSmallIcon(R.drawable.ic_notif_acorn)
+                        .setColor(getColor(R.color.colorPrimary))
+                        .setStyle(inboxStyle)
+                        .setContentIntent(summaryPendingIntent)
+                        .setNumber(articleList.size())
+                        .setAutoCancel(true);
+
+        for (int i = 0; i < articleList.size(); i++) {
+            // Send individual notifications for each article
+            Article article = articleList.get(i);
+            String imageUrl = null;
+            if (article.getImageUrl() != null && !article.getImageUrl().equals("")) {
+                imageUrl = article.getImageUrl();
+            } else if (article.getPostImageUrl() != null && !article.getPostImageUrl().equals("")) {
+                imageUrl = article.getPostImageUrl();
+            }
+            String title = null;
+            if (article.getSource() != null && !article.getSource().equals("")) {
+                title = article.getTitle();
+            } else if (article.getPostAuthor() != null && !article.getPostAuthor().equals("")) {
+                title = article.getPostText();
+            }
+
+            inboxStyle.addLine(article.getTitle());
+
+            Intent individualIntent = new Intent(getApplicationContext(), WebViewActivity.class);
+            if (article.getLink() == null || article.getLink().equals("")) {
+                individualIntent = new Intent(getApplicationContext(), CommentActivity.class);
+            }
+            individualIntent.putExtra("id", article.getObjectID());
+            individualIntent.putExtra("fromNotif", true);
+            individualIntent.putExtra("notifType", "Saved Address Reminder");
+            List<String> postcodes = postcodeMap.get(article.getObjectID());
+            if (postcodes != null) {
+                individualIntent.putExtra("postcode", postcodes.toArray(new String[(postcodes.size())]));
+            }
+            individualIntent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
+            PendingIntent individualPendingIntent = TaskStackBuilder.create(getApplicationContext())
+                    .addNextIntentWithParentStack(individualIntent)
+                    .getPendingIntent(40 + i, PendingIntent.FLAG_UPDATE_CURRENT);
+
+            Bitmap bitmap = IOUtils.getBitmapFromUrl(imageUrl);
+
+            Notification notification =
+                    new NotificationCompat.Builder(getApplicationContext(), SAVED_ADDRESS_CHANNEL_ID)
+                            .setSmallIcon(R.drawable.ic_notif_acorn)
+                            .setColor(getColor(R.color.colorPrimary))
+                            .setLargeIcon(bitmap)
+                            .setContentTitle("An item you saved is nearby!")
+                            .setContentText(title)
+                            .setContentIntent(individualPendingIntent)
+                            .setAutoCancel(true)
+                            .setGroup(GROUP_NAME)
+                            .setGroupAlertBehavior(GROUP_ALERT_SUMMARY)
+                            .build();
+            notifications.add(notification);
+        }
+
+        // Since android Oreo notification channel is needed.
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            NotificationChannel channel = new NotificationChannel(SAVED_ADDRESS_CHANNEL_ID,
+                    SAVED_ADDRESS_CHANNEL_NAME,
+                    NotificationManager.IMPORTANCE_HIGH);
+            channel.setShowBadge(true);
+            channel.enableLights(true);
+            channel.setLightColor(Color.YELLOW);
+            channel.setVibrationPattern(new long[]{0});
+            channel.enableVibration(false);
+
+            try {
+                notificationManager.createNotificationChannel(channel);
+            } catch (Exception e) {
+                if (auth.getUid() != null) {
+                    mDataSource.logNotificationError(auth.getUid(), "null_notif_manager: " + e.getLocalizedMessage(), "location");
+                    return;
+                }
+            }
+        }
+
+        for (int i = 0; i < notifications.size(); i++) {
+            notificationManager.notify(40+i, notifications.get(i));
+        }
+        notificationManager.notify(40, savedAddressSummaryNotificationBuilder.build());
     }
 
     /**

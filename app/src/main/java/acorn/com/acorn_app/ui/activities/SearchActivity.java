@@ -24,6 +24,12 @@ import org.greenrobot.eventbus.Subscribe;
 import org.json.JSONObject;
 
 import acorn.com.acorn_app.R;
+import acorn.com.acorn_app.data.NetworkDataSource;
+import acorn.com.acorn_app.utils.AppExecutors;
+
+import static acorn.com.acorn_app.data.NetworkDataSource.ALGOLIA_API_KEY;
+import static acorn.com.acorn_app.ui.activities.AcornActivity.ALGOLIA_APP_ID;
+import static acorn.com.acorn_app.ui.activities.AcornActivity.ALGOLIA_INDEX_NAME;
 
 
 public class SearchActivity extends AppCompatActivity {
@@ -34,6 +40,10 @@ public class SearchActivity extends AppCompatActivity {
     private Searcher mSearcher;
     private SearchView mSearchBox;
     private Hits mHits;
+
+    //Data source
+    private NetworkDataSource mDataSource;
+    private final AppExecutors mExecutors = AppExecutors.getInstance();
 
     @Override protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -47,7 +57,13 @@ public class SearchActivity extends AppCompatActivity {
         mAmvView = toolbar.findViewById(R.id.amvMenu);
         mAmvView.setOnMenuItemClickListener(this::onOptionsItemSelected);
 
+        mDataSource = NetworkDataSource.getInstance(this, mExecutors);
         this.mSearcher = AcornActivity.mSearcher;
+        if (mSearcher == null) {
+            mDataSource.setupAlgoliaClient(() -> {
+                mSearcher = Searcher.create(ALGOLIA_APP_ID, ALGOLIA_API_KEY, ALGOLIA_INDEX_NAME);
+            });
+        }
 
         mHits = findViewById(R.id.hits);
 
@@ -78,7 +94,7 @@ public class SearchActivity extends AppCompatActivity {
         //mSearcher.search(getIntent()); // Show results for empty query (on app launch) / voice query (from intent)
 
         final MenuItem itemSearch = amvMenu.findItem(R.id.action_search);
-        mSearchBox = (SearchBox) MenuItemCompat.getActionView(itemSearch);
+        mSearchBox = (SearchBox) itemSearch.getActionView();
         mSearchBox.requestFocus();
 
         return true;
@@ -102,7 +118,11 @@ public class SearchActivity extends AppCompatActivity {
 
     @Override
     protected void onRestart() {
-        this.mSearcher = AcornActivity.mSearcher;
+        if (mSearcher == null) {
+            mDataSource.setupAlgoliaClient(() -> {
+                mSearcher = Searcher.create(ALGOLIA_APP_ID, ALGOLIA_API_KEY, ALGOLIA_INDEX_NAME);
+            });
+        }
         super.onRestart();
     }
 

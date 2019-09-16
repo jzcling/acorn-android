@@ -20,15 +20,16 @@ import android.widget.Button;
 import android.widget.CheckBox;
 import android.widget.ImageButton;
 import android.widget.ImageView;
+import android.widget.LinearLayout;
 import android.widget.PopupMenu;
 import android.widget.TextView;
 
 import com.bumptech.glide.Glide;
 import com.bumptech.glide.request.RequestOptions;
-import com.google.android.gms.ads.formats.MediaView;
-import com.google.android.gms.ads.formats.NativeAd;
-import com.google.android.gms.ads.formats.UnifiedNativeAd;
-import com.google.android.gms.ads.formats.UnifiedNativeAdView;
+import com.facebook.ads.AdOptionsView;
+import com.facebook.ads.MediaView;
+import com.facebook.ads.NativeAd;
+import com.facebook.ads.NativeAdLayout;
 import com.google.firebase.storage.FirebaseStorage;
 import com.google.firebase.storage.StorageReference;
 
@@ -94,7 +95,7 @@ public class FeedViewHolder extends RecyclerView.ViewHolder {
     private DuplicateArticleAdapter adapter;
 
     // Ad
-    private UnifiedNativeAdView adView;
+    private NativeAdLayout adView;
 
     private NetworkDataSource mDataSource;
     private final AppExecutors mExecutors = AppExecutors.getInstance();
@@ -145,18 +146,7 @@ public class FeedViewHolder extends RecyclerView.ViewHolder {
             llm.setOrientation(RecyclerView.HORIZONTAL);
             adapter = new DuplicateArticleAdapter(mContext);
         } else {
-            adView = (UnifiedNativeAdView) view.findViewById(R.id.card_ad_view);
-
-            // The MediaView will display a video asset if one is present in the ad, and the
-            // first image asset otherwise.
-            adView.setMediaView((MediaView) adView.findViewById(R.id.card_image));
-
-            // Register the view used for each individual asset.
-            adView.setHeadlineView(adView.findViewById(R.id.card_ad_title));
-            adView.setBodyView(adView.findViewById(R.id.card_title));
-            adView.setCallToActionView(adView.findViewById(R.id.card_call_to_action));
-            adView.setIconView(adView.findViewById(R.id.card_icon));
-            adView.setAdvertiserView(adView.findViewById(R.id.card_contributor));
+            adView = (NativeAdLayout) view.findViewById(R.id.card_ad_view);
         }
     }
 
@@ -309,6 +299,8 @@ public class FeedViewHolder extends RecyclerView.ViewHolder {
                     postImage.setOnClickListener(onClickListener(article, "postImage"));
                     cardArticle.setOnClickListener(onClickListener(article, "postImage"));
                 }
+
+                postText.setOnClickListener(onClickListener(article, "comment"));
 
                 optionsButton.setVisibility(View.VISIBLE);
                 optionsButton.setOnClickListener(v -> {
@@ -570,38 +562,40 @@ public class FeedViewHolder extends RecyclerView.ViewHolder {
         }
     }
 
-    public void bindAd(UnifiedNativeAd nativeAd) {
-        // Some assets are guaranteed to be in every UnifiedNativeAd.
-        String headline = nativeAd.getHeadline();
-        String body = nativeAd.getBody();
+    public void bindAd(NativeAd nativeAd) {
+        nativeAd.unregisterView();
+
+        LinearLayout adChoicesContainer = adView.findViewById(R.id.card_ad_options_layout);
+        AdOptionsView adOptionsView = new AdOptionsView(mContext, nativeAd, adView);
+        adChoicesContainer.removeAllViews();
+        adChoicesContainer.addView(adOptionsView, 0);
+
+        MediaView adIcon = adView.findViewById(R.id.card_icon);
+        TextView adSource = adView.findViewById(R.id.card_contributor);
+        TextView adTitle = adView.findViewById(R.id.card_ad_title);
+        TextView adBody = adView.findViewById(R.id.card_title);
+        MediaView adMedia = adView.findViewById(R.id.card_image);
+        Button adCallToAction = adView.findViewById(R.id.card_call_to_action);
+
+        String headline = nativeAd.getAdHeadline() == null ? "" : nativeAd.getAdHeadline();
+        String body = nativeAd.getAdBodyText();
         if (headline.length() < body.length()) {
-            ((TextView) adView.getHeadlineView()).setText(headline);
-            ((TextView) adView.getBodyView()).setText(body);
+            adTitle.setText(headline);
+            adBody.setText(body);
         } else {
-            ((TextView) adView.getHeadlineView()).setText(body);
-            ((TextView) adView.getBodyView()).setText(headline);
+            adTitle.setText(body);
+            adBody.setText(headline);
         }
-        ((Button) adView.getCallToActionView()).setText(nativeAd.getCallToAction());
+        adCallToAction.setVisibility(nativeAd.hasCallToAction() ? View.VISIBLE : View.INVISIBLE);
+        adCallToAction.setText(nativeAd.getAdCallToAction());
 
-        // These assets aren't guaranteed to be in every UnifiedNativeAd, so it's important to
-        // check before trying to display them.
-        NativeAd.Image icon = nativeAd.getIcon();
-
-        if (icon == null) {
-            adView.getIconView().setVisibility(View.GONE);
+        if (nativeAd.getAdvertiserName() == null) {
+            adSource.setVisibility(View.GONE);
         } else {
-            ((ImageView) adView.getIconView()).setImageDrawable(icon.getDrawable());
-            adView.getIconView().setVisibility(View.VISIBLE);
+            adSource.setText(nativeAd.getAdvertiserName());
+            adSource.setVisibility(View.VISIBLE);
         }
 
-        if (nativeAd.getAdvertiser() == null) {
-            adView.getAdvertiserView().setVisibility(View.GONE);
-        } else {
-            ((TextView) adView.getAdvertiserView()).setText(nativeAd.getAdvertiser());
-            adView.getAdvertiserView().setVisibility(View.VISIBLE);
-        }
-
-        // Assign native ad object to the native view.
-        adView.setNativeAd(nativeAd);
+        nativeAd.registerViewForInteraction(adView, adMedia, adIcon);
     }
 }

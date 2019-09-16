@@ -49,6 +49,6 @@
         android:paddingBottom="12dp"
         android:textSize="16sp"
         android:textColor="@color/card_text_color"
-        android:text="Would you like to receive notifications recommending deals, events and restaurants near you?" />
+        android:text="Would you like to receive notifications recommending deals, events and restaurants near you? You will also be reminded when you are near an item you saved." />
 
 </LinearLayout>

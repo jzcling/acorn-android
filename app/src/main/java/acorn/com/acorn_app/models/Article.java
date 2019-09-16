@@ -1,5 +1,9 @@
 package acorn.com.acorn_app.models;
 
+import androidx.annotation.Nullable;
+
+import org.json.JSONObject;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -45,13 +49,14 @@ public class Article {
     public boolean hasAddress = false;
     public final Map<String, Long> duplicates = new HashMap<>();
     public final Map<String, Long> seenBy = new HashMap<>();
+    public List<String> postcode = new ArrayList<>();
 
     public Article() {}
 
     public Article(Integer entityId, String objectID, String type, String postAuthorUid, String postAuthor,
                    String postText, String postImageUrl, Long postDate, String title, String source, Long pubDate,
                    String trendingIndex, String imageUrl, String link, String author, String mainTheme,
-                   Integer readTime) {
+                   Integer readTime, @Nullable Boolean changedSinceLastJob) {
         this.entityId = entityId;
         this.objectID = objectID;
         this.type = type;
@@ -69,6 +74,7 @@ public class Article {
         this.author = author;
         this.mainTheme = mainTheme;
         this.readTime = readTime;
+        this.changedSinceLastJob = changedSinceLastJob == null ? true : changedSinceLastJob;
     }
 
     //Getters
@@ -199,5 +205,38 @@ public class Article {
         video.seenBy.putAll(seenBy);
 
         return video;
+    }
+
+    public JSONObject toJson() {
+        JSONObject json = new JSONObject();
+
+        try {
+            json.put("type", type)
+                .put("title", (type.equals("post") && link != null) ? postText : title)
+                .put("source", (type.equals("post") && link != null) ? postAuthor : source)
+                .put("imageUrl", imageUrl != null ? imageUrl : postImageUrl)
+                .put("readTime", readTime)
+                .put("pubDate", pubDate)
+                .put("voteCount", voteCount)
+                .put("commentCount", commentCount)
+                .put("saveCount", saveCount)
+                .put("shareCount", shareCount)
+                .put("link", link)
+                .put("author", author)
+                .put("mainTheme", mainTheme)
+                .put("category", category)
+                .put("theme", theme)
+                .put("trendingIndex", trendingIndex)
+                .put("objectID", objectID)
+                .put("postText", postText)
+                .put("postAuthor", postAuthor)
+                .put("postImageUrl", postImageUrl)
+                .put("postDate", postDate);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        }
+
+        return json;
     }
 }

@@ -5,6 +5,8 @@ import android.content.SharedPreferences;
 import android.preference.PreferenceManager;
 import androidx.appcompat.app.AppCompatDelegate;
 
+import com.facebook.ads.AdSettings;
+import com.facebook.ads.AudienceNetworkAds;
 import com.google.firebase.analytics.FirebaseAnalytics;
 import com.google.firebase.database.FirebaseDatabase;
 
@@ -21,5 +23,6 @@ public class AcornApplication extends Application {
         super.onCreate();
         FirebaseDatabase.getInstance().setPersistenceEnabled(true);
         mFirebaseAnalytics = FirebaseAnalytics.getInstance(this);
+        AudienceNetworkAds.initialize(this);
     }
 }

@@ -357,6 +357,11 @@ public class ArticleTextExtractor {
         for (Element item : ads) {
             item.remove();
         }
+
+        ads = doc.select("div[class~=advertisement]");
+        for (Element item : ads) {
+            item.remove();
+        }
     }
 
     private static void removeAuthor(Document doc) {
@@ -459,6 +464,19 @@ public class ArticleTextExtractor {
         misc = doc.select("iframe[src~=peatix]");
         for (Element item : misc) {
             item.remove();
+        }
+
+        //hype&stuff footer (related posts/recent posts)
+        misc = doc.select("div.rft");
+        for (Element item : misc) {
+            item.remove();
+        }
+
+        // remove empty tags
+        for (Element element : doc.select("*")) {
+            if (!element.hasText() && element.isBlock()) {
+                element.remove();
+            }
         }
     }
 

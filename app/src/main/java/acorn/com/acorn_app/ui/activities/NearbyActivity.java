@@ -13,13 +13,18 @@ import android.location.Address;
 import android.location.Geocoder;
 import android.location.Location;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.os.Parcelable;
 import android.provider.BaseColumns;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
+import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputMethodManager;
+import android.widget.CheckedTextView;
+import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -29,6 +34,7 @@ import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.SearchView;
 import androidx.appcompat.widget.Toolbar;
+import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.core.util.Consumer;
 import androidx.core.view.MenuItemCompat;
 import androidx.cursoradapter.widget.CursorAdapter;
@@ -42,7 +48,9 @@ import com.google.android.gms.common.GoogleApiAvailability;
 import com.google.android.gms.common.api.ApiException;
 import com.google.android.gms.common.api.ResolvableApiException;
 import com.google.android.gms.location.FusedLocationProviderClient;
+import com.google.android.gms.location.LocationCallback;
 import com.google.android.gms.location.LocationRequest;
+import com.google.android.gms.location.LocationResult;
 import com.google.android.gms.location.LocationServices;
 import com.google.android.gms.location.LocationSettingsRequest;
 import com.google.android.gms.location.LocationSettingsResponse;
@@ -66,6 +74,7 @@ import acorn.com.acorn_app.ui.adapters.NearbyArticleAdapter;
 import acorn.com.acorn_app.utils.AppExecutors;
 import acorn.com.acorn_app.utils.Logger;
 
+import static acorn.com.acorn_app.ui.activities.AcornActivity.mThemeSearchKey;
 import static acorn.com.acorn_app.ui.activities.AcornActivity.mUid;
 import static acorn.com.acorn_app.utils.UiUtils.createToast;
 
@@ -78,7 +87,7 @@ public class NearbyActivity extends AppCompatActivity {
     private static final long FASTEST_INTERVAL = 5000;
     private static final int ALL_PERMISSIONS_RESULT = 1011;
     private static final String MAPS_API_URL = "https://maps.googleapis.com/maps/api/";
-    public static final double RADIUS = 2000;
+    public static final double RADIUS = 1500;
 
     // Views
     private TextView mLocationTv;
@@ -86,15 +95,23 @@ public class NearbyActivity extends AppCompatActivity {
     private NearbyArticleAdapter mAdapter;
     private LinearLayoutManager mLinearLayoutManager;
     private SwipeRefreshLayout mSwipeRefreshLayout;
+    private ConstraintLayout mSearchTypeLayout;
+    private CheckedTextView mMrtSearchTv;
+    private CheckedTextView mKeywordSearchTv;
 
     // Location
     private FusedLocationProviderClient mFusedLocationClient;
     private LocationRequest mLocationRequest;
+    private LocationResult mLocationResult;
+    private LocationCallback mLocationCallback;
     private Double mLatitude;
     private Double mLongitude;
     private String mAddress;
 //    private Retrofit mRetrofit;
 //    private CompositeDisposable mCompositeDisposable;
+
+    private boolean mPendingResult;
+    private Handler mHandler = new Handler();
 
     // Data
     private NetworkDataSource mDataSource;
@@ -105,6 +122,8 @@ public class NearbyActivity extends AppCompatActivity {
     private List<String> mMrtStationNames;
     private SimpleCursorAdapter mSearchAdapter;
     private SearchView mSearchView;
+    private String mMrtSearchText;
+    private String mKeywordSearchText;
 
     //For restoring state
     private static Parcelable mLlmState;
@@ -147,6 +166,36 @@ public class NearbyActivity extends AppCompatActivity {
 //        mRetrofit = getRetrofit(MAPS_API_URL);
 //        mCompositeDisposable = new CompositeDisposable();
 
+        mSearchTypeLayout = (ConstraintLayout) findViewById(R.id.search_type_layout);
+        mMrtSearchTv = (CheckedTextView) findViewById(R.id.search_mrt_stations_tv);
+        mKeywordSearchTv = (CheckedTextView) findViewById(R.id.search_keyword_tv);
+        mMrtSearchTv.setCheckMarkTintList(getColorStateList(R.color.nearby_search_checkmark_state_list));
+        mKeywordSearchTv.setCheckMarkTintList(getColorStateList(R.color.nearby_search_checkmark_state_list));
+        mMrtSearchTv.setOnClickListener(v -> {
+            if (!mMrtSearchTv.isChecked()) {
+                mMrtSearchTv.setChecked(true);
+                mKeywordSearchTv.setChecked(false);
+                mSearchView.setSuggestionsAdapter(mSearchAdapter);
+                if (mMrtSearchText != null) {
+                    mSearchView.setQuery(mMrtSearchText, false);
+                } else {
+                    mSearchView.setQuery(null, false);
+                }
+            }
+        });
+        mKeywordSearchTv.setOnClickListener(v -> {
+            if (!mKeywordSearchTv.isChecked()) {
+                mMrtSearchTv.setChecked(false);
+                mKeywordSearchTv.setChecked(true);
+                mSearchView.setSuggestionsAdapter(null);
+                if (mKeywordSearchText != null) {
+                    mSearchView.setQuery(mKeywordSearchText, false);
+                } else {
+                    mSearchView.setQuery(null, false);
+                }
+            }
+        });
+
         final String[] from = new String[] {"stationName"};
         final int[] to = new int[] {android.R.id.text1};
         mSearchAdapter = new SimpleCursorAdapter(this,
@@ -184,7 +233,7 @@ public class NearbyActivity extends AppCompatActivity {
 
         mSwipeRefreshLayout.setOnRefreshListener(() -> {
             if (mLatitude != null && mLongitude != null && mAddress != null) {
-                getNearbyArticles(mLatitude, mLongitude, RADIUS, mAddress);
+                getNearbyArticles(mLatitude, mLongitude, RADIUS, mAddress, mKeywordSearchText);
             } else {
                 createToast(this, "Could not determine your search location", Toast.LENGTH_SHORT);
             }
@@ -215,14 +264,40 @@ public class NearbyActivity extends AppCompatActivity {
         MenuItem filterItem = (MenuItem) menu.findItem(R.id.action_filter);
 
         // Set up search
-        mSearchView = (SearchView) MenuItemCompat.getActionView(menu.findItem(R.id.action_search));
-        mSearchView.setSuggestionsAdapter(mSearchAdapter);
+        mSearchView = (SearchView) searchItem.getActionView();
+        searchItem.setOnActionExpandListener(new MenuItem.OnActionExpandListener() {
+            @Override
+            public boolean onMenuItemActionExpand(MenuItem item) {
+                mSearchTypeLayout.setVisibility(View.VISIBLE);
+
+                if (mMrtSearchTv.isChecked()) {
+                    mSearchView.setSuggestionsAdapter(mSearchAdapter);
+                    if (mMrtSearchText != null)
+                        mSearchView.setQuery(mMrtSearchText, false);
+                }
+
+                if (mKeywordSearchTv.isChecked()) {
+                    mSearchView.setSuggestionsAdapter(null);
+                    if (mKeywordSearchText != null)
+                        mSearchView.setQuery(mKeywordSearchText, false);
+                }
+                return true;
+            }
+
+            @Override
+            public boolean onMenuItemActionCollapse(MenuItem item) {
+                mSearchTypeLayout.setVisibility(View.GONE);
+                return true;
+            }
+        });
+
         mSearchView.setOnSuggestionListener(new SearchView.OnSuggestionListener() {
             @Override
             public boolean onSuggestionSelect(int position) {
                 Cursor cursor = (Cursor) mSearchAdapter.getItem(position);
                 String txt = cursor.getString(cursor.getColumnIndex("stationName"));
                 mSearchView.setQuery(txt, true);
+                mMrtSearchText = txt;
                 return true;
             }
 
@@ -231,42 +306,86 @@ public class NearbyActivity extends AppCompatActivity {
                 Cursor cursor = (Cursor) mSearchAdapter.getItem(position);
                 String txt = cursor.getString(cursor.getColumnIndex("stationName"));
                 mSearchView.setQuery(txt, true);
+                mMrtSearchText = txt;
                 return true;
             }
         });
         mSearchView.setOnQueryTextListener(new SearchView.OnQueryTextListener() {
             @Override
             public boolean onQueryTextSubmit(String query) {
-                String address = "";
-                boolean isStationFound = false;
-                for (String name : mMrtStationNames) {
-                    if (name.toLowerCase().equals(query.toLowerCase())) {
-                        address = name;
-                        isStationFound = true;
+                if (mMrtSearchTv.isChecked()) {
+                    String address = "";
+                    boolean isStationFound = false;
+                    for (String name : mMrtStationNames) {
+                        if (name.toLowerCase().equals(query.toLowerCase())) {
+                            String[] words = query.split(" ");
+                            StringBuilder builder = new StringBuilder();
+                            for (String word : words) {
+                                String firstChar = word.substring(0, 1).toUpperCase();
+                                builder.append(firstChar).append(word.substring(1).toLowerCase()).append(" ");
+                            }
+                            address = builder.toString().trim();
+                            mMrtSearchText = address;
+                            isStationFound = true;
+                        }
+                    }
+
+                    if (!isStationFound) {
+                        createToast(NearbyActivity.this, "Please choose from one of the MRT Stations suggested", Toast.LENGTH_SHORT);
+                        return false;
+                    }
+
+                    View view = getCurrentFocus();
+                    if (view != null) {
+                        InputMethodManager imm = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
+                        imm.hideSoftInputFromWindow(view.getWindowToken(), 0);
+                    }
+
+                    getNearbyArticlesForMrt(address, mKeywordSearchText);
+                } else {
+                    mKeywordSearchText = query;
+                    if (mMrtSearchText != null) {
+                        getNearbyArticlesForMrt(mMrtSearchText, mKeywordSearchText);
+                    } else {
+                        getNearbyArticles(mLatitude, mLongitude, RADIUS, mAddress, mKeywordSearchText);
                     }
                 }
-
-                if (!isStationFound) {
-                    createToast(NearbyActivity.this, "Please choose from one of the MRT Stations suggested", Toast.LENGTH_SHORT);
-                    return false;
-                }
-
-                View view = getCurrentFocus();
-                if (view != null) {
-                    InputMethodManager imm = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
-                    imm.hideSoftInputFromWindow(view.getWindowToken(), 0);
-                }
-
-                getNearbyArticlesForMrt(address);
 
                 return true;
             }
 
             @Override
             public boolean onQueryTextChange(String newText) {
-                updateSearchSuggestions(newText);
+                if (mMrtSearchTv.isChecked()) updateSearchSuggestions(newText);
                 return true;
             }
+        });
+
+        EditText searchEditText = (EditText) mSearchView.findViewById(R.id.search_src_text);
+        searchEditText.setOnEditorActionListener((v, actionId, event) -> {
+            if (actionId == EditorInfo.IME_ACTION_SEARCH) {
+                String searchText = searchEditText.getText().toString().trim();
+                if (searchText.equals("")) {
+                    if (mMrtSearchTv.isChecked())
+                        mMrtSearchText = null;
+                    if (mKeywordSearchTv.isChecked())
+                        mKeywordSearchText = null;
+
+                    if (mMrtSearchText != null) {
+                        getNearbyArticlesForMrt(mMrtSearchText, mKeywordSearchText);
+                    } else {
+                        getNearbyArticles(mLatitude, mLongitude, RADIUS, mAddress, mKeywordSearchText);
+                    }
+                } else {
+                    mSearchView.setQuery(searchText, true);
+                }
+                View view = getCurrentFocus();
+                if (view != null) {
+                    InputMethodManager imm = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
+                    imm.hideSoftInputFromWindow(view.getWindowToken(), 0);
+                }
+            }
+            return false;
         });
 
         return true;
@@ -320,7 +439,7 @@ public class NearbyActivity extends AppCompatActivity {
             createToast(this, "Please update Google Play Services to enable this feature", Toast.LENGTH_SHORT);
             finish();
         }
-        if (!mLocationTv.getText().toString().contains("Showing articles near")) {
+        if (!mLocationTv.getText().toString().contains("Showing articles")) {
             CheckLocationSettings();
         }
     }
@@ -445,13 +564,24 @@ public class NearbyActivity extends AppCompatActivity {
                         // check if any intent provides an address, if not find articles near user
                         Intent intent = getIntent();
                         String stationName = intent.getStringExtra("stationName");
+                        if (intent.getStringExtra("keyword") != null)
+                            mKeywordSearchText = intent.getStringExtra("keyword");
+                        String campaign = intent.getStringExtra("campaignId");
                         boolean fromNotif = intent.getBooleanExtra("fromNotif", false);
                         String notifType = intent.getStringExtra("notifType");
                         if (mUid == null) mUid = FirebaseAuth.getInstance().getUid();
                         if (mUid != null) {
-                            mLogger.logNotificationClicked(fromNotif, notifType, mUid, stationName);
+                            if (stationName != null) {
+                                mLogger.logNotificationClicked(fromNotif, notifType, mUid, stationName);
+                            } else {
+                                mLogger.logNotificationClicked(fromNotif, notifType, mUid, campaign);
+                            }
                         } else {
-                            mLogger.logNotificationError(fromNotif, notifType, "unknown", stationName);
+                            if (stationName != null) {
+                                mLogger.logNotificationError(fromNotif, notifType, "unknown", stationName);
+                            } else {
+                                mLogger.logNotificationError(fromNotif, notifType, "unknown", campaign);
+                            }
                         }
                         if (stationName != null) {
                             mAddress = stationName;
@@ -517,6 +647,43 @@ public class NearbyActivity extends AppCompatActivity {
                 });
     }
 
+    private void startLocationUpdates(Consumer<Location> onComplete) {
+        Log.d(TAG, "startLocationUpdates");
+        Runnable getResult = () -> {
+            onComplete.accept(mLocationResult.getLastLocation());
+            stopLocationUpdates();
+            mPendingResult = false;
+        };
+
+        mLocationCallback = new LocationCallback() {
+            @Override
+            public void onLocationResult(LocationResult locationResult) {
+                super.onLocationResult(locationResult);
+                mLocationResult = locationResult;
+                Log.d(TAG, "current location: " + locationResult.getLastLocation());
+
+                if (locationResult.getLastLocation() != null) {
+                    if (mPendingResult) mHandler.removeCallbacks(getResult);
+                    mHandler.postDelayed(getResult, 500);
+                    mPendingResult = true;
+                }
+            }
+        };
+
+        mFusedLocationClient.requestLocationUpdates(mLocationRequest,
+                mLocationCallback,
+                Looper.getMainLooper());
+
+        mHandler.postDelayed(this::stopLocationUpdates, 10000);
+    }
+
+    private void stopLocationUpdates() {
+        Log.d(TAG, "stopLocationUpdates");
+        if (mLocationCallback != null) {
+            mFusedLocationClient.removeLocationUpdates(mLocationCallback);
+        }
+    }
+
 //    private Retrofit getRetrofit(String baseUrl) {
 //        return new Retrofit.Builder()
 //                .baseUrl(baseUrl)
@@ -526,7 +693,7 @@ public class NearbyActivity extends AppCompatActivity {
 //    }
 
     private void getReverseGeocode() {
-        getLastLocation(location -> {
+        startLocationUpdates(location -> {
             Log.d(TAG, "location: " + location.getLatitude() + ", " + location.getLongitude());
             final String RESULT_TYPE = "street_address";
             final String LOCATION_TYPE = "ROOFTOP";
@@ -541,8 +708,12 @@ public class NearbyActivity extends AppCompatActivity {
                     Log.d(TAG, "address: " + addresses.get(0).getAddressLine(i));
                     mAddress += addresses.get(0).getAddressLine(i);
                 }
-                mLocationTv.setText("Fetching articles near " + mAddress);
-                getNearbyArticles(mLatitude, mLongitude, RADIUS, mAddress);
+                if (mKeywordSearchText != null) {
+                    mLocationTv.setText("Fetching articles about " + mKeywordSearchText + " near " + mAddress);
+                } else {
+                    mLocationTv.setText("Fetching articles near " + mAddress);
+                }
+                getNearbyArticles(mLatitude, mLongitude, RADIUS, mAddress, mKeywordSearchText);
             } catch (IOException error) {
                 Log.d(TAG, "Error: " + error.getLocalizedMessage());
                 mLocationTv.setText("Error getting location");
@@ -581,7 +752,11 @@ public class NearbyActivity extends AppCompatActivity {
         });
     }
 
-    private void getNearbyArticlesForMrt(String name) {
+    private void getNearbyArticlesForMrt(String station) {
+        getNearbyArticlesForMrt(station, null);
+    }
+
+    private void getNearbyArticlesForMrt(String name, @Nullable String keyword) {
         mSwipeRefreshLayout.setRefreshing(true);
         mAdapter.clear();
         Map<String, Object> location = mMrtStationMap.get(name);
@@ -590,8 +765,13 @@ public class NearbyActivity extends AppCompatActivity {
             mLongitude = (Double) location.get("longitude");
             mAddress = name;
             if (mLatitude != null && mLongitude != null) {
-                mLocationTv.setText("Fetching articles near " + mAddress);
-                getNearbyArticles(mLatitude, mLongitude, RADIUS, mAddress);
+                if (keyword != null) {
+                    mLocationTv.setText("Fetching articles about " + keyword + " near " + mAddress);
+                    getNearbyArticles(mLatitude, mLongitude, RADIUS, mAddress, keyword);
+                } else {
+                    mLocationTv.setText("Fetching articles near " + mAddress);
+                    getNearbyArticles(mLatitude, mLongitude, RADIUS, mAddress, keyword);
+                }
             }
         } else {
             mSwipeRefreshLayout.setRefreshing(false);
@@ -617,13 +797,22 @@ public class NearbyActivity extends AppCompatActivity {
         mLinearLayoutManager.onRestoreInstanceState(mLlmState);
     }
 
-    private void getNearbyArticles(double lat, double lng, double radius, String address) {
-        mDataSource.getNearbyArticles(lat, lng, radius, (articles -> {
+    private void getNearbyArticles(double lat, double lng, double radius, String address,
+                                   @Nullable String keyword) {
+        mDataSource.getNearbyArticles(lat, lng, radius, keyword, (articles -> {
             mAdapter.setList(articles);
             if (articles.size() > 0) {
-                mLocationTv.setText("Showing articles near " + address);
+                if (keyword != null) {
+                    mLocationTv.setText("Showing articles about " + keyword + " near " + address);
+                } else {
+                    mLocationTv.setText("Showing articles near " + address);
+                }
             } else {
-                mLocationTv.setText("Could not find any articles near " + address);
+                if (keyword != null) {
+                    mLocationTv.setText("Could not find any articles about " + keyword + " near " + address);
+                } else {
+                    mLocationTv.setText("Could not find any articles near " + address);
+                }
             }
             mSwipeRefreshLayout.setRefreshing(false);
         }));

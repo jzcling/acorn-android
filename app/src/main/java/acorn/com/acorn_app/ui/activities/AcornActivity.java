@@ -19,6 +19,7 @@ import android.os.Parcelable;
 import android.preference.PreferenceManager;
 import android.util.Base64;
 import android.util.Log;
+import android.util.SparseIntArray;
 import android.util.TypedValue;
 import android.view.Display;
 import android.view.LayoutInflater;
@@ -57,15 +58,16 @@ import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
 import com.algolia.instantsearch.core.helpers.Searcher;
 import com.crashlytics.android.Crashlytics;
+import com.facebook.ads.Ad;
+import com.facebook.ads.AdError;
+import com.facebook.ads.AdSize;
+import com.facebook.ads.AdView;
+import com.facebook.ads.NativeAd;
+import com.facebook.ads.NativeAdListener;
+import com.facebook.ads.NativeAdsManager;
 import com.firebase.ui.auth.AuthUI;
 import com.firebase.ui.auth.ErrorCodes;
 import com.firebase.ui.auth.IdpResponse;
-import com.google.android.gms.ads.AdListener;
-import com.google.android.gms.ads.AdLoader;
-import com.google.android.gms.ads.AdRequest;
-import com.google.android.gms.ads.AdView;
-import com.google.android.gms.ads.MobileAds;
-import com.google.android.gms.ads.formats.UnifiedNativeAd;
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.Task;
 import com.google.android.gms.tasks.TaskCompletionSource;
@@ -86,6 +88,7 @@ import com.google.firebase.messaging.FirebaseMessaging;
 import com.jaredrummler.android.device.DeviceName;
 import com.nex3z.notificationbadge.NotificationBadge;
 
+import java.io.IOException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
@@ -98,6 +101,8 @@ import java.util.Map;
 import java.util.Random;
 
 import acorn.com.acorn_app.R;
+import acorn.com.acorn_app.data.AddressRoomDatabase;
+import acorn.com.acorn_app.data.ArticleRoomDatabase;
 import acorn.com.acorn_app.data.FeedListLiveData;
 import acorn.com.acorn_app.data.NetworkDataSource;
 import acorn.com.acorn_app.models.Article;
@@ -120,13 +125,14 @@ import acorn.com.acorn_app.utils.Logger;
 import acorn.com.acorn_app.utils.UiUtils;
 
 import static acorn.com.acorn_app.data.NetworkDataSource.ALGOLIA_API_KEY;
+import static acorn.com.acorn_app.data.NetworkDataSource.PREFERENCES_REF;
 import static acorn.com.acorn_app.data.NetworkDataSource.SEARCH_REF;
 import static acorn.com.acorn_app.ui.AcornApplication.mFirebaseAnalytics;
 import static acorn.com.acorn_app.utils.UiUtils.createToast;
 
 public class AcornActivity extends AppCompatActivity
         implements NavigationView.OnNavigationItemSelectedListener,
-        FeedAdapter.OnLongClickListener, OnCompleteListener<Void>,
+        FeedAdapter.OnLongClickListener,
         AdapterView.OnItemSelectedListener {
 
     private static final String TAG = "AcornActivity";
@@ -175,6 +181,9 @@ public class AcornActivity extends AppCompatActivity
     //Data source
     private NetworkDataSource mDataSource;
     private final AppExecutors mExecutors = AppExecutors.getInstance();
+
+    // Room Database;
+    private AddressRoomDatabase mAddressRoomDb;
 
     //RecyclerView
     private RecyclerView mRecyclerView;
@@ -231,8 +240,8 @@ public class AcornActivity extends AppCompatActivity
 
     //InstantSearch
     public static Searcher mSearcher;
-    private static final String ALGOLIA_APP_ID = "O96PPLSF19";
-    private static final String ALGOLIA_INDEX_NAME = "article";
+    public static final String ALGOLIA_APP_ID = "O96PPLSF19";
+    public static final String ALGOLIA_INDEX_NAME = "article";
 
     // Location Permissions
     private LocationPermissionsUtils mLocationPermissionsUtils;
@@ -249,10 +258,11 @@ public class AcornActivity extends AppCompatActivity
     private Logger mLogger;
     private Handler mHandler = new Handler();
 
-    // Ad
-    private AdView mBannerViewAdmob;
-    private AdLoader mAdLoader;
-    private List<UnifiedNativeAd> mNativeAds = new ArrayList<>();
+    //Ad
+    private AdView mBannerAdView;
+    private List<NativeAd> mNativeAds = new ArrayList<>();
+    private final int AD_COUNT = 10;
+    private boolean pendingAdLoad = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -275,7 +285,6 @@ public class AcornActivity extends AppCompatActivity
         setSupportActionBar(mToolbar);
 
         mFirebaseAnalytics.logEvent(FirebaseAnalytics.Event.APP_OPEN, null);
-        MobileAds.initialize(this, getString(R.string.admob_app_id));
 
         // For facebook
         try {
@@ -298,6 +307,9 @@ public class AcornActivity extends AppCompatActivity
         if (mDatabase == null) mDatabase = FirebaseDatabase.getInstance();
         mDatabaseReference = mDatabase.getReference();
         mDataSource = NetworkDataSource.getInstance(this, mExecutors);
+
+        // Set up Address Room Database
+        mAddressRoomDb = AddressRoomDatabase.getInstance(this);
 
         // Set up logging
         mLogger = new Logger(this);
@@ -407,22 +419,18 @@ public class AcornActivity extends AppCompatActivity
 
         // Geofence
         mLocationPermissionsUtils = new LocationPermissionsUtils(this);
-        mGeofenceUtils = GeofenceUtils.getInstance(this, mDataSource, this);
-
-        // TEMP: Clean up notification channels
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            NotificationManager notificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
-            notificationManager.deleteNotificationChannel("geofence_mrt_channel");
-            notificationManager.deleteNotificationChannel("acorn_location_mrt_channel");
-        }
+        mGeofenceUtils = GeofenceUtils.getInstance(getApplicationContext(), mDataSource);
 
         mNotifViewModel = new ViewModelProvider(this).get(NotificationViewModel.class);
 
         // Set up ad banner
 //        mAdLayoutSmaato = (ConstraintLayout) findViewById(R.id.ad_banner_layout_smaato);
 //        mBannerViewSmaato = (BannerView) findViewById(R.id.ad_banner_smaato);
-        mBannerViewAdmob = (AdView) findViewById(R.id.ad_banner_admob);
-        loadAdmobBannerAd();
+        // Ad
+        ConstraintLayout mBannerContainer = (ConstraintLayout) findViewById(R.id.ad_banner_layout_fb);
+        mBannerAdView = new AdView(this,
+                getString(R.string.fb_banner_main_ad_placement_id), AdSize.BANNER_HEIGHT_50);
+        mBannerContainer.addView(mBannerAdView);
 //        mSharedPreferences.edit().putString("IABConsent_SubjectToGDPR", "0").apply();
 //        mBannerViewSmaato.addAdListener((sender, receivedBanner) -> {
 //            if(receivedBanner.getErrorCode() != ErrorCode.NO_ERROR){
@@ -444,11 +452,30 @@ public class AcornActivity extends AppCompatActivity
 //        mBannerViewSmaato.setAutoReloadFrequency(30);
 //        mBannerViewSmaato.setLocationUpdateEnabled(true);
 //        mBannerViewSmaato.asyncLoadNewBanner();
-    }
 
-    public void loadAdmobBannerAd() {
-        AdRequest adRequest = new AdRequest.Builder().build();
-        mBannerViewAdmob.loadAd(adRequest);
+//        mExecutors.diskRead().execute(() -> {
+//            try {
+//                Log.d(TAG, "adId: " + AdvertisingIdClient.getAdvertisingIdInfo(this).getId());
+//            }
+//            catch (Exception e) {
+//                Log.d(TAG, "error getting adId: " + e.getLocalizedMessage());
+//            }
+//        });
+
+//        mNativeAdsManager = new NativeAdsManager(this,
+//                getString(R.string.fb_native_ad_placement_id), AD_COUNT);
+//        mNativeAdsManager.setListener(new NativeAdsManager.Listener() {
+//            @Override
+//            public void onAdsLoaded() {
+//                Log.d(TAG, "ads loaded: " + mNativeAdsManager.getUniqueNativeAdCount());
+//            }
+//
+//            @Override
+//            public void onAdError(AdError adError) {
+//                Log.d(TAG, "error loading ad: " + adError.getErrorMessage());
+//            }
+//        });
+//        mNativeAdsManager.loadAds();
     }
 
     @Override
@@ -484,7 +511,7 @@ public class AcornActivity extends AppCompatActivity
 
         final MenuItem notificationItem = menu.findItem(R.id.action_notifications);
         mSearchButton = menu.findItem(R.id.action_search);
-        ConstraintLayout notificationView = (ConstraintLayout) MenuItemCompat.getActionView(notificationItem);
+        ConstraintLayout notificationView = (ConstraintLayout) notificationItem.getActionView();
         notificationBadge = (NotificationBadge) notificationView.findViewById(R.id.notification_badge);
         mNotifViewModel.getNotificationList().observe(this,
                 notificationList -> notificationBadge.setNumber(notificationList.size()));
@@ -531,7 +558,7 @@ public class AcornActivity extends AppCompatActivity
                 new NotificationsDialogFragment().show(getSupportFragmentManager(), "NotificationsDialog");
                 return true;
             case R.id.action_settings:
-                mGeofenceUtils.mPreChangeValue = mGeofenceUtils.getGeofencesAdded();
+                mGeofenceUtils.mPreChangeValue = mGeofenceUtils.getGeofencesAdded(this);
                 startActivityForResult(new Intent(this, SettingsActivity.class), RC_PREF);
                 return true;
             case R.id.action_share_app:
@@ -749,7 +776,7 @@ public class AcornActivity extends AppCompatActivity
                 Log.d(TAG, "savedArticlesReminderNotifValue: " + savedArticlesReminderNotifValue);
                 mDataSource.ToggleNotifications(SAVED_ARTICLES_REMINDER_NOTIFICATION, savedArticlesReminderNotifValue);
 
-                boolean locationNotifValue = mGeofenceUtils.getGeofencesAdded();
+                boolean locationNotifValue = mGeofenceUtils.getGeofencesAdded(this);
                 Log.d(TAG, "locationNotifValue: " + locationNotifValue);
                 if (mGeofenceUtils.mPreChangeValue != locationNotifValue) {
                     if (locationNotifValue) {
@@ -761,15 +788,15 @@ public class AcornActivity extends AppCompatActivity
                             return;
                         }
 //                        mLocationPermissionsUtils.requestLocationPermissions(() -> {
-                            mLocationPermissionsUtils.checkLocationSettings(() -> {
+                            mLocationPermissionsUtils.checkLocationSettings((location) -> {
                                 mGeofenceUtils.mPendingGeofenceTask = GeofenceUtils.PendingGeofenceTask.ADD;
-                                mGeofenceUtils.performPendingGeofenceTask();
+                                mGeofenceUtils.performPendingGeofenceTask(this, location);
                                 mDataSource.ToggleNotifications(LOCATION_NOTIFICATION, locationNotifValue);
                             });
 //                        });
                     } else {
                         mGeofenceUtils.mPendingGeofenceTask = GeofenceUtils.PendingGeofenceTask.REMOVE;
-                        mGeofenceUtils.performPendingGeofenceTask();
+                        mGeofenceUtils.performPendingGeofenceTask(this, null);
                         mDataSource.ToggleNotifications(LOCATION_NOTIFICATION, locationNotifValue);
                     }
                 }
@@ -816,6 +843,7 @@ public class AcornActivity extends AppCompatActivity
     public void onResume() {
         Log.d(TAG, "onResume");
         super.onResume();
+        mBannerAdView.loadAd();
     }
 
     @Override
@@ -906,19 +934,32 @@ public class AcornActivity extends AppCompatActivity
     private void handleIntent(Intent intent) {
         Log.d(TAG, "handle intent");
 
-        if (mFeedViewModel != null) {
-            if (navMenu != null) {
-                MenuItem subscriptionsMenuItem = (MenuItem) navMenu.findItem(R.id.nav_subscriptions);
-                MenuItem trendingMenuItem = (MenuItem) navMenu.findItem(R.id.nav_trending);
-                MenuItem dealsMenuItem = (MenuItem) navMenu.findItem(R.id.nav_deals);
-
-                if (subscriptionsMenuItem.isChecked()) {
-                    getThemeData();
-                } else if (trendingMenuItem.isChecked()) {
-                    getTrendingData();
-                } else if (dealsMenuItem.isChecked()) {
-                    getDealsData();
+        if (mFeedViewModel != null && mSelectedFeed != null) {
+            if (mSelectedFeed.equals("Subscriptions") || mSelectedFeed.equals("Trending")) {
+                String theme = mToolbarSpinner.getSelectedItem().toString();
+                Log.d(TAG, "theme: " + theme + ", selectedFeed: " + mSelectedFeed);
+                if (theme.equals("All")) {
+                    if (mSelectedFeed.equals("Subscriptions")) {
+                        getThemeData();
+                    } else if (mSelectedFeed.equals("Trending")) {
+                        getTrendingData();
+                    }
+                } else {
+                    String themeRef = SEARCH_REF + "/" + theme + "/hits";
+                    String searchKey = theme;
+                    String searchFilter = "mainTheme: \"" + theme + "\"";
+                    mDataSource.getSearchData(searchKey, searchFilter, () -> {
+                        mLlmState = null;
+                        mQuery = new FbQuery(-1, themeRef, "trendingIndex");
+                        mThemeList.clear();
+                        mThemeList.add(theme);
+                        mSeed = (new Random()).nextInt(100);
+                        Log.d(TAG, "seed: " + mSeed + ", themeList: " + mThemeList);
+                        resetView();
+                    });
                 }
+            } else if (mSelectedFeed.equals("Deals")) {
+                getDealsData();
             }
         } else {
             getThemeData();
@@ -1008,10 +1049,7 @@ public class AcornActivity extends AppCompatActivity
         mAdapter = new FeedAdapter(this, this);
         mRecyclerView.setAdapter(mAdapter);
 
-        mNativeAds.clear();
-        loadNativeAds(() -> {
-            setUpInitialViewModelObserver();
-        });
+        setUpInitialViewModelObserver();
     }
 
     private void launchLogin() {
@@ -1035,7 +1073,6 @@ public class AcornActivity extends AppCompatActivity
                 .addOnCompleteListener(task -> {
                     // user is now signed out
                     mAdapter.clear();
-                    mNativeAds.clear();
                     if (mUserStatusRef != null) mUserStatusRef.removeEventListener(mUserStatusListener);
                     if (mUserPremiumStatusRef != null) mUserPremiumStatusRef.removeEventListener(mUserPremiumStatusListener);
                     launchLogin();
@@ -1202,10 +1239,7 @@ public class AcornActivity extends AppCompatActivity
                     if (mLlmState == null) {
                         getThemeData();
                     } else {
-                        mNativeAds.clear();
-                        loadNativeAds(() -> {
-                            setUpInitialViewModelObserver();
-                        });
+                        setUpInitialViewModelObserver();
                     }
 
                     // set up toolbar
@@ -1260,6 +1294,43 @@ public class AcornActivity extends AppCompatActivity
                     if (!mSharedPreferences.contains(getString(R.string.pref_key_feed_videos)))
                         mSharedPreferences.edit().putBoolean(getString(R.string.pref_key_feed_videos), true).apply();
 
+                    // store saved addresses on device, updated weekly
+//                    long now = (new Date()).getTime();
+//                    long lastUpdatedSavedAddresses = mSharedPreferences.getLong("lastUpdatedSavedAddresses", 0);
+//                    if (lastUpdatedSavedAddresses < now - 7L * 24L * 60L * 60L * 1000L) {
+//                        mExecutors.networkIO().execute(() -> {
+//                            mDataSource.getSavedItemsAddresses(addresses -> {
+//                                mExecutors.diskWrite().execute(() -> {
+//                                    mAddressRoomDb.addressDAO().insert(addresses);
+//                                    mSharedPreferences.edit().putLong("lastUpdatedSavedAddresses", now).apply();
+//
+//                                    mExecutors.networkIO().execute(() -> {
+//                                        mLocationPermissionsUtils.checkLocationSettings((location) -> {
+//                                            mGeofenceUtils.mPendingGeofenceTask = GeofenceUtils.PendingGeofenceTask.ADD;
+//                                            mGeofenceUtils.performPendingGeofenceTask(this, location);
+//                                        });
+//                                    });
+//                                });
+//                            });
+//                        });
+//                    }
+                    //TEMP: remove addresses
+                    mSharedPreferences.edit().remove("lastUpdatedSavedAddresses").apply();
+                    mSharedPreferences.edit().remove("hasAddedGeofences").apply();
+                    mExecutors.diskWrite().execute(() -> {
+                        mAddressRoomDb.addressDAO().deleteAll();
+                    });
+                    if (!mSharedPreferences.getBoolean("addedGeofences", false)) {
+                        if (mSharedPreferences.getBoolean(getString(R.string.pref_key_notif_location), false)) {
+                            mLocationPermissionsUtils.checkLocationSettings((location) -> {
+                                mGeofenceUtils.mPendingGeofenceTask = GeofenceUtils.PendingGeofenceTask.ADD;
+                                mGeofenceUtils.performPendingGeofenceTask(this, location);
+                            });
+                        }
+                        mSharedPreferences.edit().putBoolean("addedGeofences", true).apply();
+                    }
+
+
                     if (retrievedUser.openedArticles.keySet().size() > 50) {
                         boolean hasSeenSurveyRequest = mSharedPreferences.getBoolean("hasSeenSurveyRequest", false);
                         if (!hasSeenSurveyRequest) {
@@ -1274,9 +1345,11 @@ public class AcornActivity extends AppCompatActivity
                 // put uid in sharedPrefs
                 mSharedPreferences.edit().putString("uid", mUid).apply();
 
-                // get locations and set up mrt geofences
+                // get locations and set up geofences
                 if (!mSharedPreferences.getBoolean(getString(R.string.pref_key_loc_permissions_asked), false))
                     showLocationPermissionsRequest();
+                // remove old request in sharedPrefs
+                mSharedPreferences.edit().remove("locationPermissionsAskedPref").apply();
 
                 // subscribe to app topic for manual articles push
                 FirebaseMessaging.getInstance().subscribeToTopic("acorn");
@@ -1569,49 +1642,53 @@ public class AcornActivity extends AppCompatActivity
         FeedListLiveData itemListLD = mFeedViewModel.getArticles(mQuery, mThemeList, mSeed);
         Observer<List<Object>> itemListObserver = items -> {
             if (items != null) {
-                // add ads into feed
-                List<Object> feedWithAds = new ArrayList<>(items);
-                int index = 3;
-                int interval = 10;
-                for (UnifiedNativeAd ad : mNativeAds) {
-                    Log.d(TAG, "advertiser: " + ad.getAdvertiser() +
-                            ", headline: " + ad.getHeadline() +
-                            ", body: " + ad.getBody() +
-                            ", cta: " + ad.getCallToAction() +
-                            ", price: " + ad.getPrice() +
-                            ", store: " + ad.getStore());
-                    feedWithAds.add(index, ad);
-                    index += interval;
-                }
-
                 Long lastFeedRefreshTime = mSharedPreferences.getLong("lastFeedRefreshTime", 0L);
                 Long now = (new Date()).getTime();
-                if (mAdapter.getItemCount() == 0 || lastFeedRefreshTime < (now - 60 * 60 * 1000)) {
+                int cutoff = 10;
+                if (mAdapter.getItemCount() < cutoff || lastFeedRefreshTime < (now - 60 * 60 * 1000)) {
                     Log.d(TAG, "refresh feed");
-                    mAdapter.setList(feedWithAds, () -> {
+                    mAdapter.setList(items, () -> {
+                        // add ads to feed
+                        if (mNativeAds.size() < 1 || mNativeAds.get(0).isAdInvalidated()) {
+                            loadNativeAds(this::addAdsToFeed);
+                        } else {
+                            addAdsToFeed();
+                        }
+
                         if (mPendingRestoreState) mHandler.removeCallbacks(restoreLlmState);
                         mHandler.postDelayed(restoreLlmState, 200);
                         mPendingRestoreState = true;
                     });
                     mSharedPreferences.edit().putLong("lastFeedRefreshTime", now).apply();
                 } else {
-                    // new articles are available
-                    Object firstItem = items.get(0);
-                    Object lastItem = items.get(items.size() - 1);
-                    Object adapterFirstItem = mAdapter.getList().get(0);
-                    Object adapterLastItem = mAdapter.getLastItem();
-                    boolean firstItemsEqual = (firstItem instanceof Article && adapterFirstItem instanceof Article)
-                            && ((Article) firstItem).getObjectID().equals(((Article) adapterFirstItem).getObjectID());
-                    boolean lastItemsArticleAndEqual = (lastItem instanceof Article && adapterLastItem instanceof Article)
-                            && ((Article) lastItem).getObjectID().equals(((Article) adapterLastItem).getObjectID());
-                    boolean lastItemsVideoAndEqual = (lastItem instanceof Video && adapterLastItem instanceof Video)
-                            && ((Video) lastItem).getObjectID().equals(((Video) adapterLastItem).getObjectID());
-                    boolean lastItemsEqual = lastItemsArticleAndEqual || lastItemsVideoAndEqual;
+                    int diffCount = 0;
+                    List<String> newIds = new ArrayList<>();
+                    for (int i = 0; i < cutoff; i++) {
+                        if (items.get(i) instanceof Article) {
+                            newIds.add(((Article) items.get(i)).getObjectID());
+                        } else if (items.get(i) instanceof Video) {
+                            newIds.add(((Video) items.get(i)).getObjectID());
+                        }
+                    }
+                    int limit = Math.min(cutoff, mAdapter.getItemCount());
+                    for (String id : mAdapter.getFirstIdList(limit)) {
+                        if (!newIds.contains(id)) {
+                            diffCount += 1;
+                        }
+                    }
 
-                    if (!firstItemsEqual || !lastItemsEqual) {
-                        Log.d(TAG, "new articles available");
+                    // new articles are available
+                    if (diffCount > 5) {
+                        Log.d(TAG, "new articles available: " + diffCount);
                         mNewContentPrompt.setOnClickListener(v -> {
-                            mAdapter.setList(feedWithAds);
+                            mAdapter.setList(items, () -> {
+                                // add ads to feed
+                                if (mNativeAds.size() < 1 || mNativeAds.get(0).isAdInvalidated()) {
+                                    loadNativeAds(this::addAdsToFeed);
+                                } else {
+                                    addAdsToFeed();
+                                }
+                            });
                             mRecyclerView.scrollToPosition(0);
                             fadeOut(mNewContentPrompt);
                         });
@@ -1619,13 +1696,85 @@ public class AcornActivity extends AppCompatActivity
                         fadeIn(mNewContentPrompt);
                     } else {
                         Log.d(TAG, "article change");
-                        mAdapter.setList(feedWithAds);
+                        mAdapter.setList(items, () -> {
+                            // add ads to feed
+                            if (mNativeAds.size() < 1 || mNativeAds.get(0).isAdInvalidated()) {
+                                loadNativeAds(this::addAdsToFeed);
+                            } else {
+                                addAdsToFeed();
+                            }
+                        });
                     }
                 }
             }
         };
         itemListLD.observe(this, itemListObserver);
         mObservedList.put(itemListLD, itemListObserver);
+    }
+
+    private void loadNativeAds(Runnable onComplete) {
+        if (!pendingAdLoad) {
+            pendingAdLoad = true;
+
+            Log.d(TAG, "loadNativeAds");
+            List<Integer> doneList = new ArrayList<>();
+            for (int i = 0; i < AD_COUNT; i++) {
+                final int index = i;
+                NativeAd nativeAd = new NativeAd(this,
+                        getString(R.string.fb_native_ad_placement_id));
+
+                nativeAd.setAdListener(new NativeAdListener() {
+                    @Override
+                    public void onMediaDownloaded(Ad ad) {
+                    }
+
+                    @Override
+                    public void onError(Ad ad, AdError adError) {
+                        doneList.add(index);
+                        Log.d(TAG, "error loading ad: " + adError.getErrorMessage());
+
+                        if (doneList.size() == AD_COUNT) {
+                            onComplete.run();
+                            pendingAdLoad = false;
+                        }
+                    }
+
+                    @Override
+                    public void onAdLoaded(Ad ad) {
+                        Log.d(TAG, "ad loaded: " + ad.getPlacementId());
+                        mNativeAds.add(nativeAd);
+                        doneList.add(index);
+
+                        if (doneList.size() == AD_COUNT) {
+                            onComplete.run();
+                        }
+                    }
+
+                    @Override
+                    public void onAdClicked(Ad ad) {
+                    }
+
+                    @Override
+                    public void onLoggingImpression(Ad ad) {
+                    }
+                });
+
+                // Request an ad
+                nativeAd.loadAd();
+            }
+        }
+    }
+
+    private void addAdsToFeed() {
+        int index = 3;
+        int interval = 10;
+        for (NativeAd ad : mNativeAds) {
+            if (index < mAdapter.getItemCount()) {
+                mAdapter.mItemList.add(index, ad);
+                mAdapter.notifyItemInserted(index);
+                index += interval;
+            }
+        }
     }
 
     private void fadeIn(View view) {
@@ -1644,31 +1793,6 @@ public class AcornActivity extends AppCompatActivity
         fadeOut.setDuration(500);
         view.setAnimation(fadeOut);
         view.setVisibility(View.GONE);
-    }
-
-    private void loadNativeAds(Runnable onComplete) {
-        AdLoader.Builder builder = new AdLoader.Builder(this, getString(R.string.admob_native_adunit_id));
-        mAdLoader = builder.forUnifiedNativeAd(unifiedNativeAd -> {
-            // A native ad loaded successfully, check if the ad loader has finished loading
-            // and if so, insert the ads into the list.
-            mNativeAds.add(unifiedNativeAd);
-            if (!mAdLoader.isLoading()) {
-                onComplete.run();
-            }
-        }).withAdListener(new AdListener() {
-            @Override
-            public void onAdFailedToLoad(int errorCode) {
-                // A native ad failed to load, check if the ad loader has finished loading
-                // and if so, insert the ads into the list.
-                Log.e(TAG, "Previous native ad failed to load. Attempting to load another.");
-                if (!mAdLoader.isLoading()) {
-                    onComplete.run();
-                }
-            }
-        }).build();
-
-        // Load the Native ads.
-        mAdLoader.loadAds(new AdRequest.Builder().build(), 5);
     }
 
     private Runnable restoreLlmState = () -> {
@@ -1698,25 +1822,6 @@ public class AcornActivity extends AppCompatActivity
         if (mReferredBy != null) {
             Log.d(TAG, "checkReferral: user: " + mFirebaseUser.getUid() + ", referrer: " + mReferredBy);
             mDataSource.setReferrer(mFirebaseUser.getUid(), mReferredBy);
-        }
-    }
-
-    @Override
-    public void onComplete(@NonNull Task<Void> task) {
-        mGeofenceUtils.mPendingGeofenceTask = GeofenceUtils.PendingGeofenceTask.NONE;
-        if (task.isSuccessful()) {
-            mGeofenceUtils.updateGeofencesAdded(!mGeofenceUtils.mPreChangeValue);
-
-            int messageId = mGeofenceUtils.getGeofencesAdded() ? R.string.geofences_added :
-                    R.string.geofences_removed;
-            Log.d(TAG, getString(messageId));
-        } else {
-            mSharedPreferences.edit()
-                    .putBoolean(getString(R.string.pref_key_notif_location), mGeofenceUtils.mPreChangeValue)
-                    .apply();
-            // Get the status code for the error and log it using a user-friendly message.
-            String errorMessage = GeofenceErrorMessages.getErrorString(this, task.getException());
-            Log.w(TAG, errorMessage);
         }
     }
 
@@ -1751,9 +1856,11 @@ public class AcornActivity extends AppCompatActivity
                         .putBoolean(getString(R.string.pref_key_notif_location), !mGeofenceUtils.mPreChangeValue)
                         .apply();
 
-                mGeofenceUtils.mPreChangeValue = false;
-                mGeofenceUtils.mPendingGeofenceTask = GeofenceUtils.PendingGeofenceTask.ADD;
-                mGeofenceUtils.performPendingGeofenceTask();
+                mLocationPermissionsUtils.checkLocationSettings((location) -> {
+                    mGeofenceUtils.mPreChangeValue = false;
+                    mGeofenceUtils.mPendingGeofenceTask = GeofenceUtils.PendingGeofenceTask.ADD;
+                    mGeofenceUtils.performPendingGeofenceTask(this, location);
+                });
 
                 break;
         }
@@ -1770,6 +1877,7 @@ public class AcornActivity extends AppCompatActivity
             mSharedPreferences.edit()
                     .putBoolean(getString(R.string.pref_key_notif_location), false)
                     .apply();
+            mDataSource.ToggleNotifications(LOCATION_NOTIFICATION, false);
             dialog.dismiss();
         });
         builder.setPositiveButton("Yes", ((dialog, which) -> {
@@ -1779,9 +1887,12 @@ public class AcornActivity extends AppCompatActivity
                 return;
             }
             mLocationPermissionsUtils.requestLocationPermissions(() -> {
-                mLocationPermissionsUtils.checkLocationSettings(() -> {
+                mSharedPreferences.edit()
+                        .putBoolean(getString(R.string.pref_key_notif_location), true)
+                        .apply();
+                mLocationPermissionsUtils.checkLocationSettings((location) -> {
                     mGeofenceUtils.mPendingGeofenceTask = GeofenceUtils.PendingGeofenceTask.ADD;
-                    mGeofenceUtils.performPendingGeofenceTask();
+                    mGeofenceUtils.performPendingGeofenceTask(this, location);
                 });
             });
         }));
@@ -1807,7 +1918,7 @@ public class AcornActivity extends AppCompatActivity
         mToolbarSpinner = mToolbar.findViewById(R.id.toolbar_title_spinner);
         if (show) {
             ArrayAdapter<CharSequence> spinnerAdapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_item);
-            spinnerAdapter.add("Acorn");
+            spinnerAdapter.add("All");
             spinnerAdapter.addAll(themes);
             spinnerAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
             mToolbarSpinner.setOnItemSelectedListener(this);
@@ -1831,7 +1942,8 @@ public class AcornActivity extends AppCompatActivity
         }
 
         String theme = parent.getItemAtPosition(position).toString();
-        if (theme.equals("Acorn")) {
+        if (theme.equals("All")) {
+            if (titleTv != null) titleTv.setText("Acorn");
             if (mQuery != null && mQuery.state == 3) return;
             if (mSelectedFeed.equals("Subscriptions")) {
                 getThemeData();

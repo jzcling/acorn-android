@@ -16,6 +16,7 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.cardview.widget.CardView;
 import android.text.Editable;
 import android.text.TextWatcher;
+import android.util.Log;
 import android.view.View;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.EditText;
@@ -49,6 +50,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import acorn.com.acorn_app.R;
+import acorn.com.acorn_app.data.NetworkDataSource;
 import acorn.com.acorn_app.models.Article;
 import acorn.com.acorn_app.models.User;
 import acorn.com.acorn_app.utils.AppExecutors;
@@ -66,6 +68,7 @@ public class CreatePostActivity extends AppCompatActivity {
     private static final int RC_CAMERA = 1102;
     private static final int RC_PREVIEW = 1103;
 
+    private NetworkDataSource mDataSource;
     private final AppExecutors mExecutors = AppExecutors.getInstance();
 
     private ProgressBar mProgressBar;
@@ -129,6 +132,8 @@ public class CreatePostActivity extends AppCompatActivity {
         mPostImageView = findViewById(R.id.post_image);
         mPostImageCancelView = findViewById(R.id.post_image_cancel);
 
+        mDataSource = NetworkDataSource.getInstance(this, mExecutors);
+
         Intent intent = getIntent();
         String shareAction = intent.getAction();
         String shareType = intent.getType();
@@ -178,12 +183,13 @@ public class CreatePostActivity extends AppCompatActivity {
                         String imageUrl = mHasTitle ? mStorageImagePath : null;
                         Article article = new Article(entityId, objectID, type, mUid, postAuthor, postText,
                                 postImageUrl, postDate, title, source, postDate, trendingIndex, imageUrl,
-                                link, null, mainTheme, null);
+                                link, null, mainTheme, null, false);
                         article.notificationTokens.put(mUid, mUserToken);
                         article.theme.add(mainTheme);
                         postRef.child(objectID).setValue(article).addOnSuccessListener(aVoid -> {
                             mExecutors.networkIO().execute(() -> {
                                 updateUserData(objectID, postDate);
+                                mDataSource.createAlgoliaPost(article.toJson());
 //                                FirebaseMessaging.getInstance().subscribeToTopic(objectID);
                             });
                             mExecutors.mainThread().execute(() -> {
@@ -196,7 +202,7 @@ public class CreatePostActivity extends AppCompatActivity {
                                 finish();
                             });
                         }).addOnFailureListener(e -> mExecutors.mainThread().execute(() -> {
-                            e.printStackTrace();
+                            Log.d(TAG, "failed to create post: " + e.getLocalizedMessage());
                             createToast(this, "Post creation failed!", Toast.LENGTH_SHORT);
                             finish();
                         }));
@@ -206,11 +212,12 @@ public class CreatePostActivity extends AppCompatActivity {
                     String imageUrl = mImageUrl;
                     Article article = new Article(entityId, objectID, type, mUid, postAuthor, postText,
                             postImageUrl, postDate, title, source, postDate, trendingIndex, imageUrl,
-                            link, null, mainTheme, null);
+                            link, null, mainTheme, null, false);
                     article.notificationTokens.put(mUid, mUserToken);
                     postRef.child(objectID).setValue(article).addOnSuccessListener(aVoid -> {
                         mExecutors.networkIO().execute(() -> {
                             updateUserData(objectID, postDate);
+                            mDataSource.createAlgoliaPost(article.toJson());
 //                            FirebaseMessaging.getInstance().subscribeToTopic(objectID);
                         });
                         mExecutors.mainThread().execute(() -> {
@@ -282,7 +289,7 @@ public class CreatePostActivity extends AppCompatActivity {
                 try {
                     photoFile = createImageFile();
                 } catch (IOException e) {
-                    e.printStackTrace();
+                    Log.d(TAG, "failed to get camera: " + e.getLocalizedMessage());
                 }
                 if (photoFile != null) {
                     Uri photoURI = FileProvider.getUriForFile(this,
@@ -381,10 +388,12 @@ public class CreatePostActivity extends AppCompatActivity {
             FileOutputStream outStream = new FileOutputStream(storedImage);
             bitmap.compress(Bitmap.CompressFormat.JPEG, 30, outStream);
             tempUri = Uri.fromFile(storedImage);
+            Log.d(TAG, "filename: " + tempUri.getLastPathSegment());
 
             StorageReference storageReference = FirebaseStorage.getInstance()
                     .getReference(mUid)
                     .child(tempUri.getLastPathSegment());
+            Log.d(TAG, "storageRef: " + storageReference.toString());
 
             storageReference.putFile(tempUri).addOnCompleteListener(CreatePostActivity.this,
                     task -> {
@@ -392,12 +401,14 @@ public class CreatePostActivity extends AppCompatActivity {
                             mStorageImagePath = storageReference.getRoot().toString()
                                     + storageReference.getPath();
                             onUploadSuccess.run();
+                        } else {
+                            Log.d(TAG, "failed to save file");
                         }
                     });
             outStream.flush();
             outStream.close();
         } catch (Exception e) {
-            e.printStackTrace();
+            Log.d(TAG, "error uploading image: " + e.getLocalizedMessage());
         }
     }
 
@@ -434,7 +445,7 @@ public class CreatePostActivity extends AppCompatActivity {
                     mHasTitle = true;
                 });
             } catch (Exception e) {
-                e.printStackTrace();
+                Log.d(TAG, "failed to add preview: " + e.getLocalizedMessage());
             }
         });
     }

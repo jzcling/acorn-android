@@ -12,6 +12,8 @@ import android.os.Build;
 import acorn.com.acorn_app.data.NetworkDataSource;
 import acorn.com.acorn_app.models.Article;
 import acorn.com.acorn_app.ui.activities.AcornActivity;
+import acorn.com.acorn_app.ui.activities.NearbyActivity;
+import acorn.com.acorn_app.ui.activities.SavedArticlesActivity;
 import acorn.com.acorn_app.utils.AppExecutors;
 import acorn.com.acorn_app.utils.IOUtils;
 import androidx.core.app.NotificationCompat;
@@ -71,6 +73,11 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
     private final int SAVED_REMINDER_PENDINGINTENT_RC = 504;
     private NotificationCompat.Builder savedReminderSummaryNotificationBuilder;
     private NotificationCompat.Builder savedReminderNotificationBuilder;
+
+    private final int PROMOTION_NOTIFICATION_ID = 9005;
+    private final String PROMOTION_GROUP_NAME = "promotionNotification";
+    private final int PROMOTION_PENDINGINTENT_RC = 505;
+    private NotificationCompat.Builder promotionNotificationBuilder;
 
     private void sendRegistrationToServer(String token) {
         DatabaseReference user = FirebaseDatabase.getInstance()
@@ -197,6 +204,33 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
             channel.enableVibration(true);
             mNotificationManager.createNotificationChannel(channel);
         }
+
+        String PROMOTION_CHANNEL_ID = getString(R.string.promotion_notification_channel_id);
+        String PROMOTION_CHANNEL_NAME = getString(R.string.promotion_notification_channel_name);
+
+        promotionNotificationBuilder =
+                new NotificationCompat.Builder(this, PROMOTION_CHANNEL_ID)
+                        .setSmallIcon(R.drawable.ic_notif_acorn)
+                        .setColor(getColor(R.color.colorPrimary))
+                        .setAutoCancel(true)
+                        .setGroup(PROMOTION_GROUP_NAME)
+                        .setGroupAlertBehavior(GROUP_ALERT_SUMMARY)
+                        .setDefaults(DEFAULT_SOUND|DEFAULT_VIBRATE)
+                        .setLights(Color.YELLOW, 700, 300)
+                        .setPriority(PRIORITY_HIGH)
+                        .setVisibility(VISIBILITY_PUBLIC);
+
+        // Since android Oreo notification channel is needed.
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            NotificationChannel channel = new NotificationChannel(PROMOTION_CHANNEL_ID,
+                    PROMOTION_CHANNEL_NAME,
+                    NotificationManager.IMPORTANCE_HIGH);
+            channel.setShowBadge(true);
+            channel.enableLights(true);
+            channel.setLightColor(Color.YELLOW);
+            channel.enableVibration(true);
+            mNotificationManager.createNotificationChannel(channel);
+        }
     }
 
     /**
@@ -222,6 +256,9 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
                     e.printStackTrace();
                 }
                 pushSavedReminderNotification();
+                break;
+            case "promotional":
+                pushPromotionNotification(data);
                 break;
         }
     }
@@ -384,7 +421,7 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
                 NotificationCompat.InboxStyle inboxStyle = new NotificationCompat.InboxStyle();
                 inboxStyle.setSummaryText("Don't forget these saved articles!");
 
-                Intent intent = new Intent(this, AcornActivity.class);
+                Intent intent = new Intent(this, SavedArticlesActivity.class);
                 intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
                 intent.putExtra("fromNotif", true);
                 intent.putExtra("notifType", "Saved Article Reminder");
@@ -465,5 +502,29 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
             });
 
         });
+    }
+
+    private void pushPromotionNotification(Map<String, String> data) {
+        if (data.get("androidActivity").equals("Nearby")) {
+            Intent individualIntent = new Intent(this, NearbyActivity.class);
+            individualIntent.putExtra("keyword", data.get("keyword"));
+            individualIntent.putExtra("fromNotif", true);
+            individualIntent.putExtra("notifType", "Promotional");
+            individualIntent.putExtra("campaignId", data.get("campaignId"));
+            individualIntent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
+            PendingIntent individualPendingIntent = TaskStackBuilder.create(this)
+                    .addNextIntentWithParentStack(individualIntent)
+                    .getPendingIntent(PROMOTION_PENDINGINTENT_RC, PendingIntent.FLAG_UPDATE_CURRENT);
+
+            String contentTitle = data.get("title");
+            String contentText = data.get("body");
+
+            promotionNotificationBuilder
+                    .setContentTitle(contentTitle)
+                    .setContentText(contentText)
+                    .setContentIntent(individualPendingIntent);
+
+            mNotificationManager.notify(PROMOTION_NOTIFICATION_ID, promotionNotificationBuilder.build());
+        }
     }
 }

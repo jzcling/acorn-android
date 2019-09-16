@@ -12,8 +12,11 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 
-import com.google.android.gms.ads.formats.UnifiedNativeAd;
-import com.google.android.gms.ads.formats.UnifiedNativeAdView;
+import com.facebook.ads.Ad;
+import com.facebook.ads.AdError;
+import com.facebook.ads.NativeAd;
+import com.facebook.ads.NativeAdListener;
+import com.facebook.ads.NativeAdsManager;
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
@@ -40,8 +43,10 @@ public class FeedAdapter extends RecyclerView.Adapter<FeedViewHolder> {
     private final Context mContext;
     private String mItemType;
     private final OnLongClickListener longClickListener;
-    private List<Object> mItemList = new ArrayList<>();
+    public List<Object> mItemList = new ArrayList<>();
     private List<String> mSeenList = new ArrayList<>();
+
+    private NativeAd nativeAd;
 
     //Data source
     private NetworkDataSource mDataSource;
@@ -58,6 +63,7 @@ public class FeedAdapter extends RecyclerView.Adapter<FeedViewHolder> {
 
     @Override
     public int getItemViewType(int position) {
+
         Object item = mItemList.get(position);
         if (item instanceof Article) {
             if (((Article) item).getType().equals("post")) {
@@ -69,7 +75,7 @@ public class FeedAdapter extends RecyclerView.Adapter<FeedViewHolder> {
             }
         } else if (item instanceof Video) {
             return 3;
-        } else if (item instanceof UnifiedNativeAd) {
+        } else if (item instanceof NativeAd) {
             return 4;
         } else {
             return 0;
@@ -112,8 +118,12 @@ public class FeedAdapter extends RecyclerView.Adapter<FeedViewHolder> {
             holder.bindVideo((Video) item);
         } else if (item instanceof Article) {
             holder.bindArticle((Article) item);
-        } else if (item instanceof UnifiedNativeAd) {
-            holder.bindAd((UnifiedNativeAd) item);
+        } else if (item instanceof NativeAd) {
+            if (((NativeAd) item).isAdInvalidated()) {
+                loadNativeAd(() -> holder.bindAd(nativeAd));
+            } else {
+                holder.bindAd((NativeAd) item);
+            }
         }
 
         if (position == 0) {
@@ -162,6 +172,20 @@ public class FeedAdapter extends RecyclerView.Adapter<FeedViewHolder> {
                 idList.add(((Article) item).getObjectID());
             } else if (item instanceof Video) {
                 idList.add(((Video) item).getObjectID());
+//            } else if (item instanceof NativeAd) {
+//                idList.add("ad");
+            }
+        }
+        return idList;
+    }
+
+    public List<String> getFirstIdList(int count) {
+        List<String> idList = new ArrayList<>();
+        for (int i = 0; i < count; i ++) {
+            if (mItemList.get(i) instanceof Article) {
+                idList.add(((Article) mItemList.get(i)).getObjectID());
+            } else if (mItemList.get(i) instanceof Video) {
+                idList.add(((Video) mItemList.get(i)).getObjectID());
             }
         }
         return idList;
@@ -218,5 +242,38 @@ public class FeedAdapter extends RecyclerView.Adapter<FeedViewHolder> {
                 }
             }
         }
+    }
+
+    private void loadNativeAd(Runnable onComplete) {
+        NativeAd nativeAd = new NativeAd(mContext,
+                mContext.getString(R.string.fb_native_ad_placement_id));
+
+        nativeAd.setAdListener(new NativeAdListener() {
+            @Override
+            public void onMediaDownloaded(Ad ad) {
+            }
+
+            @Override
+            public void onError(Ad ad, AdError adError) {
+                Log.d(TAG, "error loading ad: " + adError.getErrorMessage());
+            }
+
+            @Override
+            public void onAdLoaded(Ad ad) {
+                Log.d(TAG, "ad loaded: " + ad.getPlacementId());
+                onComplete.run();
+            }
+
+            @Override
+            public void onAdClicked(Ad ad) {
+            }
+
+            @Override
+            public void onLoggingImpression(Ad ad) {
+            }
+        });
+
+        // Request an ad
+        nativeAd.loadAd();
     }
 }

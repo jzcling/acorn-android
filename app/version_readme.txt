@@ -1,5 +1,33 @@
 Android
 
+v1.9.8
+Improved HTML display of articles
+Enhanced saved address reminders
+Fixed location based reminders
+
+v1.9.7
+Enhanced saved address reminders
+Fixed location based reminders
+
+v1.9.6
+Fixed crash on returning to main feed
+Added saved address reminders when near establishments mentioned in saved articles
+Fixed pull down to refresh when filtering by individual themes
+Other bug fixes
+
+v1.9.5
+Enhanced postcode finder for near me feature to find all postcodes near you within the article
+
+v1.9.4a
+Removed ads temporarily (Google Admob account suspended)
+
+v1.9.4
+Fixed crash when loading feed
+Fixed crash when going back to main feed from article
+Fixed crash for some users when receiving nearby notification
+Added keyword search for near me feature
+Opening articles within near me feature will now take you to the relevant portion of the article with the address near location searched
+
 v1.9.3
 Made some UI improvements
 Added native ads within main feed

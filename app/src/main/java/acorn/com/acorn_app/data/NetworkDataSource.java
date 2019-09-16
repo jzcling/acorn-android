@@ -17,12 +17,14 @@ package acorn.com.acorn_app.data;
 
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.os.Handler;
 import android.preference.PreferenceManager;
 
 import acorn.com.acorn_app.models.Address;
 import acorn.com.acorn_app.models.MrtStation;
 import acorn.com.acorn_app.models.TimeLog;
 import acorn.com.acorn_app.models.Video;
+import acorn.com.acorn_app.models.dbAddress;
 import acorn.com.acorn_app.utils.DateUtils;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -60,6 +62,9 @@ import com.google.firebase.database.ValueEventListener;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 
+import org.json.JSONArray;
+import org.json.JSONObject;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -70,6 +75,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import acorn.com.acorn_app.R;
@@ -129,11 +135,15 @@ public class NetworkDataSource {
     private String mThemeSearchKey;
     private String mThemeSearchFilter;
 
+    // Local DB
+    private AddressRoomDatabase mAddressRoomDb;
+
     private NetworkDataSource(Context context, AppExecutors executors) {
         mContext = context;
         mExecutors = executors;
         mSharedPrefs = PreferenceManager.getDefaultSharedPreferences(mContext);
         mDatabaseReference = FirebaseDatabase.getInstance().getReference();
+        mAddressRoomDb = AddressRoomDatabase.getInstance(context);
     }
 
     /**
@@ -146,6 +156,22 @@ public class NetworkDataSource {
             }
         }
         return sInstance;
+    }
+
+    public void getSingleArticle(String articleId, Consumer<Article> onComplete) {
+        DatabaseReference ref = mDatabaseReference.child(ARTICLE_REF).child(articleId);
+        ref.addListenerForSingleValueEvent(new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+                if (dataSnapshot.exists()) {
+                    Article article = dataSnapshot.getValue(Article.class);
+                    onComplete.accept(article);
+                }
+            }
+
+            @Override
+            public void onCancelled(@NonNull DatabaseError databaseError) { }
+        });
     }
 
     public FeedListLiveData getArticles(FbQuery query, List<String> themeList, @Nullable Integer seed) {
@@ -171,11 +197,8 @@ public class NetworkDataSource {
         }
     }
 
-    private void filterNearbyArticles(Map<String, Long> articleIds, Consumer<List<Article>> onComplete) {
-        filterNearbyArticles(articleIds, false, 50, onComplete);
-    }
-
-    private void filterNearbyArticles(Map<String, Long> articleIds, boolean weekOnly, int limit,
+    private void filterNearbyArticles(Map<String, Long> articleIds, Map<String, List<String>> postcodeMap,
+                                      @Nullable String keyword, boolean weekOnly, int limit,
                                       Consumer<List<Article>> onComplete) {
         if (articleIds.size() == 0) {
             onComplete.accept(new ArrayList<>());
@@ -222,29 +245,77 @@ public class NetworkDataSource {
 
         int articleLimit = Math.min(limit, articleIds.size());
         List<String> doneList = new ArrayList<>();
-        for (int i = 0; i < articleLimit; i++) {
-            String articleId = orderedArticleIds.get(i);
-            Query query = mDatabaseReference.child(ARTICLE_REF).child(articleId);
-            query.addListenerForSingleValueEvent(new ValueEventListener() {
-                @Override
-                public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
-                    Article article = dataSnapshot.getValue(Article.class);
-                    if (article != null) {
-                        //Log.d(TAG, "title: " + article.getTitle());
-                        articles.add(article);
-                        doneList.add(article.getObjectID());
-                    } else {
-                        doneList.add("failed to load article " + (doneList.size() + 1));
-                    }
-
-                    if (doneList.size() >= articleLimit) {
-                        onComplete.accept(articles);
-                    }
+        List<String> rejectList = new ArrayList<>();
+        if (keyword != null) {
+            for (String articleId : orderedArticleIds) {
+                if (doneList.size() >= articleLimit) {
+                    break;
                 }
 
-                @Override
-                public void onCancelled(@NonNull DatabaseError databaseError) { }
-            });
+                Query query = mDatabaseReference.child(ARTICLE_REF).child(articleId);
+                query.addListenerForSingleValueEvent(new ValueEventListener() {
+                    @Override
+                    public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+                        Article article = dataSnapshot.getValue(Article.class);
+                        if (article != null) {
+                            if ((article.getTitle() != null && article.getTitle().toLowerCase().contains(keyword)) ||
+                                    (article.getSource() != null && article.getSource().toLowerCase().contains(keyword)) ||
+                                    (article.getMainTheme() != null && article.getMainTheme().toLowerCase().contains(keyword)) ||
+                                    (article.getPostText() != null && article.getPostText().toLowerCase().contains(keyword)) ||
+                                    (article.getPostAuthor() != null && article.getPostAuthor().toLowerCase().contains(keyword))) {
+                                article.postcode = postcodeMap.get(articleId);
+                                articles.add(article);
+                                doneList.add(article.getObjectID());
+                            } else {
+                                rejectList.add(article.getObjectID());
+                            }
+                        } else {
+                            rejectList.add("failed to load article " + (doneList.size() + 1));
+                        }
+
+                        if (doneList.size() >= articleLimit ||
+                                doneList.size() + rejectList.size() >= orderedArticleIds.size()) {
+                            onComplete.accept(articles);
+                        }
+                    }
+
+                    @Override
+                    public void onCancelled(@NonNull DatabaseError databaseError) {
+                    }
+                });
+            }
+        } else {
+            for (int i = 0; i < articleLimit; i++) {
+                articles.add(new Article());
+            }
+            for (int i = 0; i < articleLimit; i++) {
+                final int index = i;
+                String articleId = orderedArticleIds.get(i);
+                Query query = mDatabaseReference.child(ARTICLE_REF).child(articleId);
+                query.addListenerForSingleValueEvent(new ValueEventListener() {
+                    @Override
+                    public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+                        Article article = dataSnapshot.getValue(Article.class);
+                        if (article != null) {
+                            //Log.d(TAG, "title: " + article.getTitle());
+                            article.postcode = postcodeMap.get(articleId);
+                            articles.remove(index);
+                            articles.add(index, article);
+                            doneList.add(article.getObjectID());
+                        } else {
+                            doneList.add("failed to load article " + (doneList.size() + 1));
+                        }
+
+                        if (doneList.size() >= articleLimit) {
+                            onComplete.accept(articles);
+                        }
+                    }
+
+                    @Override
+                    public void onCancelled(@NonNull DatabaseError databaseError) {
+                    }
+                });
+            }
         }
     }
 
@@ -253,13 +324,13 @@ public class NetworkDataSource {
         return new FeedListLiveData(savedItemsQuery, query.state);
     }
 
-    public void getNearbyArticles(double lat, double lng, double radius,
+    public void getNearbyArticles(double lat, double lng, double radius, @Nullable String keyword,
                                   Consumer<List<Article>> onComplete) {
-        getNearbyArticles(lat, lng, radius, false, 50, onComplete);
+        getNearbyArticles(lat, lng, radius, keyword, false, 50, onComplete);
     }
 
-    public void getNearbyArticles(double lat, double lng, double radius, boolean weekOnly,
-                                  int limit, Consumer<List<Article>> onComplete) {
+    public void getNearbyArticles(double lat, double lng, double radius, @Nullable String keyword,
+                                  boolean weekOnly, int limit, Consumer<List<Article>> onComplete) {
         // get sphere cap centred at location
         S2Point point = S2LatLng.fromDegrees(lat, lng).toPoint();
         S1Angle angle = S1Angle.radians(radius / S2LatLng.EARTH_RADIUS_METERS);
@@ -272,6 +343,7 @@ public class NetworkDataSource {
 
         // get all addresses and associated articles in covering cells
         Map<String, Long> articleIds = new HashMap<>();
+        Map<String, List<String>> postcodeMap = new HashMap<>();
         List<Long> doneList = new ArrayList<>();
         for (S2CellId id : covering) {
             String minRange = String.valueOf(id.rangeMin().id());
@@ -288,6 +360,8 @@ public class NetworkDataSource {
                         for (DataSnapshot snap : dataSnapshot.getChildren()) {
                             Address address = snap.getValue(Address.class);
                             if (address != null) {
+                                Pattern postcodePattern = Pattern.compile(".*(Singapore [0-9]{6}|S[0-9]{6})", Pattern.CASE_INSENSITIVE);
+                                String postcode = postcodePattern.matcher(address.address).replaceAll("$1");
                                 for (String id : address.article.keySet()) {
                                     Long reminderDate = address.article.get(id);
                                     Long cutoff = DateUtils.getFourteenDaysAgoMidnight();
@@ -295,17 +369,24 @@ public class NetworkDataSource {
                                         if ((cutoff != null && reminderDate > cutoff) || reminderDate == 1L) {
                                             /*
                                             these are all the articles with no reminderDate or
-                                            reminderDate greater than thirty dates ago,
-                                            i.e. first date appearing in title is greater than 30 days
+                                            reminderDate greater than cutoff,
+                                            i.e. first date appearing in title is greater than 14 days
                                             ago. this is so we avoid removing articles with
                                             dates from x to y where reminder date is x - 1 but
                                             event is still valid as y has not reached. the implication
                                             is that there will be deals/events that expired up to
-                                            30 days ago
+                                            14 days ago
                                             */
+                                            List<String> postcodeList = new ArrayList<>();
+                                            List<String> postcodes = postcodeMap.get(id);
+                                            if (postcodes != null) {
+                                                postcodeList.addAll(postcodes);
+                                            }
+                                            if (!postcodeList.contains(postcode)) postcodeList.add(postcode);
+                                            postcodeMap.put(id, postcodeList);
                                             articleIds.put(id, reminderDate);
                                         } else {
-                                            // remove all events that expired more than 30 days ago
+                                            // remove all events that expired more than 14 days ago
                                             Log.d(TAG, "addressId: " + address.objectID + ", reminderDate: " + reminderDate);
                                             mDatabaseReference.child(ADDRESS_REF).child(address.objectID)
                                                     .child("article").child(id).removeValue();
@@ -319,8 +400,11 @@ public class NetworkDataSource {
                     doneList.add(id.id());
 
                     if (doneList.size() >= covering.size()) {
-                        Log.d(TAG, "articleIds size: " + articleIds.size());
-                        filterNearbyArticles(articleIds, weekOnly, limit, onComplete);
+                        Handler handler = new Handler();
+                        handler.postDelayed(() -> {
+                            Log.d(TAG, "articleIds size: " + articleIds.size());
+                            filterNearbyArticles(articleIds, postcodeMap, keyword, weekOnly, limit, onComplete);
+                        }, 200);
                     }
                 }
 
@@ -861,6 +945,16 @@ public class NetworkDataSource {
         });
     }
 
+    public void createAlgoliaPost(JSONObject post) {
+        if (mAlgoliaIndex == null) {
+            setupAlgoliaClient(() -> {
+                mAlgoliaIndex.addObjectAsync(post, null);
+            });
+        } else {
+            mAlgoliaIndex.addObjectAsync(post, null);
+        }
+    }
+
 
     // Youtube Key
     public void getYoutubeApiKey(Consumer<String> onComplete) {
@@ -1068,6 +1162,11 @@ public class NetworkDataSource {
 
             @Override
             public void onComplete(@Nullable DatabaseError databaseError, boolean b, @Nullable DataSnapshot dataSnapshot) {
+                if (databaseError == null) {
+                    mExecutors.diskWrite().execute(() -> {
+                        mAddressRoomDb.addressDAO().deleteForArticle(articleId);
+                    });
+                }
             }
         });
 
@@ -1315,6 +1414,67 @@ public class NetworkDataSource {
                 duplicatesList.add(task.getResult());
             }
             onComplete.accept(duplicatesList);
+        });
+    }
+
+    public void getSavedItemsAddresses(Consumer<List<dbAddress>> onComplete) {
+        List<dbAddress> addressList = new ArrayList<>();
+        List<String> savedList = new ArrayList<>();
+        DatabaseReference savedRef = mDatabaseReference.child(USER_REF).child(mUid).child("savedItems");
+        savedRef.addListenerForSingleValueEvent(new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+                for (DataSnapshot snap : dataSnapshot.getChildren()) {
+                    savedList.add(snap.getKey());
+                }
+                if (savedList.size() == 0) {
+                    onComplete.accept(addressList);
+                    return;
+                }
+
+                List<Task<Boolean>> taskList = new ArrayList<>();
+                for (String articleId : savedList) {
+                    TaskCompletionSource<Boolean> addressTaskSource = new TaskCompletionSource<>();
+                    Task<Boolean> addressTask = addressTaskSource.getTask();
+                    taskList.add(addressTask);
+                    getSavedAddressFor(articleId, addresses -> {
+                        addressList.addAll(addresses);
+                        addressTaskSource.setResult(true);
+                    });
+                }
+
+                Tasks.whenAll(taskList).addOnSuccessListener(aVoid -> {
+                    Log.d(TAG, "addressList: " + addressList.size());
+                    onComplete.accept(addressList);
+                });
+            }
+
+            @Override
+            public void onCancelled(@NonNull DatabaseError databaseError) {
+
+            }
+        });
+    }
+
+    public void getSavedAddressFor(String articleId, Consumer<List<dbAddress>> onComplete) {
+        List<dbAddress> addresses = new ArrayList<>();
+        DatabaseReference locationRef = mDatabaseReference.child("location").child(articleId);
+        locationRef.addListenerForSingleValueEvent(new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+                for (DataSnapshot snap : dataSnapshot.getChildren()) {
+                    Address address = snap.getValue(Address.class);
+                    if (address != null) {
+                        if (address.location == null) Log.d(TAG, "no location: " + snap.getKey());
+                        dbAddress localAddress = new dbAddress(address, articleId);
+                        addresses.add(localAddress);
+                    }
+                }
+                onComplete.accept(addresses);
+            }
+
+            @Override
+            public void onCancelled(@NonNull DatabaseError databaseError) { }
         });
     }
 

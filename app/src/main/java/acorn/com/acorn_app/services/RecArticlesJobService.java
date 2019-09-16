@@ -169,7 +169,7 @@ public class RecArticlesJobService extends JobService {
                             .setSmallIcon(R.drawable.ic_notif_acorn)
                             .setColor(getColor(R.color.colorPrimary))
                             .setLargeIcon(bitmap)
-                            .setContentTitle(article.getTitle())
+                            .setContentTitle(title)
                             .setContentText(contentText)
                             .setContentIntent(individualPendingIntent)
                             .setAutoCancel(true)

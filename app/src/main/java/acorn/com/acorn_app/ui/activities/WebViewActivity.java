@@ -9,6 +9,7 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
 import android.util.Log;
+import android.util.SparseIntArray;
 import android.view.Display;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -35,8 +36,9 @@ import androidx.cardview.widget.CardView;
 import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.core.view.MenuItemCompat;
 
+import com.facebook.ads.AdSize;
+import com.facebook.ads.AdView;
 import com.google.android.gms.ads.AdRequest;
-import com.google.android.gms.ads.AdView;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.firebase.analytics.FirebaseAnalytics;
 import com.google.firebase.auth.FirebaseAuth;
@@ -51,6 +53,8 @@ import com.google.firebase.database.ValueEventListener;
 import com.google.firebase.dynamiclinks.FirebaseDynamicLinks;
 
 import java.util.Date;
+import java.util.HashMap;
+import java.util.Map;
 
 import acorn.com.acorn_app.R;
 import acorn.com.acorn_app.data.ArticleRoomDatabase;
@@ -82,6 +86,8 @@ public class WebViewActivity extends AppCompatActivity {
     private boolean isNewIntent = false;
 
     private String articleId;
+    private String[] postcode;
+    private boolean hasNext = false;
 
     private dbArticle mDbArticle;
     private Article mArticle;
@@ -125,8 +131,10 @@ public class WebViewActivity extends AppCompatActivity {
     private long mActiveTime = 0L;
     private long mResumeTime = 0L;
 
+    private SearchView mSearchView;
+
     // Ad
-    private AdView mBannerViewAdmob;
+    private ConstraintLayout mBannerContainer;
 
     @SuppressLint("SetJavaScriptEnabled")
     @Override
@@ -160,6 +168,8 @@ public class WebViewActivity extends AppCompatActivity {
             messageOverlayCard.setVisibility(View.VISIBLE);
         }
 
+        FloatingActionButton postcodeFab = (FloatingActionButton) findViewById(R.id.postcode_fab);
+
         // Set up web view
         webView = (ObservableWebView) findViewById(R.id.webview);
         webView.getSettings().setJavaScriptEnabled(true);
@@ -185,6 +195,27 @@ public class WebViewActivity extends AppCompatActivity {
                         messageOverlayCard.setVisibility(View.INVISIBLE);
                         hasDisplayedMessageOverlay = true;
                     }
+
+                    if (postcode != null && postcode.length > 0) {
+                        mSearchView.setQuery(postcode[0], true);
+                        postcodeFab.show();
+                        final SparseIntArray index = new SparseIntArray();
+                        index.put(0, 1);
+                        postcodeFab.setOnClickListener(v -> {
+                            int idx = index.get(0);
+                            if (idx < postcode.length) {
+                                if (hasNext) {
+                                    webView.findNext(true);
+                                } else {
+                                    mSearchView.setQuery(postcode[idx], true);
+                                    index.put(0, idx + 1);
+                                }
+                            } else {
+                                createToast(WebViewActivity.this, "No more nearby addresses", Toast.LENGTH_SHORT);
+                                index.put(0, 0);
+                            }
+                        });
+                    }
                 } else {
                     progressBar.setVisibility(View.VISIBLE);
                 }
@@ -195,6 +226,13 @@ public class WebViewActivity extends AppCompatActivity {
                     lastScrollPercent = getScrollPercent(webView);
                     if (lastScrollPercent > maxScrollPercent) maxScrollPercent = lastScrollPercent;
                 });
+        webView.setFindListener((i, i1, b) -> {
+            if (b && (i < i1 - 1)) {
+                hasNext = true;
+            } else {
+                hasNext = false;
+            }
+        });
 
         // Set up action buttons
         upVoteView = (CheckBox) findViewById(R.id.button_upvote);
@@ -215,8 +253,11 @@ public class WebViewActivity extends AppCompatActivity {
         // Set up ad banner
 //        mBannerViewSmaato = (BannerView) findViewById(R.id.ad_banner_smaato);
 //        mAdLayoutSmaato = (ConstraintLayout) findViewById(R.id.ad_banner_layout_smaato);
-        mBannerViewAdmob = (AdView) findViewById(R.id.ad_banner_admob);
-        loadAdmobBannerAd();
+        mBannerContainer = (ConstraintLayout) findViewById(R.id.ad_banner_layout_fb);
+        com.facebook.ads.AdView adView = new AdView(this,
+                getString(R.string.fb_banner_webview_ad_placement_id), AdSize.BANNER_HEIGHT_50);
+        mBannerContainer.addView(adView);
+        adView.loadAd();
 //        mBannerViewSmaato.addAdListener((sender, receivedBanner) -> {
 //            if(receivedBanner.getErrorCode() != ErrorCode.NO_ERROR){
 //                mAdLayoutSmaato.setVisibility(View.GONE);
@@ -234,11 +275,6 @@ public class WebViewActivity extends AppCompatActivity {
 //        mBannerViewSmaato.setAutoReloadFrequency(30);
 //        mBannerViewSmaato.setLocationUpdateEnabled(true);
 //        mBannerViewSmaato.asyncLoadNewBanner();
-    }
-
-    public void loadAdmobBannerAd() {
-        AdRequest adRequest = new AdRequest.Builder().build();
-        mBannerViewAdmob.loadAd(adRequest);
     }
 
     @Override
@@ -282,6 +318,8 @@ public class WebViewActivity extends AppCompatActivity {
                     });
         } else {
             articleId = intent.getStringExtra("id");
+            postcode = intent.getStringArrayExtra("postcode");
+            if (postcode != null && postcode.length > 0) Log.d(TAG, "postcode: " + postcode[0]);
             boolean fromNotif = intent.getBooleanExtra("fromNotif", false);
             String notifType = intent.getStringExtra("notifType");
             if (mUid == null) mUid = FirebaseAuth.getInstance().getUid();
@@ -340,11 +378,12 @@ public class WebViewActivity extends AppCompatActivity {
         getMenuInflater().inflate(R.menu.app_bar_webview, menu);
 
         // Set up search
-        SearchView searchView = (SearchView) MenuItemCompat.getActionView(menu.findItem(R.id.action_search));
-        EditText searchText = (EditText) searchView.findViewById(R.id.search_src_text);
+        MenuItem searchItem = menu.findItem(R.id.action_search);
+        mSearchView = (SearchView) searchItem.getActionView();
+        EditText searchText = (EditText) mSearchView.findViewById(R.id.search_src_text);
         FloatingActionButton searchFab = (FloatingActionButton) findViewById(R.id.search_fab);
 
-        searchView.setOnQueryTextListener(new SearchView.OnQueryTextListener() {
+        mSearchView.setOnQueryTextListener(new SearchView.OnQueryTextListener() {
             @Override
             public boolean onQueryTextSubmit(String query) {
                 webView.findNext(true);
@@ -494,7 +533,7 @@ public class WebViewActivity extends AppCompatActivity {
 
         mTimeLog.closeTime = (new Date()).getTime();
         mTimeLog.activeTime = mActiveTime;
-        if (mArticle.getReadTime() != null)
+        if (mArticle != null && mArticle.getReadTime() != null && mArticle.getReadTime() > 0)
             mTimeLog.percentReadTimeActive = mActiveTime / (60f * 1000f) / mArticle.getReadTime();
         mTimeLog.percentScroll = maxScrollPercent;
         mDataSource.logItemTimeLog(mTimeLog);
@@ -755,7 +794,9 @@ public class WebViewActivity extends AppCompatActivity {
         @Override
         public void onPageFinished(WebView view, String url) {
             super.onPageFinished(view, url);
-            restoreScrollPosition(webView, lastScrollPercent);
+            if (lastScrollPercent != 0f) {
+                restoreScrollPosition(webView, lastScrollPercent);
+            }
 
             if (isNewIntent) {
                 view.clearHistory();

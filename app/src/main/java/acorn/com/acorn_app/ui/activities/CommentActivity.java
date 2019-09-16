@@ -486,7 +486,8 @@ public class CommentActivity extends AppCompatActivity implements View.OnTouchLi
         }
 
         // Set up search
-        SearchView searchView = (SearchView) MenuItemCompat.getActionView(menu.findItem(R.id.action_search));
+        MenuItem searchItem = menu.findItem(R.id.action_search);
+        SearchView searchView = (SearchView) searchItem.getActionView();
         EditText searchEditText = (EditText) searchView.findViewById(R.id.search_src_text);
         MenuItem searchChevronUp = mOptionsMenu.findItem(R.id.action_search_up);
         MenuItem searchChevronDown = mOptionsMenu.findItem(R.id.action_search_down);
@@ -532,10 +533,9 @@ public class CommentActivity extends AppCompatActivity implements View.OnTouchLi
             }
             return false;
         });
-        MenuItem searchItem = (MenuItem) mOptionsMenu.findItem(R.id.action_search);
         if (mAdapter.getItemCount() == 0) { searchItem.setEnabled(false); }
         MenuItem articleChevron = mOptionsMenu.findItem(R.id.action_expand);
-        MenuItemCompat.setOnActionExpandListener(searchItem, new MenuItemCompat.OnActionExpandListener() {
+        searchItem.setOnActionExpandListener(new MenuItem.OnActionExpandListener() {
             @Override
             public boolean onMenuItemActionExpand(MenuItem item) {
                 if (mArticleView.getVisibility() == View.VISIBLE) {

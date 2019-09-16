@@ -30,6 +30,7 @@ import java.util.List;
 import java.util.Map;
 
 import acorn.com.acorn_app.R;
+import acorn.com.acorn_app.data.AddressRoomDatabase;
 import acorn.com.acorn_app.data.FeedListLiveData;
 import acorn.com.acorn_app.data.NetworkDataSource;
 import acorn.com.acorn_app.models.Article;
@@ -51,6 +52,7 @@ public class SavedArticlesActivity extends AppCompatActivity
     private NetworkDataSource mDataSource;
     public static FbQuery mQuery;
     private final AppExecutors mExecutors = AppExecutors.getInstance();
+    private AddressRoomDatabase mAddressRoomDb;
 
     //View Models
     private FeedViewModel mFeedViewModel;
@@ -82,6 +84,7 @@ public class SavedArticlesActivity extends AppCompatActivity
 
         // Set up data source
         mDataSource = NetworkDataSource.getInstance(this, mExecutors);
+        mAddressRoomDb = AddressRoomDatabase.getInstance(this);
 
         // Set up recycler view
         mRecyclerView = (RecyclerView) findViewById(R.id.saved_articles_rv);
@@ -116,7 +119,7 @@ public class SavedArticlesActivity extends AppCompatActivity
         MenuItem filterItem = (MenuItem) menu.findItem(R.id.action_filter);
 
         // Set up search
-        SearchView searchView = (SearchView) MenuItemCompat.getActionView(menu.findItem(R.id.action_search));
+        SearchView searchView = (SearchView) searchItem.getActionView();
         EditText searchEditText = (EditText) searchView.findViewById(R.id.search_src_text);
         searchEditText.setOnEditorActionListener((v, actionId, event) -> {
             mSearchText = searchEditText.getText().toString().trim().toLowerCase();
@@ -133,7 +136,7 @@ public class SavedArticlesActivity extends AppCompatActivity
             return false;
         });
 
-        MenuItemCompat.setOnActionExpandListener(searchItem, new MenuItemCompat.OnActionExpandListener() {
+        searchItem.setOnActionExpandListener(new MenuItem.OnActionExpandListener() {
             @Override
             public boolean onMenuItemActionExpand(MenuItem item) {
                 filterItem.setVisible(false);

@@ -124,7 +124,7 @@ public class NearbyArticleViewHolder extends RecyclerView.ViewHolder {
         }
 
         if (article.getLink() != null && !article.getLink().equals("")) {
-            rootView.setOnClickListener(onClickListener(article, "title"));
+            rootView.setOnClickListener(onClickListener(article, "nearby"));
         } else {
             rootView.setOnClickListener(onClickListener(article, "comment"));
         }

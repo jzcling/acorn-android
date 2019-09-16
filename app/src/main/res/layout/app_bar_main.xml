@@ -20,6 +20,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Acorn"
+                android:minWidth="500dp"
                 android:id="@+id/toolbar_title_spinner" />
             <TextView
                 android:layout_width="wrap_content"

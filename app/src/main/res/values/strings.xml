@@ -54,7 +54,7 @@
     <string name="pref_key_notif_location">locationNotifPref</string>
     <string name="pref_key_feed_videos">videosInFeed</string>
     <string name="pref_key_feed_videos_channels">videosInFeedChannelsToRemove</string>
-    <string name="pref_key_loc_permissions_asked">locationPermissionsAskedPref</string>
+    <string name="pref_key_loc_permissions_asked">locationPermissionsRequestedPref</string>
     <string name="pref_cat_general_settings">GENERAL</string>
     <string name="pref_cat_notif_settings">NOTIFICATIONS</string>
     <string name="pref_cat_feed_settings">FEED</string>
@@ -148,6 +148,8 @@
     <string name="deals_notification_channel_name" translatable="true">Recommended Deals</string>
     <string name="geofence_notification_channel_id" translatable="false">location_mrt_channel</string>
     <string name="geofence_notification_channel_name" translatable="true">Location MRT</string>
+    <string name="promotion_notification_channel_id" translatable="false">fcm_promotion_channel</string>
+    <string name="promotion_notification_channel_name" translatable="true">Promotion</string>
     <string name="notif_clear_button">Clear all</string>
     <string name="notif_empty_text">You have no new notifications!</string>
     <string name="notif_delete">DELETE</string>
@@ -225,4 +227,7 @@
     <string name="admob_banner_main_adunit_id">ca-app-pub-9396779536944241/2530302172</string>
     <string name="admob_banner_webview_adunit_id">ca-app-pub-9396779536944241/3171825223</string>
     <string name="admob_native_adunit_id">ca-app-pub-9396779536944241/3339346182</string>
+    <string name="fb_native_ad_placement_id">2986109434738272_2986116248070924</string>
+    <string name="fb_banner_main_ad_placement_id">2986109434738272_2988081624541053</string>
+    <string name="fb_banner_webview_ad_placement_id">2986109434738272_2988088681207014</string>
 </resources>
