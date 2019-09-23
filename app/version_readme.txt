@@ -1,6 +1,12 @@
 Android
 
-v1.9.8
+v1.9.9
+Added viewing history
+Users can now see own upvote, downvote, comment and post history
+Fixed some crashes
+
+v1.9.8/a/b/c
+Fixed some crashes
 Improved HTML display of articles
 Enhanced saved address reminders
 Fixed location based reminders

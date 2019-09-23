@@ -69,7 +69,9 @@ import java.util.Locale;
 import java.util.Map;
 
 import acorn.com.acorn_app.R;
+import acorn.com.acorn_app.data.AddressRoomDatabase;
 import acorn.com.acorn_app.data.NetworkDataSource;
+import acorn.com.acorn_app.models.dbStation;
 import acorn.com.acorn_app.ui.adapters.NearbyArticleAdapter;
 import acorn.com.acorn_app.utils.AppExecutors;
 import acorn.com.acorn_app.utils.Logger;
@@ -116,10 +118,11 @@ public class NearbyActivity extends AppCompatActivity {
     // Data
     private NetworkDataSource mDataSource;
     private final AppExecutors mExecutors = AppExecutors.getInstance();
+    private AddressRoomDatabase mRoomDb;
 
     // Search
-    private Map<String, Map<String, Object>> mMrtStationMap;
-    private List<String> mMrtStationNames;
+    private List<dbStation> mStationList;
+    private List<String> mStationNames;
     private SimpleCursorAdapter mSearchAdapter;
     private SearchView mSearchView;
     private String mMrtSearchText;
@@ -163,6 +166,7 @@ public class NearbyActivity extends AppCompatActivity {
 
         mFusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
         mDataSource = NetworkDataSource.getInstance(this, mExecutors);
+        mRoomDb = AddressRoomDatabase.getInstance(this);
 //        mRetrofit = getRetrofit(MAPS_API_URL);
 //        mCompositeDisposable = new CompositeDisposable();
 
@@ -216,12 +220,10 @@ public class NearbyActivity extends AppCompatActivity {
         }
 
         // Set up mrt station list
-        mDataSource.getMrtStations((mrtStations) -> {
-            mMrtStationMap = mrtStations;
-            mMrtStationNames = new ArrayList<>(mrtStations.keySet());
-            Collections.sort(mMrtStationNames);
-        }, (error) -> {
-            createToast(this, "Error getting list of MRT Stations", Toast.LENGTH_SHORT);
+        mExecutors.diskRead().execute(() -> {
+            mStationList = mRoomDb.addressDAO().getAllStations();
+            mStationNames = mRoomDb.addressDAO().getAllStationLocales();
+            Collections.sort(mStationNames);
         });
 
         // Set up theme filters
@@ -316,7 +318,7 @@ public class NearbyActivity extends AppCompatActivity {
                 if (mMrtSearchTv.isChecked()) {
                     String address = "";
                     boolean isStationFound = false;
-                    for (String name : mMrtStationNames) {
+                    for (String name : mStationNames) {
                         if (name.toLowerCase().equals(query.toLowerCase())) {
                             String[] words = query.split(" ");
                             StringBuilder builder = new StringBuilder();
@@ -420,9 +422,9 @@ public class NearbyActivity extends AppCompatActivity {
 
     private void updateSearchSuggestions(String query) {
         final MatrixCursor c = new MatrixCursor(new String[]{ BaseColumns._ID, "stationName" });
-        for (int i=0; i < mMrtStationNames.size(); i++) {
-            if (mMrtStationNames.get(i).toLowerCase().contains(query.toLowerCase()))
-                c.addRow(new Object[] {i, mMrtStationNames.get(i)});
+        for (int i=0; i < mStationNames.size(); i++) {
+            if (mStationNames.get(i).toLowerCase().contains(query.toLowerCase()))
+                c.addRow(new Object[] {i, mStationNames.get(i)});
         }
         mSearchAdapter.changeCursor(c);
     }
@@ -585,18 +587,16 @@ public class NearbyActivity extends AppCompatActivity {
                         }
                         if (stationName != null) {
                             mAddress = stationName;
-                            if (mMrtStationMap != null) {
+                            if (mStationList != null) {
                                 getNearbyArticlesForMrt(mAddress);
                             } else {
                                 // Set up mrt station list
-                                mDataSource.getMrtStations((mrtStations) -> {
-                                    mMrtStationMap = mrtStations;
-                                    mMrtStationNames = new ArrayList<>(mrtStations.keySet());
-                                    Collections.sort(mMrtStationNames);
+                                mExecutors.diskRead().execute(() -> {
+                                    mStationList = mRoomDb.addressDAO().getAllStations();
+                                    mStationNames = mRoomDb.addressDAO().getAllStationLocales();
+                                    Collections.sort(mStationNames);
 
                                     getNearbyArticlesForMrt(mAddress);
-                                }, (error) -> {
-                                    createToast(this, "Error getting list of MRT Stations", Toast.LENGTH_SHORT);
                                 });
                             }
                         } else {
@@ -759,24 +759,30 @@ public class NearbyActivity extends AppCompatActivity {
     private void getNearbyArticlesForMrt(String name, @Nullable String keyword) {
         mSwipeRefreshLayout.setRefreshing(true);
         mAdapter.clear();
-        Map<String, Object> location = mMrtStationMap.get(name);
-        if (location != null) {
-            mLatitude = (Double) location.get("latitude");
-            mLongitude = (Double) location.get("longitude");
-            mAddress = name;
-            if (mLatitude != null && mLongitude != null) {
+        mExecutors.diskRead().execute(() -> {
+            dbStation location = mRoomDb.addressDAO().getStation(name);
+            if (location != null) {
+                mLatitude = location.latitude;
+                mLongitude = location.longitude;
+                mAddress = name;
                 if (keyword != null) {
-                    mLocationTv.setText("Fetching articles about " + keyword + " near " + mAddress);
+                    mExecutors.mainThread().execute(() -> {
+                        mLocationTv.setText("Fetching articles about " + keyword + " near " + mAddress);
+                    });
                     getNearbyArticles(mLatitude, mLongitude, RADIUS, mAddress, keyword);
                 } else {
-                    mLocationTv.setText("Fetching articles near " + mAddress);
+                    mExecutors.mainThread().execute(() -> {
+                        mLocationTv.setText("Fetching articles near " + mAddress);
+                    });
                     getNearbyArticles(mLatitude, mLongitude, RADIUS, mAddress, keyword);
                 }
+            } else {
+                mSwipeRefreshLayout.setRefreshing(false);
+                mExecutors.mainThread().execute(() -> {
+                    mLocationTv.setText("Could not get location for " + name);
+                });
             }
-        } else {
-            mSwipeRefreshLayout.setRefreshing(false);
-            mLocationTv.setText("Could not get location for " + name);
-        }
+        });
     }
 
     @Override
@@ -799,22 +805,24 @@ public class NearbyActivity extends AppCompatActivity {
 
     private void getNearbyArticles(double lat, double lng, double radius, String address,
                                    @Nullable String keyword) {
-        mDataSource.getNearbyArticles(lat, lng, radius, keyword, (articles -> {
-            mAdapter.setList(articles);
-            if (articles.size() > 0) {
-                if (keyword != null) {
-                    mLocationTv.setText("Showing articles about " + keyword + " near " + address);
+        mExecutors.networkIO().execute(() -> {
+            mDataSource.getNearbyArticles(lat, lng, radius, keyword, (articles -> {
+                mAdapter.setList(articles);
+                if (articles.size() > 0) {
+                    if (keyword != null) {
+                        mLocationTv.setText("Showing articles about " + keyword + " near " + address);
+                    } else {
+                        mLocationTv.setText("Showing articles near " + address);
+                    }
                 } else {
-                    mLocationTv.setText("Showing articles near " + address);
+                    if (keyword != null) {
+                        mLocationTv.setText("Could not find any articles about " + keyword + " near " + address);
+                    } else {
+                        mLocationTv.setText("Could not find any articles near " + address);
+                    }
                 }
-            } else {
-                if (keyword != null) {
-                    mLocationTv.setText("Could not find any articles about " + keyword + " near " + address);
-                } else {
-                    mLocationTv.setText("Could not find any articles near " + address);
-                }
-            }
-            mSwipeRefreshLayout.setRefreshing(false);
-        }));
+                mSwipeRefreshLayout.setRefreshing(false);
+            }));
+        });
     }
 }

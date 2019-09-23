@@ -134,8 +134,8 @@ public class ArticleOnClickListener implements View.OnClickListener {
             case "comment":
                 Intent commentIntent = new Intent(mContext, CommentActivity.class);
                 commentIntent.putExtra("id", mArticle.getObjectID());
-                bounceAnim.setAnimationListener(new MyAnimationListener(commentIntent));
                 if (mCommentView != null) {
+                    bounceAnim.setAnimationListener(new MyAnimationListener(commentIntent));
                     mCommentView.startAnimation(bounceAnim);
                 } else {
                     mContext.startActivity(commentIntent);
@@ -655,7 +655,7 @@ public class ArticleOnClickListener implements View.OnClickListener {
     private void addSavedItemAddressFor(String articleId) {
         mDataSource.getSavedAddressFor(articleId, addresses -> {
             mExecutors.diskWrite().execute(() -> {
-                mAddressRoomDb.addressDAO().insert(addresses);
+                mAddressRoomDb.addressDAO().insertAddresses(addresses);
             });
         });
     }

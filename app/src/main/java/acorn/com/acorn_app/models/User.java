@@ -1,5 +1,7 @@
 package acorn.com.acorn_app.models;
 
+import androidx.annotation.Nullable;
+
 import com.google.firebase.database.Exclude;
 
 import java.util.ArrayList;
@@ -46,11 +48,11 @@ public class User {
 
     public User() {}
 
-    public User(String uid, String displayName, String token, String email, String device,
+    public User(String uid, String displayName, @Nullable String token, String email, String device,
                 Long creationTimeStamp, Long lastSignInTimeStamp) {
         this.uid = uid;
         this.displayName = displayName;
-        this.token = token;
+        if (token != null) this.token = token;
         this.email = email;
         this.device = device;
         this.creationTimeStamp = creationTimeStamp;

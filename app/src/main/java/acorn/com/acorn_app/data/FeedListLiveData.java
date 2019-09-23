@@ -1,16 +1,12 @@
 package acorn.com.acorn_app.data;
 
-import androidx.annotation.Nullable;
-import androidx.lifecycle.LiveData;
-
 import android.os.Handler;
-import androidx.annotation.NonNull;
-
 import android.util.ArraySet;
 import android.util.Log;
 
-import com.google.android.gms.tasks.OnCompleteListener;
-import com.google.android.gms.tasks.OnSuccessListener;
+import androidx.annotation.NonNull;
+import androidx.lifecycle.LiveData;
+
 import com.google.android.gms.tasks.Task;
 import com.google.android.gms.tasks.TaskCompletionSource;
 import com.google.android.gms.tasks.Tasks;
@@ -25,24 +21,16 @@ import com.google.firebase.database.ValueEventListener;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 import acorn.com.acorn_app.models.Article;
 import acorn.com.acorn_app.models.Video;
-import acorn.com.acorn_app.models.VideoInFeedPreference;
-import acorn.com.acorn_app.utils.AppExecutors;
 import acorn.com.acorn_app.utils.DateUtils;
 
-import static acorn.com.acorn_app.data.NetworkDataSource.PREFERENCES_REF;
-import static acorn.com.acorn_app.data.NetworkDataSource.VIDEOS_IN_FEED_PREF_REF;
 import static acorn.com.acorn_app.ui.activities.AcornActivity.mSharedPreferences;
-import static acorn.com.acorn_app.ui.activities.AcornActivity.mUid;
-import static acorn.com.acorn_app.ui.activities.AcornActivity.mUserThemePrefs;
 
 public class FeedListLiveData extends LiveData<List<Object>> {
     private static final String TAG = "FeedListLiveData";
@@ -220,7 +208,7 @@ public class FeedListLiveData extends LiveData<List<Object>> {
                 if (showVideos) {
                     TaskCompletionSource<List<Video>> videoSource = new TaskCompletionSource<>();
                     Task<List<Video>> videoTask = videoSource.getTask();
-                    Long cutoffDate = -DateUtils.getThreeDaysAgoMidnight();
+                    Long cutoffDate = -DateUtils.getMidnightOf(-3);
                     Query videoQuery = mDatabaseReference.child("video").orderByChild("pubDate").endAt(cutoffDate);
                     VideoValueEventListener videoValueListener = new VideoValueEventListener(videoSource);
                     videoQuery.addListenerForSingleValueEvent(videoValueListener);

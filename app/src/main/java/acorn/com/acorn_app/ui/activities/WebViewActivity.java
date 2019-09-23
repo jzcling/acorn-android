@@ -3,11 +3,9 @@ package acorn.com.acorn_app.ui.activities;
 import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.Intent;
-import android.content.SharedPreferences;
 import android.graphics.Point;
 import android.net.Uri;
 import android.os.Bundle;
-import android.preference.PreferenceManager;
 import android.util.Log;
 import android.util.SparseIntArray;
 import android.view.Display;
@@ -34,11 +32,9 @@ import androidx.appcompat.widget.SearchView;
 import androidx.appcompat.widget.Toolbar;
 import androidx.cardview.widget.CardView;
 import androidx.constraintlayout.widget.ConstraintLayout;
-import androidx.core.view.MenuItemCompat;
 
 import com.facebook.ads.AdSize;
 import com.facebook.ads.AdView;
-import com.google.android.gms.ads.AdRequest;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.firebase.analytics.FirebaseAnalytics;
 import com.google.firebase.auth.FirebaseAuth;
@@ -53,8 +49,6 @@ import com.google.firebase.database.ValueEventListener;
 import com.google.firebase.dynamiclinks.FirebaseDynamicLinks;
 
 import java.util.Date;
-import java.util.HashMap;
-import java.util.Map;
 
 import acorn.com.acorn_app.R;
 import acorn.com.acorn_app.data.ArticleRoomDatabase;
@@ -251,30 +245,11 @@ public class WebViewActivity extends AppCompatActivity {
         handleIntent(intent);
 
         // Set up ad banner
-//        mBannerViewSmaato = (BannerView) findViewById(R.id.ad_banner_smaato);
-//        mAdLayoutSmaato = (ConstraintLayout) findViewById(R.id.ad_banner_layout_smaato);
         mBannerContainer = (ConstraintLayout) findViewById(R.id.ad_banner_layout_fb);
         com.facebook.ads.AdView adView = new AdView(this,
                 getString(R.string.fb_banner_webview_ad_placement_id), AdSize.BANNER_HEIGHT_50);
         mBannerContainer.addView(adView);
         adView.loadAd();
-//        mBannerViewSmaato.addAdListener((sender, receivedBanner) -> {
-//            if(receivedBanner.getErrorCode() != ErrorCode.NO_ERROR){
-//                mAdLayoutSmaato.setVisibility(View.GONE);
-//                Log.d(TAG, receivedBanner.getErrorMessage());
-//            } else {
-//                mAdLayoutSmaato.setVisibility(View.VISIBLE);
-//            }
-//        });
-//        mBannerViewSmaato.getAdSettings().setAdDimension(AdDimension.DEFAULT);
-////        mBannerViewSmaato.getAdSettings().setPublisherId(0); // testing
-////        mBannerViewSmaato.getAdSettings().setAdspaceId(0); // testing
-//        mBannerViewSmaato.getAdSettings().setPublisherId(Integer.parseInt(getString(R.string.smaato_publisher_id)));
-//        mBannerViewSmaato.getAdSettings().setAdspaceId(Integer.parseInt(getString(R.string.smaato_banner_webview_ad_space_id)));
-//        mBannerViewSmaato.setAutoReloadEnabled(true);
-//        mBannerViewSmaato.setAutoReloadFrequency(30);
-//        mBannerViewSmaato.setLocationUpdateEnabled(true);
-//        mBannerViewSmaato.asyncLoadNewBanner();
     }
 
     @Override

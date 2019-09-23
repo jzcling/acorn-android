@@ -36,9 +36,11 @@ import java.util.Map;
 import java.util.regex.Pattern;
 
 import acorn.com.acorn_app.R;
+import acorn.com.acorn_app.data.AddressRoomDatabase;
 import acorn.com.acorn_app.data.NetworkDataSource;
 import acorn.com.acorn_app.models.Article;
 import acorn.com.acorn_app.models.dbAddress;
+import acorn.com.acorn_app.models.dbStation;
 import acorn.com.acorn_app.ui.activities.AcornActivity;
 import acorn.com.acorn_app.ui.activities.CommentActivity;
 import acorn.com.acorn_app.ui.activities.NearbyActivity;
@@ -78,6 +80,7 @@ public class GeofenceTransitionsJobIntentService extends JobIntentService {
 
     private AppExecutors mExecutors;
     private NetworkDataSource mDataSource;
+    private AddressRoomDatabase mRoomDb;
 
     private FirebaseAuth auth = FirebaseAuth.getInstance();
 
@@ -102,6 +105,7 @@ public class GeofenceTransitionsJobIntentService extends JobIntentService {
         Log.d(TAG, "onHandleWork");
         mExecutors = AppExecutors.getInstance();
         mDataSource = NetworkDataSource.getInstance(getApplicationContext(), mExecutors);
+        mRoomDb = AddressRoomDatabase.getInstance(getApplicationContext());
 
         FusedLocationProviderClient fusedLocationClient = LocationServices.getFusedLocationProviderClient(getApplicationContext());
         GeofenceUtils geofenceUtils = GeofenceUtils.getInstance(this, mDataSource);
@@ -137,9 +141,10 @@ public class GeofenceTransitionsJobIntentService extends JobIntentService {
                         // mrt geofence triggered
                         if (stationGeofenceHandled) continue;
                         // Get articles near stationName
-                        mExecutors.networkIO().execute(() -> {
-                            mDataSource.getMrtStations(mrtStations -> {
-                                geofenceUtils.getNearestStationsFrom(location, 1, mrtStations, station -> {
+                        mExecutors.diskRead().execute(() -> {
+                            List<dbStation> stations = mRoomDb.addressDAO().getAllStations();
+                            geofenceUtils.getNearestStationsFrom(location, 1, stations, station -> {
+                                if (station.size() > 0) {
                                     Log.d(TAG, "geofence station: " + station.toString());
                                     Map.Entry<String, Location> entry = station.entrySet().iterator().next();
                                     double latitude = entry.getValue().getLatitude();
@@ -149,9 +154,9 @@ public class GeofenceTransitionsJobIntentService extends JobIntentService {
                                                 mExecutors.networkIO().execute(() -> {
                                                     sendNotification(entry.getKey(), articles);
                                                 });
-                                    });
-                                });
-                            }, null);
+                                            });
+                                }
+                            });
                         });
                         stationGeofenceHandled = true;
                     } else {

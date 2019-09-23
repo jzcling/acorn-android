@@ -19,16 +19,10 @@ import android.content.Context;
 import android.content.SharedPreferences;
 import android.os.Handler;
 import android.preference.PreferenceManager;
+import android.util.Log;
 
-import acorn.com.acorn_app.models.Address;
-import acorn.com.acorn_app.models.MrtStation;
-import acorn.com.acorn_app.models.TimeLog;
-import acorn.com.acorn_app.models.Video;
-import acorn.com.acorn_app.models.dbAddress;
-import acorn.com.acorn_app.utils.DateUtils;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-import android.util.Log;
 
 import com.algolia.search.saas.Client;
 import com.algolia.search.saas.Index;
@@ -62,7 +56,6 @@ import com.google.firebase.database.ValueEventListener;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 
-import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.util.ArrayList;
@@ -79,15 +72,22 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import acorn.com.acorn_app.R;
+import acorn.com.acorn_app.models.Address;
 import acorn.com.acorn_app.models.Article;
 import acorn.com.acorn_app.models.Comment;
 import acorn.com.acorn_app.models.FbQuery;
+import acorn.com.acorn_app.models.TimeLog;
 import acorn.com.acorn_app.models.User;
+import acorn.com.acorn_app.models.Video;
+import acorn.com.acorn_app.models.dbAddress;
 import acorn.com.acorn_app.models.dbArticle;
+import acorn.com.acorn_app.models.dbStation;
 import acorn.com.acorn_app.services.DownloadArticlesJobService;
 import acorn.com.acorn_app.services.RecArticlesJobService;
 import acorn.com.acorn_app.services.RecDealsJobService;
+import acorn.com.acorn_app.ui.viewModels.UserViewModel;
 import acorn.com.acorn_app.utils.AppExecutors;
+import acorn.com.acorn_app.utils.DateUtils;
 import acorn.com.acorn_app.utils.HtmlUtils;
 
 import static acorn.com.acorn_app.ui.activities.AcornActivity.mUid;
@@ -137,6 +137,8 @@ public class NetworkDataSource {
 
     // Local DB
     private AddressRoomDatabase mAddressRoomDb;
+
+//    private Handler mHandler = new Handler();
 
     private NetworkDataSource(Context context, AppExecutors executors) {
         mContext = context;
@@ -215,8 +217,8 @@ public class NetworkDataSource {
                 long absDiff = Math.abs(now - entry.getValue());
                 if (weekOnly) {
                     try {
-                        long weekAgoMidnight = DateUtils.getWeekAgoMidnight();
-                        long weekLaterMidnight = DateUtils.getWeekLaterMidnight();
+                        long weekAgoMidnight = DateUtils.getMidnightOf(-7);
+                        long weekLaterMidnight = DateUtils.getMidnightOf(7);
                         if (entry.getValue() >= weekAgoMidnight && entry.getValue() < weekLaterMidnight) {
                             datedArticleIds.put(entry.getKey(), absDiff);
                         }
@@ -364,7 +366,7 @@ public class NetworkDataSource {
                                 String postcode = postcodePattern.matcher(address.address).replaceAll("$1");
                                 for (String id : address.article.keySet()) {
                                     Long reminderDate = address.article.get(id);
-                                    Long cutoff = DateUtils.getFourteenDaysAgoMidnight();
+                                    Long cutoff = DateUtils.getMidnightOf(-14);
                                     if (reminderDate != null) {
                                         if ((cutoff != null && reminderDate > cutoff) || reminderDate == 1L) {
                                             /*
@@ -644,9 +646,9 @@ public class NetworkDataSource {
                                 Article article = dataSnapshot.getValue(Article.class);
                                 if (article != null && article.reminderDate != null) {
                                     Log.d(TAG, "reminderDate: " + article.reminderDate);
-                                    if (DateUtils.getThisMidnight() != null) {
-                                        if (article.reminderDate > DateUtils.getThisMidnight() &&
-                                                article.reminderDate < DateUtils.getNextMidnight()) {
+                                    if (DateUtils.getMidnightOf(0) != null) {
+                                        if (article.reminderDate > DateUtils.getMidnightOf(0) &&
+                                                article.reminderDate < DateUtils.getMidnightOf(1)) {
                                             reminderList.add(article);
                                         }
                                     }
@@ -1000,12 +1002,12 @@ public class NetworkDataSource {
             public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
                 if (dataSnapshot.exists()) {
                     for (DataSnapshot snap : dataSnapshot.getChildren()) {
-                        MrtStation station = snap.getValue(MrtStation.class);
+                        dbStation station = snap.getValue(dbStation.class);
                         if (station != null && mrtStationMap.get(station.stationLocale) == null) {
                             Map<String, Object> location = new HashMap<>();
                             location.put("latitude", station.latitude);
                             location.put("longitude", station.longitude);
-                            location.put("geofence", station.geofence);
+//                            location.put("geofence", station.geofence);
                             mrtStationMap.put(station.stationLocale, location);
                         }
                     }
@@ -1023,21 +1025,26 @@ public class NetworkDataSource {
                                @Nullable Consumer<DatabaseError> onError) {
         Map<String, Map<String, Object>> mrtStationMap = new HashMap<>();
         Query mrtRef = mDatabaseReference.child("mrtStation").orderByChild("type").equalTo("MRT");
-        mrtRef.addListenerForSingleValueEvent(new ValueEventListener() {
+
+        ValueEventListener listener = new ValueEventListener() {
             @Override
             public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
                 if (dataSnapshot.exists()) {
                     for (DataSnapshot snap : dataSnapshot.getChildren()) {
-                        MrtStation station = snap.getValue(MrtStation.class);
+                        dbStation station = snap.getValue(dbStation.class);
                         if (station != null && mrtStationMap.get(station.stationLocale) == null) {
                             Map<String, Object> location = new HashMap<>();
                             location.put("latitude", station.latitude);
                             location.put("longitude", station.longitude);
-                            location.put("geofence", station.geofence);
+//                            location.put("geofence", station.geofence);
                             mrtStationMap.put(station.stationLocale, location);
                         }
                     }
-                    onComplete.accept(mrtStationMap);
+
+                    if (mrtStationMap.size() > 0) {
+                        onComplete.accept(mrtStationMap);
+                        mrtRef.removeEventListener(this);
+                    }
                 }
             }
 
@@ -1047,7 +1054,9 @@ public class NetworkDataSource {
                     onError.accept(databaseError);
                 }
             }
-        });
+        };
+
+        mrtRef.addValueEventListener(listener);
     }
 
 
@@ -1420,6 +1429,15 @@ public class NetworkDataSource {
     public void getSavedItemsAddresses(Consumer<List<dbAddress>> onComplete) {
         List<dbAddress> addressList = new ArrayList<>();
         List<String> savedList = new ArrayList<>();
+
+        if (mUid == null || mUid.equals("")) {
+            mUid = mSharedPrefs.getString("uid", "");
+            if (mUid.equals("")) {
+                onComplete.accept(addressList);
+                return;
+            }
+        }
+
         DatabaseReference savedRef = mDatabaseReference.child(USER_REF).child(mUid).child("savedItems");
         savedRef.addListenerForSingleValueEvent(new ValueEventListener() {
             @Override
@@ -1439,13 +1457,18 @@ public class NetworkDataSource {
                     taskList.add(addressTask);
                     getSavedAddressFor(articleId, addresses -> {
                         addressList.addAll(addresses);
-                        addressTaskSource.setResult(true);
+                        addressTaskSource.trySetResult(true);
                     });
                 }
 
                 Tasks.whenAll(taskList).addOnSuccessListener(aVoid -> {
                     Log.d(TAG, "addressList: " + addressList.size());
                     onComplete.accept(addressList);
+//                    mHandler.postDelayed(() -> {
+//                        mExecutors.networkIO().execute(() -> {
+//                            savedRef.removeEventListener(this);
+//                        });
+//                    }, 3000);
                 });
             }
 
@@ -1470,12 +1493,120 @@ public class NetworkDataSource {
                         addresses.add(localAddress);
                     }
                 }
+
                 onComplete.accept(addresses);
             }
 
             @Override
             public void onCancelled(@NonNull DatabaseError databaseError) { }
         });
+    }
+
+    public void getItemListFor(String uid, UserViewModel.UserAction type,
+                               Consumer<List<Object>> onComplete) {
+        Log.d(TAG, "getItemListFor: " + uid + ", " + type.name());
+        DatabaseReference userRef = mDatabaseReference.child("user/" + uid);
+        List<Object> itemList = new ArrayList<>();
+
+        ValueEventListener listener = new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+                if (dataSnapshot.exists()) {
+                    Map<String, Long> items = (HashMap<String, Long>) dataSnapshot.getValue();
+                    if (items == null || items.size() == 0) {
+                        userRef.removeEventListener(this);
+                        return;
+                    }
+
+                    LinkedHashMap<String, Long> sortedItems = items.entrySet().stream()
+                            .sorted(Collections.reverseOrder(Map.Entry.comparingByValue()))
+                            .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue,
+                                    (e1, e2) -> e2, LinkedHashMap::new));
+                    List<String> itemIds = new ArrayList<>(sortedItems.keySet());
+
+                    List<Task<Boolean>> taskList = new ArrayList<>();
+                    int limit = Math.min(50, itemIds.size());
+                    for (int i = 0; i < limit; i++) {
+                        String id = itemIds.get(i);
+
+                        TaskCompletionSource<Boolean> itemTaskSource = new TaskCompletionSource<>();
+                        Task<Boolean> itemTask = itemTaskSource.getTask();
+                        taskList.add(itemTask);
+                        if (id.startsWith("yt:")) {
+                            DatabaseReference videoRef = mDatabaseReference.child("video/" + id);
+                            videoRef.addValueEventListener(new ValueEventListener() {
+                                @Override
+                                public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+                                    if (dataSnapshot.exists()) {
+                                        Video video = dataSnapshot.getValue(Video.class);
+                                        Log.d(TAG, "videoId: " + video.getObjectID());
+                                        itemList.add(video);
+                                        itemTaskSource.trySetResult(true);
+                                    }
+                                    videoRef.removeEventListener(this);
+                                }
+
+                                @Override
+                                public void onCancelled(@NonNull DatabaseError databaseError) {
+                                    videoRef.removeEventListener(this);
+                                }
+                            });
+                        } else {
+                            DatabaseReference articleRef = mDatabaseReference.child("article/" + id);
+                            articleRef.addValueEventListener(new ValueEventListener() {
+                                @Override
+                                public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+                                    if (dataSnapshot.exists()) {
+                                        Article article = dataSnapshot.getValue(Article.class);
+                                        Log.d(TAG, "articleId: " + article.getObjectID());
+                                        itemList.add(article);
+                                    }
+                                    articleRef.removeEventListener(this);
+                                    itemTaskSource.trySetResult(true);
+                                }
+
+                                @Override
+                                public void onCancelled(@NonNull DatabaseError databaseError) {
+                                    articleRef.removeEventListener(this);
+                                }
+                            });
+                        }
+                    }
+
+                    Tasks.whenAll(taskList).addOnSuccessListener(aVoid -> {
+                        onComplete.accept(itemList);
+                        userRef.removeEventListener(this);
+                    });
+                }
+            }
+
+            @Override
+            public void onCancelled(@NonNull DatabaseError databaseError) {
+                userRef.removeEventListener(this);
+            }
+        };
+
+        Query query = null;
+        switch (type) {
+            case UPVOTE:
+                query = userRef.child("upvotedItems");
+                break;
+            case DOWNVOTE:
+                query = userRef.child("downvotedItems");
+                break;
+            case COMMENT:
+                query = userRef.child("commentedItems");
+                break;
+            case POST:
+                query = userRef.child("createdPosts");
+                break;
+            case HISTORY:
+                query = userRef.child("openedArticles");
+                break;
+        }
+        if (query != null) {
+            query.addValueEventListener(listener);
+        }
     }
 
     // Track notifications

@@ -74,14 +74,14 @@ public class LocationPermissionsUtils {
         mFusedLocationClient = LocationServices.getFusedLocationProviderClient(activity);
     }
 
-//    public static LocationPermissionsUtils getInstance(AppCompatActivity activity) {
-//        if (sInstance == null) {
-//            synchronized (LOCK) {
-//                sInstance = new LocationPermissionsUtils(activity);
-//            }
-//        }
-//        return sInstance;
-//    }
+    public static LocationPermissionsUtils getInstance(AppCompatActivity activity) {
+        if (sInstance == null) {
+            synchronized (LOCK) {
+                sInstance = new LocationPermissionsUtils(activity);
+            }
+        }
+        return sInstance;
+    }
 
     public void requestLocationPermissions(Runnable onAllGranted) {
         permissions.add(Manifest.permission.ACCESS_FINE_LOCATION);

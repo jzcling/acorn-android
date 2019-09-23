@@ -1,7 +1,5 @@
 package acorn.com.acorn_app.ui.activities;
 
-import android.app.NotificationManager;
-import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageInfo;
@@ -12,14 +10,12 @@ import android.graphics.Point;
 import android.graphics.PorterDuff;
 import android.graphics.Typeface;
 import android.net.Uri;
-import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Parcelable;
 import android.preference.PreferenceManager;
 import android.util.Base64;
 import android.util.Log;
-import android.util.SparseIntArray;
 import android.util.TypedValue;
 import android.view.Display;
 import android.view.LayoutInflater;
@@ -47,7 +43,6 @@ import androidx.appcompat.widget.Toolbar;
 import androidx.cardview.widget.CardView;
 import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.core.view.GravityCompat;
-import androidx.core.view.MenuItemCompat;
 import androidx.drawerlayout.widget.DrawerLayout;
 import androidx.lifecycle.Observer;
 import androidx.lifecycle.ViewModelProvider;
@@ -57,38 +52,26 @@ import androidx.recyclerview.widget.SimpleItemAnimator;
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
 import com.algolia.instantsearch.core.helpers.Searcher;
-import com.crashlytics.android.Crashlytics;
 import com.facebook.ads.Ad;
 import com.facebook.ads.AdError;
 import com.facebook.ads.AdSize;
 import com.facebook.ads.AdView;
 import com.facebook.ads.NativeAd;
 import com.facebook.ads.NativeAdListener;
-import com.facebook.ads.NativeAdsManager;
 import com.firebase.ui.auth.AuthUI;
 import com.firebase.ui.auth.ErrorCodes;
 import com.firebase.ui.auth.IdpResponse;
-import com.google.android.gms.tasks.OnCompleteListener;
-import com.google.android.gms.tasks.Task;
-import com.google.android.gms.tasks.TaskCompletionSource;
-import com.google.android.gms.tasks.Tasks;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.android.material.navigation.NavigationView;
 import com.google.firebase.analytics.FirebaseAnalytics;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
-import com.google.firebase.database.DataSnapshot;
-import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ValueEventListener;
 import com.google.firebase.dynamiclinks.FirebaseDynamicLinks;
-import com.google.firebase.iid.FirebaseInstanceId;
-import com.google.firebase.messaging.FirebaseMessaging;
-import com.jaredrummler.android.device.DeviceName;
 import com.nex3z.notificationbadge.NotificationBadge;
 
-import java.io.IOException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
@@ -102,21 +85,19 @@ import java.util.Random;
 
 import acorn.com.acorn_app.R;
 import acorn.com.acorn_app.data.AddressRoomDatabase;
-import acorn.com.acorn_app.data.ArticleRoomDatabase;
 import acorn.com.acorn_app.data.FeedListLiveData;
 import acorn.com.acorn_app.data.NetworkDataSource;
 import acorn.com.acorn_app.models.Article;
 import acorn.com.acorn_app.models.FbQuery;
-import acorn.com.acorn_app.models.PremiumStatus;
-import acorn.com.acorn_app.models.User;
 import acorn.com.acorn_app.models.Video;
 import acorn.com.acorn_app.ui.adapters.FeedAdapter;
 import acorn.com.acorn_app.ui.fragments.NotificationsDialogFragment;
 import acorn.com.acorn_app.ui.viewModels.FeedViewModel;
 import acorn.com.acorn_app.ui.viewModels.FeedViewModelFactory;
 import acorn.com.acorn_app.ui.viewModels.NotificationViewModel;
+import acorn.com.acorn_app.ui.viewModels.UserViewModel;
+import acorn.com.acorn_app.ui.viewModels.UserViewModelFactory;
 import acorn.com.acorn_app.utils.AppExecutors;
-import acorn.com.acorn_app.utils.GeofenceErrorMessages;
 import acorn.com.acorn_app.utils.GeofenceUtils;
 import acorn.com.acorn_app.utils.InjectorUtils;
 import acorn.com.acorn_app.utils.InviteUtils;
@@ -125,7 +106,6 @@ import acorn.com.acorn_app.utils.Logger;
 import acorn.com.acorn_app.utils.UiUtils;
 
 import static acorn.com.acorn_app.data.NetworkDataSource.ALGOLIA_API_KEY;
-import static acorn.com.acorn_app.data.NetworkDataSource.PREFERENCES_REF;
 import static acorn.com.acorn_app.data.NetworkDataSource.SEARCH_REF;
 import static acorn.com.acorn_app.ui.AcornApplication.mFirebaseAnalytics;
 import static acorn.com.acorn_app.utils.UiUtils.createToast;
@@ -153,10 +133,6 @@ public class AcornActivity extends AppCompatActivity
     private ValueEventListener mUserStatusListener;
     private DatabaseReference mUserPremiumStatusRef;
     private ValueEventListener mUserPremiumStatusListener;
-    public static final String LEVEL_0 = "Budding Seed";
-    public static final String LEVEL_1 = "Emerging Sprout";
-    public static final String LEVEL_2 = "Thriving Sapling";
-    public static final String LEVEL_3 = "Wise Oak";
 
     //Theme
     public static boolean isFirstTimeLogin;
@@ -194,6 +170,7 @@ public class AcornActivity extends AppCompatActivity
     private boolean mPendingRestoreState;
 
     //View Models
+    private UserViewModel mUserViewModel;
     private FeedViewModel mFeedViewModel;
     private final Map<FeedListLiveData, Observer<List<Object>>> mObservedList = new HashMap<>();
     private NotificationViewModel mNotifViewModel;
@@ -207,15 +184,15 @@ public class AcornActivity extends AppCompatActivity
     private String mUserStatus;
     public Map<String, Long> mUserPremiumStatus;
     public static ArrayList<String> mUserThemePrefs;
-    private long lastRecArticlesPushTime;
-    private long lastRecArticlesScheduleTime;
-    private long lastRecDealsPushTime;
-    private long lastRecDealsScheduleTime;
     private TextView mUsernameTextView;
     private TextView mUserStatusTextView;
     private CardView mUserPremiumStatusCardView;
     private TextView mUserPremiumStatusTextView;
     private String mReferredBy;
+    public static final String LEVEL_0 = "Budding Seed";
+    public static final String LEVEL_1 = "Emerging Sprout";
+    public static final String LEVEL_2 = "Thriving Sapling";
+    public static final String LEVEL_3 = "Wise Oak";
 
     //Shared prefs
     public static SharedPreferences mSharedPreferences;
@@ -363,7 +340,11 @@ public class AcornActivity extends AppCompatActivity
         // Set up swipe refresh
         mSwipeRefreshLayout.setOnRefreshListener(() -> handleIntent(getIntent()));
 
-        setupUser(mFirebaseUser);
+        if (mFirebaseUser == null) {
+            launchLogin();
+        } else {
+            setupUser(mFirebaseUser);
+        }
 
         // Set up mScrollFab
         mScrollFab.setOnClickListener(view -> {
@@ -408,6 +389,19 @@ public class AcornActivity extends AppCompatActivity
 
                     mSharedPreferences.edit().putBoolean(getString(R.string.helper_nearby_seen), true).apply();
                 }
+
+                if (!mSharedPreferences.getBoolean(getString(R.string.helper_user_details_seen), false)) {
+                    NavigationView navigationView = (NavigationView) findViewById(R.id.nav_view);
+                    View headerView = navigationView.getHeaderView(0);
+                    Log.d(TAG, "headerView: " + headerView.toString());
+
+                    String title = "User Details";
+                    String text = "Check out your activity history here!";
+                    UiUtils.highlightView(AcornActivity.this, headerView, title, text);
+
+                    mSharedPreferences.edit().putBoolean(getString(R.string.helper_user_details_seen), true).apply();
+                }
+
                 super.onDrawerOpened(drawerView);
             }
         };
@@ -424,58 +418,10 @@ public class AcornActivity extends AppCompatActivity
         mNotifViewModel = new ViewModelProvider(this).get(NotificationViewModel.class);
 
         // Set up ad banner
-//        mAdLayoutSmaato = (ConstraintLayout) findViewById(R.id.ad_banner_layout_smaato);
-//        mBannerViewSmaato = (BannerView) findViewById(R.id.ad_banner_smaato);
-        // Ad
         ConstraintLayout mBannerContainer = (ConstraintLayout) findViewById(R.id.ad_banner_layout_fb);
         mBannerAdView = new AdView(this,
                 getString(R.string.fb_banner_main_ad_placement_id), AdSize.BANNER_HEIGHT_50);
         mBannerContainer.addView(mBannerAdView);
-//        mSharedPreferences.edit().putString("IABConsent_SubjectToGDPR", "0").apply();
-//        mBannerViewSmaato.addAdListener((sender, receivedBanner) -> {
-//            if(receivedBanner.getErrorCode() != ErrorCode.NO_ERROR){
-//                mAdLayoutSmaato.setVisibility(View.GONE);
-//                loadAdmobBannerAd();
-//                Log.d(TAG, receivedBanner.getErrorMessage());
-//            } else {
-//                mAdLayoutSmaato.setVisibility(View.VISIBLE);
-//                mAdLayoutAdmob.setVisibility(View.GONE);
-//            }
-//        });
-//        mBannerViewSmaato.getUserSettings().setCOPPA(false);
-//        mBannerViewSmaato.getAdSettings().setAdDimension(AdDimension.DEFAULT);
-////        mBannerViewSmaato.getAdSettings().setPublisherId(0); // testing
-////        mBannerViewSmaato.getAdSettings().setAdspaceId(0); // testing
-//        mBannerViewSmaato.getAdSettings().setPublisherId(Integer.parseInt(getString(R.string.smaato_publisher_id)));
-//        mBannerViewSmaato.getAdSettings().setAdspaceId(Integer.parseInt(getString(R.string.smaato_banner_main_ad_space_id)));
-//        mBannerViewSmaato.setAutoReloadEnabled(true);
-//        mBannerViewSmaato.setAutoReloadFrequency(30);
-//        mBannerViewSmaato.setLocationUpdateEnabled(true);
-//        mBannerViewSmaato.asyncLoadNewBanner();
-
-//        mExecutors.diskRead().execute(() -> {
-//            try {
-//                Log.d(TAG, "adId: " + AdvertisingIdClient.getAdvertisingIdInfo(this).getId());
-//            }
-//            catch (Exception e) {
-//                Log.d(TAG, "error getting adId: " + e.getLocalizedMessage());
-//            }
-//        });
-
-//        mNativeAdsManager = new NativeAdsManager(this,
-//                getString(R.string.fb_native_ad_placement_id), AD_COUNT);
-//        mNativeAdsManager.setListener(new NativeAdsManager.Listener() {
-//            @Override
-//            public void onAdsLoaded() {
-//                Log.d(TAG, "ads loaded: " + mNativeAdsManager.getUniqueNativeAdCount());
-//            }
-//
-//            @Override
-//            public void onAdError(AdError adError) {
-//                Log.d(TAG, "error loading ad: " + adError.getErrorMessage());
-//            }
-//        });
-//        mNativeAdsManager.loadAds();
     }
 
     @Override
@@ -572,11 +518,6 @@ public class AcornActivity extends AppCompatActivity
                     startActivity(Intent.createChooser(shareIntent, "Share app with"));
                 });
                 return true;
-//            case R.id.action_temp:
-////                mPendingGeofenceTask = mSharedPreferences.getBoolean(GeofenceConstants.GEOFENCES_ADDED_KEY, false) ?
-////                        PendingGeofenceTask.REMOVE : PendingGeofenceTask.ADD;
-////                performPendingGeofenceTask();
-//                return true;
         }
 
         return super.onOptionsItemSelected(item);
@@ -611,6 +552,11 @@ public class AcornActivity extends AppCompatActivity
             case R.id.nav_saved:
                 Intent savedArticlesIntent = new Intent(this, SavedArticlesActivity.class);
                 startActivity(savedArticlesIntent);
+                break;
+            case R.id.nav_history:
+                Intent itemListIntent = new Intent(this, ItemListActivity.class);
+                itemListIntent.putExtra("userAction", "history");
+                startActivity(itemListIntent);
                 break;
             case R.id.nav_nearby:
                 if (mUserPremiumStatus == null || mUserPremiumStatusTextView.getText() != "Premium") {
@@ -816,7 +762,7 @@ public class AcornActivity extends AppCompatActivity
             if (resultCode == RESULT_OK) {
                 mUserThemePrefs = new ArrayList<>();
                 mUserThemePrefs.addAll(data.getStringArrayListExtra("themePrefs"));
-                buildThemeKeyAndFilter(mUserThemePrefs);
+                mUserViewModel.buildThemeKeyAndFilter(mUserThemePrefs);
 
                 if (navMenu == null) {
                     NavigationView navigationView = (NavigationView) findViewById(R.id.nav_view);
@@ -1081,227 +1027,351 @@ public class AcornActivity extends AppCompatActivity
 
     private void setupUser(FirebaseUser user) {
         Log.d(TAG, "setupUser");
-        if (user == null) {
-            launchLogin();
-        } else {
-            TaskCompletionSource<User> userSource = new TaskCompletionSource<>();
-            Task<User> userTask = userSource.getTask();
 
-            DatabaseReference userRef = mDatabaseReference.child("user/" + user.getUid());
-            setupUserStatusListeners(userRef);
-//            userRef.keepSynced(true);
-            userRef.addListenerForSingleValueEvent(new ValueEventListener() {
-                @Override
-                public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
-                    User retrievedUser = dataSnapshot.getValue(User.class);
-                    userSource.trySetResult(retrievedUser);
+        // Set up view model
+        UserViewModelFactory factory = InjectorUtils.provideUserViewModelFactory(this, getApplicationContext());
+        mUserViewModel = new ViewModelProvider(this, factory).get(UserViewModel.class);
+        mUserViewModel.setupUser(user, mReferredBy, () -> {
+            if (mSavedInstanceState != null) {
+                mQuery = mSavedInstanceState.getParcelable("Query");
+                if (mQuery == null) {
+                    String hitsRef = SEARCH_REF + "/" + mThemeSearchKey + "/hits";
+                    mQuery = new FbQuery(3, hitsRef, "trendingIndex");
                 }
+            } else {
+                String hitsRef = SEARCH_REF + "/" + mThemeSearchKey + "/hits";
+                mQuery = new FbQuery(3, hitsRef, "trendingIndex");
+            }
 
-                @Override
-                public void onCancelled(@NonNull DatabaseError databaseError) {
-                    userSource.trySetException(databaseError.toException());
-                }
+            // set up feed
+            if (mThemeList == null) mThemeList = new ArrayList<>(mUserThemePrefs);
+            if (mSelectedFeed == null) mSelectedFeed = "Subscriptions";
+            if (mSeed == null) mSeed = new Random().nextInt(100);
+            if (mLlmState == null) {
+                getThemeData();
+            } else {
+                setUpInitialViewModelObserver();
+            }
+
+            // set up toolbar
+            if (mSelectedFeed.equals("Deals")) {
+                setupToolbarTitleSpinner(false, null);
+            } else {
+                setupToolbarTitleSpinner(true, mThemeList);
+            }
+
+            // set up search button
+            mDataSource.setupAlgoliaClient(() -> {
+                mSearcher = Searcher.create(ALGOLIA_APP_ID, ALGOLIA_API_KEY, ALGOLIA_INDEX_NAME);
+                if (mSearchButton != null) mSearchButton.setEnabled(true);
             });
+        });
+        mUserViewModel.themeSearchKey.observe(this, value -> {
+            mThemeSearchKey = value;
+        });
+        mUserViewModel.themeSearchFilter.observe(this, value -> {
+            mThemeSearchFilter = value;
+        });
+        mUserViewModel.isFirstTimeLogin.observe(this, bool -> {
+            isFirstTimeLogin = bool;
+        });
+        mUserViewModel.isUserAuthenticated.observe(this, bool -> {
+            isUserAuthenticated = bool;
+        });
+        mUserViewModel.sendSurveyRequest.observe(this, bool -> {
+            if (bool) {
+                sendSurveyRequest();
+            }
+        });
+        mUserViewModel.showEmailVerificationAlert.observe(this, bool -> {
+            if (bool) {
+                showEmailVerificationAlert();
+            }
+        });
+        mUserViewModel.showLocationPermissionsRequest.observe(this, bool -> {
+            if (bool) {
+                showLocationPermissionsRequest();
+            }
+        });
+        mUserViewModel.themePrefs.observe(this, prefs -> {
+            mUserThemePrefs = prefs;
+        });
+        mUserViewModel.getUser(mFirebaseUser.getUid()).observe(this, retrievedUser -> {
+            if (retrievedUser != null) {
+                mUid = retrievedUser.getUid();
+                mUsername = retrievedUser.getDisplayName();
+                mUserToken = retrievedUser.getToken();
+                mUserPremiumStatus = retrievedUser.premiumStatus;
+                Log.d(TAG, "premiumStatus: " + mUserPremiumStatus.toString());
+                mUserStatus = mUserViewModel.setUserStatus(retrievedUser.getStatus());
 
-            TaskCompletionSource<String> tokenSource = new TaskCompletionSource<>();
-            Task<String> tokenTask = tokenSource.getTask();
+                if (mUsernameTextView != null) {
+                    mUsernameTextView.setText(mUsername);
+                    mUsernameTextView.setOnClickListener(v -> startActivity(new Intent(AcornActivity.this, UserActivity.class)));
+                }
+                if (mUserStatusTextView != null) {
+                    mUserStatusTextView.setText(mUserStatus);
+                    mUserStatusTextView.setOnClickListener(v -> startActivity(new Intent(AcornActivity.this, UserActivity.class)));
+                }
 
-            FirebaseInstanceId.getInstance().getInstanceId().addOnSuccessListener(instanceIdResult -> {
-                tokenSource.trySetResult(instanceIdResult.getToken());
-            }).addOnFailureListener(tokenSource::trySetException);
-
-            Tasks.whenAll(userTask, tokenTask).addOnSuccessListener(aVoid -> {
-                User retrievedUser = userTask.getResult();
-                String userToken = tokenTask.getResult();
-
-                if (retrievedUser == null) {
-                    isFirstTimeLogin = true;
-                    if (!user.isEmailVerified()) {
-                        user.sendEmailVerification();
-                    } else {
-                        isUserAuthenticated = true;
+                if (mUserPremiumStatusCardView != null && mUserPremiumStatusTextView != null) {
+                    Long end = mUserPremiumStatus.get("end");
+                    if (end != null && end > (new Date()).getTime()) {
+                        mUserPremiumStatusTextView.setText("Premium");
+                        mUserPremiumStatusCardView.setCardBackgroundColor(getColor(R.color.colorPrimary));
                     }
-                    String uid = user.getUid();
-                    String displayName = user.getDisplayName();
-                    String email = user.getEmail();
-                    String device = DeviceName.getDeviceName();
-                    Long creationTimeStamp = user.getMetadata().getCreationTimestamp();
-                    Long lastSignInTimeStamp = user.getMetadata().getLastSignInTimestamp();
+                }
+            }
+        });
+    }
 
-                    User newUser = new User(uid, displayName, userToken, email, device,
-                            creationTimeStamp, lastSignInTimeStamp);
-                    if (isUserAuthenticated) newUser.isEmailVerified = true;
-                    newUser.openedSinceLastReport = true;
-                    userRef.setValue(newUser);
-
-                    mUid = newUser.getUid();
-                    mUsername = newUser.getDisplayName();
-                    mUserToken = newUser.getToken();
-                    mUserPremiumStatus = new HashMap<>();
-                    mUserStatus = LEVEL_0;
-                    lastRecArticlesPushTime = 0L;
-                    lastRecArticlesScheduleTime = 0L;
-                    lastRecDealsPushTime = 0L;
-                    lastRecDealsScheduleTime = 0L;
-
-                    if (mUsernameTextView != null) {
-                        mUsernameTextView.setText(mUsername);
-                        mUsernameTextView.setOnClickListener(v -> startActivity(new Intent(AcornActivity.this, UserActivity.class)));
-                    }
-                    if (mUserStatusTextView != null) {
-                        mUserStatusTextView.setText(mUserStatus);
-                        mUserStatusTextView.setOnClickListener(v -> startActivity(new Intent(AcornActivity.this, UserActivity.class)));
-                    }
-
-                    mUserThemePrefs = new ArrayList<>();
-                    Intent editThemeIntent = new Intent(AcornActivity.this, ThemeSelectionActivity.class);
-                    editThemeIntent.putStringArrayListExtra("themePrefs", mUserThemePrefs);
-                    startActivityForResult(editThemeIntent, RC_THEME_PREF);
-
-                    // Set up Crashlytics identifier
-                    Crashlytics.setUserIdentifier(mUid);
-                    Crashlytics.setUserName(mUsername);
-                    Crashlytics.setUserEmail(email);
-
-                    // Set up Firebase Analytics identifier
-                    mFirebaseAnalytics.setUserId(mUid);
-
-                    // Set up default settings
-                    mSharedPreferences.edit().putBoolean(getString(R.string.pref_key_notif_comment), true)
-                            .putBoolean(getString(R.string.pref_key_notif_article), true)
-                            .putBoolean(getString(R.string.pref_key_notif_deals), true)
-                            .putBoolean(getString(R.string.pref_key_notif_saved_articles_reminder), true)
-                            .putString(getString(R.string.pref_key_night_mode), "0")
-                            .putBoolean(getString(R.string.pref_key_feed_videos), true)
-                            .apply();
-
-                    // Check if referred by someone
-                    checkReferral();
-                } else {
-
-                    if (!user.isEmailVerified() && !retrievedUser.isEmailVerified) {
-                        AlertDialog.Builder builder = new AlertDialog.Builder(AcornActivity.this);
-                        builder.setMessage("Please verify your email address")
-                                .setNeutralButton("Re-send verification email", (dialog, which) -> {
-                                    user.sendEmailVerification();
-                                });
-                        AlertDialog alertDialog = builder.create();
-                        alertDialog.show();
-                    } else {
-                        isUserAuthenticated = true;
-                    }
-
-                    retrievedUser.setDisplayName(user.getDisplayName());
-                    retrievedUser.setEmail(user.getEmail());
-                    retrievedUser.setDevice(DeviceName.getDeviceName());
-                    retrievedUser.setLastSignInTimeStamp(user.getMetadata().getLastSignInTimestamp());
-                    retrievedUser.setToken(userToken);
-                    retrievedUser.openedSinceLastReport = true;
-                    if (isUserAuthenticated) retrievedUser.isEmailVerified = true;
-
-                    userRef.updateChildren(retrievedUser.toMap());
-
-                    mUid = retrievedUser.getUid();
-                    mUsername = retrievedUser.getDisplayName();
-                    mUserToken = retrievedUser.getToken();
-                    mUserPremiumStatus = retrievedUser.premiumStatus;
-                    Log.d(TAG, "premiumStatus: " + mUserPremiumStatus.toString());
-                    mUserStatus = setUserStatus(retrievedUser.getStatus());
-                    mUserThemePrefs = retrievedUser.getSubscriptions();
-                    if (mUserThemePrefs.size() < 1) {
-                        mUserThemePrefs = new ArrayList<>();
-                        String[] themeArray = getResources().getStringArray(R.array.theme_array);
-                        Collections.addAll(mUserThemePrefs, themeArray);
-                    }
-                    Log.d(TAG, "themesPrefs: " + mUserThemePrefs.toString());
-                    lastRecArticlesPushTime = retrievedUser.getLastRecArticlesPushTime();
-                    lastRecArticlesScheduleTime = retrievedUser.getLastRecArticlesScheduleTime();
-                    lastRecDealsPushTime = retrievedUser.getLastRecDealsPushTime();
-                    lastRecDealsScheduleTime = retrievedUser.getLastRecDealsScheduleTime();
-
-                    buildThemeKeyAndFilter(mUserThemePrefs);
-
-                    if (mSavedInstanceState != null) {
-                        mQuery = mSavedInstanceState.getParcelable("Query");
-                        if (mQuery == null) {
-                            String hitsRef = SEARCH_REF + "/" + mThemeSearchKey + "/hits";
-                            mQuery = new FbQuery(3, hitsRef, "trendingIndex");
-                        }
-                    } else {
-                        String hitsRef = SEARCH_REF + "/" + mThemeSearchKey + "/hits";
-                        mQuery = new FbQuery(3, hitsRef, "trendingIndex");
-                    }
-
-                    // set up feed
-                    if (mThemeList == null) mThemeList = new ArrayList<>(mUserThemePrefs);
-                    if (mSelectedFeed == null) mSelectedFeed = "Subscriptions";
-                    if (mSeed == null) mSeed = new Random().nextInt(100);
-                    if (mLlmState == null) {
-                        getThemeData();
-                    } else {
-                        setUpInitialViewModelObserver();
-                    }
-
-                    // set up toolbar
-                    if (mSelectedFeed.equals("Deals")) {
-                        setupToolbarTitleSpinner(false, null);
-                    } else {
-                        setupToolbarTitleSpinner(true, mThemeList);
-                    }
-
-                    // set up search button
-                    mDataSource.setupAlgoliaClient(() -> {
-                        mSearcher = Searcher.create(ALGOLIA_APP_ID, ALGOLIA_API_KEY, ALGOLIA_INDEX_NAME);
-                        if (mSearchButton != null) mSearchButton.setEnabled(true);
-                    });
-
-                    // Set up Crashlytics identifier
-                    Crashlytics.setUserIdentifier(mUid);
-                    Crashlytics.setUserName(mUsername);
-                    Crashlytics.setUserEmail(retrievedUser.getEmail());
-
-                    // Set up Firebase Analytics identifier
-                    mFirebaseAnalytics.setUserId(mUid);
-
-                    if (mUsernameTextView != null) {
-                        mUsernameTextView.setText(mUsername);
-                        mUsernameTextView.setOnClickListener(v -> startActivity(new Intent(AcornActivity.this, UserActivity.class)));
-                    }
-                    if (mUserStatusTextView != null) {
-                        mUserStatusTextView.setText(mUserStatus);
-                        mUserStatusTextView.setOnClickListener(v -> startActivity(new Intent(AcornActivity.this, UserActivity.class)));
-                    }
-
-                    if (mUserPremiumStatusCardView != null && mUserPremiumStatusTextView != null) {
-                        Long end = mUserPremiumStatus.get("end");
-                        if (end != null && end > (new Date()).getTime()) {
-                            mUserPremiumStatusTextView.setText("Premium");
-                            mUserPremiumStatusCardView.setCardBackgroundColor(getColor(R.color.colorPrimary));
-                        }
-                    }
-
-                    // Set up default settings if not set
-                    if (!mSharedPreferences.contains(getString(R.string.pref_key_notif_comment)))
-                        mSharedPreferences.edit().putBoolean(getString(R.string.pref_key_notif_comment), true).apply();
-                    if (!mSharedPreferences.contains(getString(R.string.pref_key_notif_article)))
-                        mSharedPreferences.edit().putBoolean(getString(R.string.pref_key_notif_article), true).apply();
-                    if (!mSharedPreferences.contains(getString(R.string.pref_key_notif_deals)))
-                        mSharedPreferences.edit().putBoolean(getString(R.string.pref_key_notif_deals), true).apply();
-                    if (!mSharedPreferences.contains(getString(R.string.pref_key_notif_saved_articles_reminder)))
-                        mSharedPreferences.edit().putBoolean(getString(R.string.pref_key_notif_saved_articles_reminder), true).apply();
-                    if (!mSharedPreferences.contains(getString(R.string.pref_key_night_mode)))
-                        mSharedPreferences.edit().putString(getString(R.string.pref_key_night_mode), "0").apply();
-                    if (!mSharedPreferences.contains(getString(R.string.pref_key_feed_videos)))
-                        mSharedPreferences.edit().putBoolean(getString(R.string.pref_key_feed_videos), true).apply();
-
-                    // store saved addresses on device, updated weekly
+//    private void setupUser(FirebaseUser user) {
+//        Log.d(TAG, "setupUser");
+//        if (user == null) {
+//            launchLogin();
+//        } else {
+//            TaskCompletionSource<User> userSource = new TaskCompletionSource<>();
+//            Task<User> userTask = userSource.getTask();
+//
+//            DatabaseReference userRef = mDatabaseReference.child("user/" + user.getUid());
+//            setupUserStatusListeners(userRef);
+////            userRef.keepSynced(true);
+//            userRef.addListenerForSingleValueEvent(new ValueEventListener() {
+//                @Override
+//                public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+//                    User retrievedUser = dataSnapshot.getValue(User.class);
+//                    userSource.trySetResult(retrievedUser);
+//                }
+//
+//                @Override
+//                public void onCancelled(@NonNull DatabaseError databaseError) {
+//                    userSource.trySetException(databaseError.toException());
+//                }
+//            });
+//
+//            TaskCompletionSource<String> tokenSource = new TaskCompletionSource<>();
+//            Task<String> tokenTask = tokenSource.getTask();
+//
+//            FirebaseInstanceId.getInstance().getInstanceId().addOnSuccessListener(instanceIdResult -> {
+//                tokenSource.trySetResult(instanceIdResult.getToken());
+//            }).addOnFailureListener(tokenSource::trySetException);
+//
+//            Tasks.whenAll(userTask, tokenTask).addOnSuccessListener(aVoid -> {
+//                User retrievedUser = userTask.getResult();
+//                String userToken = tokenTask.getResult();
+//
+//                if (retrievedUser == null) {
+//                    isFirstTimeLogin = true;
+//                    if (!user.isEmailVerified()) {
+//                        user.sendEmailVerification();
+//                    } else {
+//                        isUserAuthenticated = true;
+//                    }
+//                    String uid = user.getUid();
+//                    String displayName = user.getDisplayName();
+//                    String email = user.getEmail();
+//                    String device = DeviceName.getDeviceName();
+//                    Long creationTimeStamp = user.getMetadata().getCreationTimestamp();
+//                    Long lastSignInTimeStamp = user.getMetadata().getLastSignInTimestamp();
+//
+//                    User newUser = new User(uid, displayName, userToken, email, device,
+//                            creationTimeStamp, lastSignInTimeStamp);
+//                    if (isUserAuthenticated) newUser.isEmailVerified = true;
+//                    newUser.openedSinceLastReport = true;
+//                    userRef.setValue(newUser);
+//
+//                    mUid = newUser.getUid();
+//                    mUsername = newUser.getDisplayName();
+//                    mUserToken = newUser.getToken();
+//                    mUserPremiumStatus = new HashMap<>();
+//                    mUserStatus = LEVEL_0;
+//                    lastRecArticlesPushTime = 0L;
+//                    lastRecArticlesScheduleTime = 0L;
+//                    lastRecDealsPushTime = 0L;
+//                    lastRecDealsScheduleTime = 0L;
+//
+//                    if (mUsernameTextView != null) {
+//                        mUsernameTextView.setText(mUsername);
+//                        mUsernameTextView.setOnClickListener(v -> startActivity(new Intent(AcornActivity.this, UserActivity.class)));
+//                    }
+//                    if (mUserStatusTextView != null) {
+//                        mUserStatusTextView.setText(mUserStatus);
+//                        mUserStatusTextView.setOnClickListener(v -> startActivity(new Intent(AcornActivity.this, UserActivity.class)));
+//                    }
+//
+//                    mUserThemePrefs = new ArrayList<>();
+//                    Intent editThemeIntent = new Intent(AcornActivity.this, ThemeSelectionActivity.class);
+//                    editThemeIntent.putStringArrayListExtra("themePrefs", mUserThemePrefs);
+//                    startActivityForResult(editThemeIntent, RC_THEME_PREF);
+//
+//                    // Set up Crashlytics identifier
+//                    Crashlytics.setUserIdentifier(mUid);
+//                    Crashlytics.setUserName(mUsername);
+//                    Crashlytics.setUserEmail(email);
+//
+//                    // Set up Firebase Analytics identifier
+//                    mFirebaseAnalytics.setUserId(mUid);
+//
+//                    // Set up default settings
+//                    mSharedPreferences.edit().putBoolean(getString(R.string.pref_key_notif_comment), true)
+//                            .putBoolean(getString(R.string.pref_key_notif_article), true)
+//                            .putBoolean(getString(R.string.pref_key_notif_deals), true)
+//                            .putBoolean(getString(R.string.pref_key_notif_saved_articles_reminder), true)
+//                            .putString(getString(R.string.pref_key_night_mode), "0")
+//                            .putBoolean(getString(R.string.pref_key_feed_videos), true)
+//                            .apply();
+//
+//                    // Check if referred by someone
+//                    checkReferral();
+//                } else {
+//
+//                    if (!user.isEmailVerified() && !retrievedUser.isEmailVerified) {
+//                        AlertDialog.Builder builder = new AlertDialog.Builder(AcornActivity.this);
+//                        builder.setMessage("Please verify your email address")
+//                                .setNeutralButton("Re-send verification email", (dialog, which) -> {
+//                                    user.sendEmailVerification();
+//                                });
+//                        AlertDialog alertDialog = builder.create();
+//                        alertDialog.show();
+//                    } else {
+//                        isUserAuthenticated = true;
+//                    }
+//
+//                    retrievedUser.setDisplayName(user.getDisplayName());
+//                    retrievedUser.setEmail(user.getEmail());
+//                    retrievedUser.setDevice(DeviceName.getDeviceName());
+//                    retrievedUser.setLastSignInTimeStamp(user.getMetadata().getLastSignInTimestamp());
+//                    retrievedUser.setToken(userToken);
+//                    retrievedUser.openedSinceLastReport = true;
+//                    if (isUserAuthenticated) retrievedUser.isEmailVerified = true;
+//
+//                    userRef.updateChildren(retrievedUser.toMap());
+//
+//                    mUid = retrievedUser.getUid();
+//                    mUsername = retrievedUser.getDisplayName();
+//                    mUserToken = retrievedUser.getToken();
+//                    mUserPremiumStatus = retrievedUser.premiumStatus;
+//                    Log.d(TAG, "premiumStatus: " + mUserPremiumStatus.toString());
+//                    mUserStatus = setUserStatus(retrievedUser.getStatus());
+//                    mUserThemePrefs = retrievedUser.getSubscriptions();
+//                    if (mUserThemePrefs.size() < 1) {
+//                        mUserThemePrefs = new ArrayList<>();
+//                        String[] themeArray = getResources().getStringArray(R.array.theme_array);
+//                        Collections.addAll(mUserThemePrefs, themeArray);
+//                    }
+//                    Log.d(TAG, "themesPrefs: " + mUserThemePrefs.toString());
+//                    lastRecArticlesPushTime = retrievedUser.getLastRecArticlesPushTime();
+//                    lastRecArticlesScheduleTime = retrievedUser.getLastRecArticlesScheduleTime();
+//                    lastRecDealsPushTime = retrievedUser.getLastRecDealsPushTime();
+//                    lastRecDealsScheduleTime = retrievedUser.getLastRecDealsScheduleTime();
+//
+//                    buildThemeKeyAndFilter(mUserThemePrefs);
+//
+//                    if (mSavedInstanceState != null) {
+//                        mQuery = mSavedInstanceState.getParcelable("Query");
+//                        if (mQuery == null) {
+//                            String hitsRef = SEARCH_REF + "/" + mThemeSearchKey + "/hits";
+//                            mQuery = new FbQuery(3, hitsRef, "trendingIndex");
+//                        }
+//                    } else {
+//                        String hitsRef = SEARCH_REF + "/" + mThemeSearchKey + "/hits";
+//                        mQuery = new FbQuery(3, hitsRef, "trendingIndex");
+//                    }
+//
+//                    // set up feed
+//                    if (mThemeList == null) mThemeList = new ArrayList<>(mUserThemePrefs);
+//                    if (mSelectedFeed == null) mSelectedFeed = "Subscriptions";
+//                    if (mSeed == null) mSeed = new Random().nextInt(100);
+//                    if (mLlmState == null) {
+//                        getThemeData();
+//                    } else {
+//                        setUpInitialViewModelObserver();
+//                    }
+//
+//                    // set up toolbar
+//                    if (mSelectedFeed.equals("Deals")) {
+//                        setupToolbarTitleSpinner(false, null);
+//                    } else {
+//                        setupToolbarTitleSpinner(true, mThemeList);
+//                    }
+//
+//                    // set up search button
+//                    mDataSource.setupAlgoliaClient(() -> {
+//                        mSearcher = Searcher.create(ALGOLIA_APP_ID, ALGOLIA_API_KEY, ALGOLIA_INDEX_NAME);
+//                        if (mSearchButton != null) mSearchButton.setEnabled(true);
+//                    });
+//
+//                    // Set up Crashlytics identifier
+//                    Crashlytics.setUserIdentifier(mUid);
+//                    Crashlytics.setUserName(mUsername);
+//                    Crashlytics.setUserEmail(retrievedUser.getEmail());
+//
+//                    // Set up Firebase Analytics identifier
+//                    mFirebaseAnalytics.setUserId(mUid);
+//
+//                    if (mUsernameTextView != null) {
+//                        mUsernameTextView.setText(mUsername);
+//                        mUsernameTextView.setOnClickListener(v -> startActivity(new Intent(AcornActivity.this, UserActivity.class)));
+//                    }
+//                    if (mUserStatusTextView != null) {
+//                        mUserStatusTextView.setText(mUserStatus);
+//                        mUserStatusTextView.setOnClickListener(v -> startActivity(new Intent(AcornActivity.this, UserActivity.class)));
+//                    }
+//
+//                    if (mUserPremiumStatusCardView != null && mUserPremiumStatusTextView != null) {
+//                        Long end = mUserPremiumStatus.get("end");
+//                        if (end != null && end > (new Date()).getTime()) {
+//                            mUserPremiumStatusTextView.setText("Premium");
+//                            mUserPremiumStatusCardView.setCardBackgroundColor(getColor(R.color.colorPrimary));
+//                        }
+//                    }
+//
+//                    // Set up default settings if not set
+//                    if (!mSharedPreferences.contains(getString(R.string.pref_key_notif_comment)))
+//                        mSharedPreferences.edit().putBoolean(getString(R.string.pref_key_notif_comment), true).apply();
+//                    if (!mSharedPreferences.contains(getString(R.string.pref_key_notif_article)))
+//                        mSharedPreferences.edit().putBoolean(getString(R.string.pref_key_notif_article), true).apply();
+//                    if (!mSharedPreferences.contains(getString(R.string.pref_key_notif_deals)))
+//                        mSharedPreferences.edit().putBoolean(getString(R.string.pref_key_notif_deals), true).apply();
+//                    if (!mSharedPreferences.contains(getString(R.string.pref_key_notif_saved_articles_reminder)))
+//                        mSharedPreferences.edit().putBoolean(getString(R.string.pref_key_notif_saved_articles_reminder), true).apply();
+//                    if (!mSharedPreferences.contains(getString(R.string.pref_key_night_mode)))
+//                        mSharedPreferences.edit().putString(getString(R.string.pref_key_night_mode), "0").apply();
+//                    if (!mSharedPreferences.contains(getString(R.string.pref_key_feed_videos)))
+//                        mSharedPreferences.edit().putBoolean(getString(R.string.pref_key_feed_videos), true).apply();
+//
 //                    long now = (new Date()).getTime();
+//                    // store stations on device, updated every week
+//                    long lastUpdatedStations = mSharedPreferences.getLong("lastUpdatedStations", 0);
+////                    if (lastUpdatedStations < now - 7L * 24L * 60L * 60L * 1000L) {
+//                        mExecutors.networkIO().execute(() -> {
+//                            mDataSource.getMrtStations(stationMap -> {
+//                                for (Map.Entry<String, Map<String, Object>> entry : stationMap.entrySet()) {
+//                                    String locale = entry.getKey();
+//                                    Double latitude = (Double) entry.getValue().get("latitude");
+//                                    Double longitude = (Double) entry.getValue().get("longitude");
+//                                    if (latitude != null && longitude != null) {
+//                                        dbStation station = new dbStation(latitude, longitude, locale, "MRT");
+//                                        mExecutors.diskWrite().execute(() -> {
+//                                            mAddressRoomDb.addressDAO().insert(station);
+//                                        });
+//                                    }
+//                                }
+//                                mSharedPreferences.edit().putLong("lastUpdatedStations", now).apply();
+//                            }, error -> {
+//                                Log.d(TAG, "error getting MRT Stations: " + error.toString());
+//                            });
+//                        });
+////                    }
+//
+//                    // store saved addresses on device, updated every 3 days
 //                    long lastUpdatedSavedAddresses = mSharedPreferences.getLong("lastUpdatedSavedAddresses", 0);
-//                    if (lastUpdatedSavedAddresses < now - 7L * 24L * 60L * 60L * 1000L) {
+////                    if (lastUpdatedSavedAddresses < now - 3L * 24L * 60L * 60L * 1000L) {
 //                        mExecutors.networkIO().execute(() -> {
 //                            mDataSource.getSavedItemsAddresses(addresses -> {
+//                                Log.d(TAG, "savedAddresses: " + addresses.size());
 //                                mExecutors.diskWrite().execute(() -> {
-//                                    mAddressRoomDb.addressDAO().insert(addresses);
+//                                    mAddressRoomDb.addressDAO().insertAddresses(addresses);
 //                                    mSharedPreferences.edit().putLong("lastUpdatedSavedAddresses", now).apply();
 //
 //                                    mExecutors.networkIO().execute(() -> {
@@ -1313,81 +1383,88 @@ public class AcornActivity extends AppCompatActivity
 //                                });
 //                            });
 //                        });
+////                    }
+//
+//                    //TEMP: add geofences
+//                    mSharedPreferences.edit().remove("hasAddedGeofences").apply();
+//                    if (!mSharedPreferences.getBoolean("addedGeofences", false)) {
+//                        if (mSharedPreferences.getBoolean(getString(R.string.pref_key_notif_location), false)) {
+//                            mLocationPermissionsUtils.checkLocationSettings((location) -> {
+//                                mGeofenceUtils.mPendingGeofenceTask = GeofenceUtils.PendingGeofenceTask.ADD;
+//                                mGeofenceUtils.performPendingGeofenceTask(this, location);
+//                            });
+//                        }
+//                        mSharedPreferences.edit().putBoolean("addedGeofences", true).apply();
 //                    }
-                    //TEMP: remove addresses
-                    mSharedPreferences.edit().remove("lastUpdatedSavedAddresses").apply();
-                    mSharedPreferences.edit().remove("hasAddedGeofences").apply();
-                    mExecutors.diskWrite().execute(() -> {
-                        mAddressRoomDb.addressDAO().deleteAll();
-                    });
-                    if (!mSharedPreferences.getBoolean("addedGeofences", false)) {
-                        if (mSharedPreferences.getBoolean(getString(R.string.pref_key_notif_location), false)) {
-                            mLocationPermissionsUtils.checkLocationSettings((location) -> {
-                                mGeofenceUtils.mPendingGeofenceTask = GeofenceUtils.PendingGeofenceTask.ADD;
-                                mGeofenceUtils.performPendingGeofenceTask(this, location);
-                            });
-                        }
-                        mSharedPreferences.edit().putBoolean("addedGeofences", true).apply();
-                    }
+//
+//
+//                    if (retrievedUser.openedArticles.keySet().size() > 50) {
+//                        boolean hasSeenSurveyRequest = mSharedPreferences.getBoolean("hasSeenSurveyRequest", false);
+//                        if (!hasSeenSurveyRequest) {
+//                            sendSurveyRequest();
+//                            mSharedPreferences.edit()
+//                                    .putBoolean("hasSeenSurveyRequest", true)
+//                                    .apply();
+//                        }
+//                    }
+//                }
+//
+//                // put uid in sharedPrefs
+//                mSharedPreferences.edit().putString("uid", mUid).apply();
+//
+//                // get locations and set up geofences
+//                if (!mSharedPreferences.getBoolean(getString(R.string.pref_key_loc_permissions_asked), false))
+//                    showLocationPermissionsRequest();
+//                // remove old request in sharedPrefs
+//                mSharedPreferences.edit().remove("locationPermissionsAskedPref").apply();
+//
+//                // subscribe to app topic for manual articles push
+//                FirebaseMessaging.getInstance().subscribeToTopic("acorn");
+//
+//                if (savedArticlesReminderNotifValue) {
+//                    // subscribe to saved articles reminder push
+//                    FirebaseMessaging.getInstance().subscribeToTopic("savedArticlesReminderPush");
+//                }
+//
+//                // Schedule recommended articles push service unless explicitly disabled by user
+//                if (articleNotifValue) {
+//                    long now = (new Date()).getTime();
+//                    long timeElapsedSinceLastPush = now - lastRecArticlesPushTime;
+//
+//                    if (!mSharedPreferences.getBoolean("isRecArticlesScheduled", false) ||
+//                            (timeElapsedSinceLastPush > 24L * 60L * 60L * 1000L && // if last push time is longer than a day
+//                                    lastRecArticlesScheduleTime < lastRecArticlesPushTime)) { // and last scheduled time is before last push time
+//                        mDataSource.scheduleRecArticlesPush();
+//                        mSharedPreferences.edit().putBoolean("isRecArticlesScheduled", true).apply();
+//                    }
+//                }
+//
+//                // Schedule recommended deals push service unless explicitly disabled by user
+//                if (dealsNotifValue) {
+//                    long now = (new Date()).getTime();
+//                    long timeElapsedSinceLastPush = now - lastRecDealsPushTime;
+//
+//                    if (!mSharedPreferences.getBoolean("isRecDealsScheduled", false) ||
+//                            (timeElapsedSinceLastPush > 24L * 60L * 60L * 1000L && // if last push time is longer than a day
+//                                    lastRecDealsScheduleTime < lastRecDealsPushTime)) { // and last scheduled time is before last push time
+//                        mDataSource.scheduleRecDealsPush();
+//                        mSharedPreferences.edit().putBoolean("isRecDealsScheduled", true).apply();
+//                    }
+//                }
+//            }).addOnFailureListener(e -> {
+//                createToast(this, "Failed to get your user profile", Toast.LENGTH_SHORT);
+//            });
+//        }
+//    }
 
-
-                    if (retrievedUser.openedArticles.keySet().size() > 50) {
-                        boolean hasSeenSurveyRequest = mSharedPreferences.getBoolean("hasSeenSurveyRequest", false);
-                        if (!hasSeenSurveyRequest) {
-                            sendSurveyRequest();
-                            mSharedPreferences.edit()
-                                    .putBoolean("hasSeenSurveyRequest", true)
-                                    .apply();
-                        }
-                    }
-                }
-
-                // put uid in sharedPrefs
-                mSharedPreferences.edit().putString("uid", mUid).apply();
-
-                // get locations and set up geofences
-                if (!mSharedPreferences.getBoolean(getString(R.string.pref_key_loc_permissions_asked), false))
-                    showLocationPermissionsRequest();
-                // remove old request in sharedPrefs
-                mSharedPreferences.edit().remove("locationPermissionsAskedPref").apply();
-
-                // subscribe to app topic for manual articles push
-                FirebaseMessaging.getInstance().subscribeToTopic("acorn");
-
-                if (savedArticlesReminderNotifValue) {
-                    // subscribe to saved articles reminder push
-                    FirebaseMessaging.getInstance().subscribeToTopic("savedArticlesReminderPush");
-                }
-
-                // Schedule recommended articles push service unless explicitly disabled by user
-                if (articleNotifValue) {
-                    long now = (new Date()).getTime();
-                    long timeElapsedSinceLastPush = now - lastRecArticlesPushTime;
-
-                    if (!mSharedPreferences.getBoolean("isRecArticlesScheduled", false) ||
-                            (timeElapsedSinceLastPush > 24L * 60L * 60L * 1000L && // if last push time is longer than a day
-                                    lastRecArticlesScheduleTime < lastRecArticlesPushTime)) { // and last scheduled time is before last push time
-                        mDataSource.scheduleRecArticlesPush();
-                        mSharedPreferences.edit().putBoolean("isRecArticlesScheduled", true).apply();
-                    }
-                }
-
-                // Schedule recommended deals push service unless explicitly disabled by user
-                if (dealsNotifValue) {
-                    long now = (new Date()).getTime();
-                    long timeElapsedSinceLastPush = now - lastRecDealsPushTime;
-
-                    if (!mSharedPreferences.getBoolean("isRecDealsScheduled", false) ||
-                            (timeElapsedSinceLastPush > 24L * 60L * 60L * 1000L && // if last push time is longer than a day
-                                    lastRecDealsScheduleTime < lastRecDealsPushTime)) { // and last scheduled time is before last push time
-                        mDataSource.scheduleRecDealsPush();
-                        mSharedPreferences.edit().putBoolean("isRecDealsScheduled", true).apply();
-                    }
-                }
-            }).addOnFailureListener(e -> {
-                createToast(this, "Failed to get your user profile", Toast.LENGTH_SHORT);
-            });
-        }
+    public void showEmailVerificationAlert() {
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setMessage("Please verify your email address")
+                .setNeutralButton("Re-send verification email", (dialog, which) -> {
+                    mFirebaseUser.sendEmailVerification();
+                });
+        AlertDialog alertDialog = builder.create();
+        alertDialog.show();
     }
 
     private void sendSurveyRequest() {
@@ -1409,66 +1486,6 @@ public class AcornActivity extends AppCompatActivity
             startActivity(browserIntent);
         });
         builder.show();
-    }
-
-    private void setupUserStatusListeners(DatabaseReference userRef) {
-        Log.d(TAG, "setupUserStatusListeners");
-        NavigationView navigationView = (NavigationView) findViewById(R.id.nav_view);
-        View navHeaderLayout = navigationView.getHeaderView(0);
-        mUsernameTextView = (TextView) navHeaderLayout.findViewById(R.id.nav_user_name_text_view);
-        mUserStatusTextView = (TextView) navHeaderLayout.findViewById(R.id.nav_user_status_text_view);
-        mUserPremiumStatusCardView = (CardView) navHeaderLayout.findViewById(R.id.nav_user_premium_status_card_view);
-        mUserPremiumStatusTextView = (TextView) navHeaderLayout.findViewById(R.id.nav_user_premium_status_text_view);
-
-        mUserStatusListener = new ValueEventListener() {
-            @Override
-            public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
-                Integer userStatus = dataSnapshot.getValue(Integer.class);
-                if (userStatus == null) userStatus = 0;
-                mUserStatus = setUserStatus(userStatus);
-                mUserStatusTextView.setText(mUserStatus);
-            }
-
-            @Override
-            public void onCancelled(@NonNull DatabaseError databaseError) {}
-        };
-        mUserStatusRef = userRef.child("status");
-        mUserStatusRef.addValueEventListener(mUserStatusListener);
-
-        mUserPremiumStatusListener = new ValueEventListener() {
-            @Override
-            public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
-                PremiumStatus premiumStatus = dataSnapshot.getValue(PremiumStatus.class);
-                if (premiumStatus != null) {
-                    Long end = premiumStatus.end;
-                    if (end != null && end > (new Date()).getTime()) {
-                        if (mUserPremiumStatusCardView != null && mUserPremiumStatusTextView != null) {
-                            mUserPremiumStatusTextView.setText("Premium");
-                            mUserPremiumStatusCardView.setCardBackgroundColor(getColor(R.color.colorPrimary));
-                        }
-                    }
-                }
-            }
-
-            @Override
-            public void onCancelled(@NonNull DatabaseError databaseError) { }
-        };
-        mUserPremiumStatusRef = userRef.child("premiumStatus");
-        mUserPremiumStatusRef.addValueEventListener(mUserPremiumStatusListener);
-    }
-
-    private String setUserStatus(int userStatus) {
-        if (userStatus == 0) {
-            return LEVEL_0;
-        } else if (userStatus == 1) {
-            return LEVEL_1;
-        } else if (userStatus == 2) {
-            return LEVEL_2;
-        } else if (userStatus >= 3) {
-            return LEVEL_3;
-        } else {
-            return LEVEL_0;
-        }
     }
 
     private void createBackPressedDialog() {
@@ -1612,28 +1629,8 @@ public class AcornActivity extends AppCompatActivity
         });
     }
 
-    public static void buildThemeKeyAndFilter(ArrayList<String> themePrefs) {
-        StringBuilder filterStringBuilder = new StringBuilder();
-        StringBuilder searchKeyBuilder = new StringBuilder();
-
-        Collections.sort(themePrefs);
-        for (int i = 0; i < themePrefs.size(); i++) {
-            if (i == 0) {
-                searchKeyBuilder.append(themePrefs.get(i));
-                filterStringBuilder.append("mainTheme: \"").append(themePrefs.get(i)).append("\"");
-            } else {
-                searchKeyBuilder.append("_").append(themePrefs.get(i));
-                filterStringBuilder.append(" OR mainTheme: \"").append(themePrefs.get(i)).append("\"");
-            }
-        }
-        mThemeSearchKey = searchKeyBuilder.toString();
-        mThemeSearchFilter = filterStringBuilder.toString();
-        mSharedPreferences.edit().putString("themeSearchKey", mThemeSearchKey)
-                .putString("themeSearchFilter", mThemeSearchFilter).apply();
-    }
-
     private void setUpInitialViewModelObserver() {
-        Log.d(TAG, "setUpInitialViewModelObserver: theme:" + mThemeList + ", seed: " + mSeed);
+        Log.d(TAG, "setUpInitialViewModelObserver: theme:" + mThemeList + ", seed: " + mSeed + ", query: " + mQuery.state);
 
         // Set up view model
         FeedViewModelFactory factory = InjectorUtils.provideArticleViewModelFactory(this.getApplicationContext());
@@ -1642,8 +1639,8 @@ public class AcornActivity extends AppCompatActivity
         FeedListLiveData itemListLD = mFeedViewModel.getArticles(mQuery, mThemeList, mSeed);
         Observer<List<Object>> itemListObserver = items -> {
             if (items != null) {
-                Long lastFeedRefreshTime = mSharedPreferences.getLong("lastFeedRefreshTime", 0L);
-                Long now = (new Date()).getTime();
+                long lastFeedRefreshTime = mSharedPreferences.getLong("lastFeedRefreshTime", 0L);
+                long now = (new Date()).getTime();
                 int cutoff = 10;
                 if (mAdapter.getItemCount() < cutoff || lastFeedRefreshTime < (now - 60 * 60 * 1000)) {
                     Log.d(TAG, "refresh feed");
@@ -1815,14 +1812,6 @@ public class AcornActivity extends AppCompatActivity
         display.getSize(size);
         Log.d(TAG, "width: " + size.x);
         return size.x;
-    }
-
-    private void checkReferral() {
-        // check to see if user opened an invite link
-        if (mReferredBy != null) {
-            Log.d(TAG, "checkReferral: user: " + mFirebaseUser.getUid() + ", referrer: " + mReferredBy);
-            mDataSource.setReferrer(mFirebaseUser.getUid(), mReferredBy);
-        }
     }
 
     @Override

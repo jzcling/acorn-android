@@ -32,8 +32,10 @@ import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 import acorn.com.acorn_app.R;
+import acorn.com.acorn_app.data.AddressRoomDatabase;
 import acorn.com.acorn_app.data.NetworkDataSource;
 import acorn.com.acorn_app.models.dbAddress;
+import acorn.com.acorn_app.models.dbStation;
 import acorn.com.acorn_app.services.GeofenceBroadcastReceiver;
 import acorn.com.acorn_app.services.GeofenceTransitionsJobIntentService;
 
@@ -44,6 +46,7 @@ public class GeofenceUtils {
     private static GeofenceUtils sInstance;
     private NetworkDataSource mDataSource;
     private final AppExecutors mExecutors = AppExecutors.getInstance();
+    private AddressRoomDatabase mRoomDb;
 
     private SharedPreferences mSharedPreferences;
     public boolean mPreChangeValue;
@@ -70,6 +73,7 @@ public class GeofenceUtils {
         mDataSource = dataSource;
         mGeofencingClient = LocationServices.getGeofencingClient(context);
         mSharedPreferences = androidx.preference.PreferenceManager.getDefaultSharedPreferences(context);
+        mRoomDb = AddressRoomDatabase.getInstance(context);
     }
 
     // Geofence methods
@@ -142,11 +146,13 @@ public class GeofenceUtils {
     }
 
     private void populateGeofenceList(String station, Runnable onComplete) {
-        mDataSource.getMrtStations((mrtStations) -> {
+        mExecutors.diskRead().execute(() -> {
+            List<dbStation> stations = mRoomDb.addressDAO().getAllStations();
+
             // add 6 closest saved addresses
             TaskCompletionSource<Boolean> savedAddressSource = new TaskCompletionSource<>();
             Task<Boolean> savedAddressTask = savedAddressSource.getTask();
-            getNearestSavedAddressesFrom(station, 6, mrtStations, addresses -> {
+            getNearestSavedAddressesFrom(station, 6, stations, addresses -> {
                 for (Map.Entry<String, Location> entry : addresses.entrySet()) {
                     double latitude = entry.getValue().getLatitude();
                     double longitude = entry.getValue().getLongitude();
@@ -170,7 +176,7 @@ public class GeofenceUtils {
             // add 6 closest mrt stations
             TaskCompletionSource<Boolean> mrtSource = new TaskCompletionSource<>();
             Task<Boolean> mrtTask = mrtSource.getTask();
-            getNearestStationsFrom(station, 6, mrtStations, (stationMap) -> {
+            getNearestStationsFrom(station, 6, stations, stationMap -> {
                 for (Map.Entry<String, Location> entry : stationMap.entrySet()) {
                     double latitude = entry.getValue().getLatitude();
                     double longitude = entry.getValue().getLongitude();
@@ -195,8 +201,6 @@ public class GeofenceUtils {
                 Log.d(TAG, "Geofence List: " + mGeofenceList.size() + ", " + mGeofenceList.toString());
                 onComplete.run();
             });
-        }, (error) -> {
-            Log.d(TAG, "Error getting MRT stations: " + error.toString());
         });
     }
 
@@ -230,8 +234,10 @@ public class GeofenceUtils {
         // add 6 closest mrt stations
         TaskCompletionSource<Boolean> mrtSource = new TaskCompletionSource<>();
         Task<Boolean> mrtTask = mrtSource.getTask();
-        mDataSource.getMrtStations((mrtStations) -> {
-            getNearestStationsFrom(location, 6, mrtStations, (stationMap) -> {
+        mExecutors.diskRead().execute(() -> {
+            List<dbStation> stations = mRoomDb.addressDAO().getAllStations();
+            Log.d(TAG, "stations: " + stations);
+            getNearestStationsFrom(location, 6, stations, stationMap -> {
                 for (Map.Entry<String, Location> entry : stationMap.entrySet()) {
                     double latitude = entry.getValue().getLatitude();
                     double longitude = entry.getValue().getLongitude();
@@ -252,8 +258,6 @@ public class GeofenceUtils {
                 Log.d(TAG, "mrtTask complete");
                 mrtSource.setResult(true);
             });
-        }, (error) -> {
-            Log.d(TAG, "Error getting MRT stations: " + error.toString());
         });
 
         Tasks.whenAll(savedAddressTask, mrtTask).addOnSuccessListener(aVoid -> {
@@ -263,47 +267,43 @@ public class GeofenceUtils {
     }
 
     private void getNearestStationsFrom(String station, int limit,
-                                        Map<String, Map<String, Object>> mrtStations,
+                                        List<dbStation> stations,
                                         Consumer<Map<String, Location>> onComplete) {
-        Map<String, Object> fromStation = mrtStations.get(station);
-        if (fromStation == null) {
-            Log.d(TAG, "Error getting station: " + station);
-            return;
-        }
+        mExecutors.diskRead().execute(() -> {
+            dbStation fromStation = mRoomDb.addressDAO().getStation(station);
+            if (fromStation == null) {
+                Log.d(TAG, "Error getting station: " + station);
+                return;
+            }
 
-        Double fromLat = (Double) fromStation.get("latitude");
-        Double fromLng = (Double) fromStation.get("longitude");
-        if (fromLat == null || fromLng == null) {
-            Log.d(TAG, "Error getting station latlng: " + station);
-            return;
-        }
+            double fromLat = fromStation.latitude;
+            double fromLng = fromStation.longitude;
 
-        Location fromLoc = new Location("");
-        fromLoc.setLatitude(fromLat);
-        fromLoc.setLongitude(fromLng);
+            Location fromLoc = new Location("");
+            fromLoc.setLatitude(fromLat);
+            fromLoc.setLongitude(fromLng);
 
-        getNearestStationsFrom(fromLoc, limit, mrtStations, onComplete);
+            getNearestStationsFrom(fromLoc, limit, stations, onComplete);
+        });
     }
 
     public void getNearestStationsFrom(Location fromLoc, int limit,
-                                        Map<String, Map<String, Object>> mrtStations,
+                                        List<dbStation> stations,
                                         Consumer<Map<String, Location>> onComplete) {
         Map<String, Map<String, Object>> distanceMap = new HashMap<>();
-        for (Map.Entry<String, Map<String, Object>> entry : mrtStations.entrySet()) {
-            Double latitude = (Double) entry.getValue().get("latitude");
-            Double longitude = (Double) entry.getValue().get("longitude");
+        for (dbStation station : stations) {
+            double latitude = station.latitude;
+            double longitude = station.longitude;
 
-            if (latitude != null && longitude != null) {
-                Location toLoc = new Location("");
-                toLoc.setLatitude(latitude);
-                toLoc.setLongitude(longitude);
-                Float distance = fromLoc.distanceTo(toLoc);
+            Location toLoc = new Location("");
+            toLoc.setLatitude(latitude);
+            toLoc.setLongitude(longitude);
+            Float distance = fromLoc.distanceTo(toLoc);
 
-                Map<String, Object> value = new HashMap<>();
-                value.put("location", toLoc);
-                value.put("distance", distance);
-                distanceMap.put(entry.getKey(), value);
-            }
+            Map<String, Object> value = new HashMap<>();
+            value.put("location", toLoc);
+            value.put("distance", distance);
+            distanceMap.put(station.stationLocale, value);
         }
 
         LinkedHashMap<String, Map<String, Object>> sortedDistanceMap = distanceMap.entrySet().stream()
@@ -335,87 +335,84 @@ public class GeofenceUtils {
     }
 
     private void getNearestSavedAddressesFrom(String station, int limit,
-                                              Map<String, Map<String, Object>> mrtStations,
+                                              List<dbStation> stations,
                                               Consumer<Map<String, Location>> onComplete) {
-        Map<String, Object> fromStation = mrtStations.get(station);
-        if (fromStation == null) {
-            Log.d(TAG, "Error getting station: " + station);
-            return;
-        }
+        mExecutors.diskRead().execute(() -> {
+            dbStation fromStation = mRoomDb.addressDAO().getStation(station);
+            if (fromStation == null) {
+                Log.d(TAG, "Error getting station: " + station);
+                return;
+            }
 
-        Double fromLat = (Double) fromStation.get("latitude");
-        Double fromLng = (Double) fromStation.get("longitude");
-        if (fromLat == null || fromLng == null) {
-            Log.d(TAG, "Error getting station latlng: " + station);
-            return;
-        }
+            double fromLat = fromStation.latitude;
+            double fromLng = fromStation.longitude;
 
-        Location fromLoc = new Location("");
-        fromLoc.setLatitude(fromLat);
-        fromLoc.setLongitude(fromLng);
+            Location fromLoc = new Location("");
+            fromLoc.setLatitude(fromLat);
+            fromLoc.setLongitude(fromLng);
 
-        getNearestSavedAddressesFrom(fromLoc, limit, onComplete);
+            getNearestSavedAddressesFrom(fromLoc, limit, onComplete);
+        });
     }
 
     private void getNearestSavedAddressesFrom(Location fromLoc, int limit,
                                               Consumer<Map<String, Location>> onComplete) {
-        mExecutors.networkIO().execute(() -> {
-            mDataSource.getSavedItemsAddresses(addresses -> {
-                if (addresses.size() < 1) {
-                    onComplete.accept(new HashMap<>());
-                    return;
-                }
+        mExecutors.diskRead().execute(() -> {
+            List<dbAddress> addresses = mRoomDb.addressDAO().getAllAddresses();
+            if (addresses.size() < 1) {
+                onComplete.accept(new HashMap<>());
+                return;
+            }
 
-                Map<String, Map<String, Object>> distanceMap = new HashMap<>();
-                for (dbAddress address : addresses) {
-                    if (address.latitude != null && address.longitude != null) {
-                        Location toLoc = new Location("");
-                        toLoc.setLatitude(address.latitude);
-                        toLoc.setLongitude(address.longitude);
-                        Float distance = fromLoc.distanceTo(toLoc);
+            Map<String, Map<String, Object>> distanceMap = new HashMap<>();
+            for (dbAddress address : addresses) {
+                if (address.latitude != null && address.longitude != null) {
+                    Location toLoc = new Location("");
+                    toLoc.setLatitude(address.latitude);
+                    toLoc.setLongitude(address.longitude);
+                    Float distance = fromLoc.distanceTo(toLoc);
 
-                        Map<String, Object> currentValue = distanceMap.get(address.articleId);
-                        Float currentDistance = currentValue != null ? (Float) currentValue.get("distance") : null;
-                        Map<String, Object> value = new HashMap<>();
-                        value.put("location", toLoc);
-                        value.put("distance", distance);
-                        if (currentDistance != null) {
-                            if (currentDistance > distance) distanceMap.put(address.articleId, value);
-                        } else {
-                            distanceMap.put(address.articleId, value);
-                        }
+                    Map<String, Object> currentValue = distanceMap.get(address.articleId);
+                    Float currentDistance = currentValue != null ? (Float) currentValue.get("distance") : null;
+                    Map<String, Object> value = new HashMap<>();
+                    value.put("location", toLoc);
+                    value.put("distance", distance);
+                    if (currentDistance != null) {
+                        if (currentDistance > distance) distanceMap.put(address.articleId, value);
                     } else {
-                        Log.d(TAG, "address " + address.objectID + " has no location: " + address.articleId);
+                        distanceMap.put(address.articleId, value);
                     }
+                } else {
+                    Log.d(TAG, "address " + address.objectID + " has no location: " + address.articleId);
                 }
+            }
 
-                LinkedHashMap<String, Map<String, Object>> sortedDistanceMap = distanceMap.entrySet().stream()
-                        .sorted(Map.Entry.comparingByValue((o1, o2) -> {
-                            Float o1Dist = (Float) o1.get("distance");
-                            Float o2Dist = (Float) o2.get("distance");
-                            if (o1Dist != null && o2Dist != null) {
-                                return (int) (o1Dist - o2Dist);
-                            } else {
-                                return 0;
-                            }
-                        }))
-                        .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue,
-                                (e1, e2) -> e2, LinkedHashMap::new));
+            LinkedHashMap<String, Map<String, Object>> sortedDistanceMap = distanceMap.entrySet().stream()
+                    .sorted(Map.Entry.comparingByValue((o1, o2) -> {
+                        Float o1Dist = (Float) o1.get("distance");
+                        Float o2Dist = (Float) o2.get("distance");
+                        if (o1Dist != null && o2Dist != null) {
+                            return (int) (o1Dist - o2Dist);
+                        } else {
+                            return 0;
+                        }
+                    }))
+                    .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue,
+                            (e1, e2) -> e2, LinkedHashMap::new));
 
-                List<String> sortedAddresses = new ArrayList<>(sortedDistanceMap.keySet());
-                LinkedHashMap<String, Location> sortedAddressMap = new LinkedHashMap<>();
-                int cutoff = Math.min(limit, sortedAddresses.size());
-                for (int i = 0; i < cutoff; i++) {
-                    String articleId = sortedAddresses.get(i);
-                    Map<String, Object> value = sortedDistanceMap.get(articleId);
-                    if (value != null) {
-                        Location location = (Location) value.get("location");
-                        sortedAddressMap.put(articleId, location);
-                    }
+            List<String> sortedAddresses = new ArrayList<>(sortedDistanceMap.keySet());
+            LinkedHashMap<String, Location> sortedAddressMap = new LinkedHashMap<>();
+            int cutoff = Math.min(limit, sortedAddresses.size());
+            for (int i = 0; i < cutoff; i++) {
+                String articleId = sortedAddresses.get(i);
+                Map<String, Object> value = sortedDistanceMap.get(articleId);
+                if (value != null) {
+                    Location location = (Location) value.get("location");
+                    sortedAddressMap.put(articleId, location);
                 }
+            }
 
-                onComplete.accept(sortedAddressMap);
-            });
+            onComplete.accept(sortedAddressMap);
         });
     }
 

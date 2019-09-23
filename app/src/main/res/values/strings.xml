@@ -76,6 +76,7 @@
     <string name="helper_nearby_seen">nearbySeenPref</string>
     <string name="helper_saved_seen">savedSeenPref</string>
     <string name="helper_remove_video_seen">removeVideoSeen</string>
+    <string name="helper_user_details_seen">userDetailsSeen</string>
 
     <!-- Facebook -->
     <string name="facebook_application_id" translatable="false">120640472147728</string>

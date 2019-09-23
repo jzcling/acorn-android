@@ -24,5 +24,6 @@ public class AcornApplication extends Application {
         FirebaseDatabase.getInstance().setPersistenceEnabled(true);
         mFirebaseAnalytics = FirebaseAnalytics.getInstance(this);
         AudienceNetworkAds.initialize(this);
+        AudienceNetworkAds.isInAdsProcess(this);
     }
 }

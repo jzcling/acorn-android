@@ -18,8 +18,8 @@ android {
         applicationId 'acorn.com.acorn_app'
         minSdkVersion 24
         targetSdkVersion 29
-        versionCode 96
-        versionName "1.9.8"
+        versionCode 100
+        versionName "1.9.9"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         resConfigs "en"
     }
@@ -70,7 +70,7 @@ dependencies {
     implementation 'com.google.code.gson:gson:2.8.5'
     implementation 'com.firebase:firebase-jobdispatcher:0.8.5'
     implementation 'com.nex3z:notification-badge:1.0.2'
-    implementation 'de.hdodenhof:circleimageview:3.0.0'
+    implementation 'de.hdodenhof:circleimageview:3.0.1'
     implementation 'com.google.firebase:firebase-perf:19.0.0'
     implementation 'com.jaredrummler:android-device-names:1.1.9'
     implementation 'com.crashlytics.sdk.android:crashlytics:2.10.1'
@@ -95,7 +95,7 @@ dependencies {
     implementation 'io.sgr:s2-geometry-library-java:1.0.1'
     implementation 'com.github.mreram:showcaseview:1.1'
     implementation 'com.pierfrancescosoffritti.androidyoutubeplayer:core:10.0.3'
-    implementation 'com.google.firebase:firebase-ads:18.1.1'
+    implementation 'com.google.firebase:firebase-ads:18.2.0'
     implementation 'com.facebook.android:audience-network-sdk:5.+'
 }
 

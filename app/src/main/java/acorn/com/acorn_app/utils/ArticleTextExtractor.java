@@ -15,12 +15,6 @@ import java.util.regex.Pattern;
 
 import androidx.annotation.Nullable;
 
-/**
- * This class is thread safe.
- *
- * @author Alex P (ifesdjeen from jreadability)
- * @author Peter Karich
- */
 public class ArticleTextExtractor {
     private static final String TAG = "TextExtractor";
 
@@ -473,8 +467,16 @@ public class ArticleTextExtractor {
         }
 
         // remove empty tags
+		List<String> tags = new ArrayList<>();
+		tags.add("p");
+		tags.add("ul");
+		tags.add("ol");
+		tags.add("li");
+		tags.add("span");
+		tags.add("table");
+		tags.add("caption");
         for (Element element : doc.select("*")) {
-            if (!element.hasText() && element.isBlock()) {
+            if (tags.contains(element.tagName()) && !element.hasText() && element.isBlock()) {
                 element.remove();
             }
         }

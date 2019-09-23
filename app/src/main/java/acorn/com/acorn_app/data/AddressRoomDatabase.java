@@ -6,9 +6,10 @@ import androidx.room.Database;
 import androidx.room.Room;
 import androidx.room.RoomDatabase;
 
+import acorn.com.acorn_app.models.dbStation;
 import acorn.com.acorn_app.models.dbAddress;
 
-@Database(entities = {dbAddress.class}, version = 1, exportSchema = false)
+@Database(entities = {dbAddress.class, dbStation.class}, version = 3, exportSchema = false)
 public abstract class AddressRoomDatabase extends RoomDatabase {
     public abstract AddressDAO addressDAO();
 
@@ -20,6 +21,7 @@ public abstract class AddressRoomDatabase extends RoomDatabase {
                 if (INSTANCE == null) {
                     INSTANCE = Room.databaseBuilder(context.getApplicationContext(),
                             AddressRoomDatabase.class, "address_database")
+                            .fallbackToDestructiveMigration()
                             .build();
                 }
             }

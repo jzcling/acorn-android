@@ -66,9 +66,9 @@ public class SavedArticleViewHolder extends RecyclerView.ViewHolder {
         if (article.getSource() != null && !article.getSource().equals(""))
             contributor.setText(article.getSource().length() > 20 ?
                     article.getSource().substring(0, 17) + "..." : article.getSource());
-        if (mArticleType.equals("article")) {
+        if (mArticleType.equals("article") || mArticleType.equals("video")) {
             pubDate.setText(DateUtils.parseDate(article.getPubDate()));
-        } else if (pubDate != null) {
+        } else if (article.getPostDate() != null) {
             pubDate.setText(DateUtils.parseDate(article.getPostDate()));
         }
         if (article.getVoteCount() < 0) {

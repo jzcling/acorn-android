@@ -21,7 +21,7 @@ public class HtmlUtils {
     private static final Whitelist JSOUP_WHITELIST = Whitelist.relaxed().preserveRelativeLinks(true)
 //            .addProtocols("img", "src", "http", "https")
             .addTags("iframe", "video", "audio", "source", "track", "img", "span", "figcaption")
-            .addAttributes("iframe", "src", "frameborder", "height", "width")
+            .addAttributes("iframe", "src", "frameborder", "height", "width", "allowfullscreen", "allow")
             .addAttributes("video", "src", "controls", "height", "width", "poster")
             .addAttributes("audio", "src", "controls")
             .addAttributes("source", "src", "type")
@@ -33,10 +33,11 @@ public class HtmlUtils {
     private static final Pattern LAZY_LOADING_PATTERN = Pattern.compile("(<img)[^>]*\\s(data-lazy-src|original-src|data-src|original[^>\\s]*?src|data[^>\\s]*?src|data-original)=\\s*['\"]([^'\"]+)['\"]", Pattern.CASE_INSENSITIVE);
     private static final Pattern SEEDLY_IMG_DESC_PATTERN = Pattern.compile("data-image-description=['\"][^'\"]*['\"]", Pattern.CASE_INSENSITIVE);
     private static final Pattern CNA_IMAGE_PATTERN = Pattern.compile("<source[^>]*srcset=['\"]([^'\"]+)['\"]>.*?<img\\s[^>]+src=['\"]([^'\"]+)['\"][^>]+/>", Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
-    private static final Pattern NOSCRIPT_PATTERN = Pattern.compile("<noscript>.*?</noscript>", Pattern.CASE_INSENSITIVE);
+    private static final Pattern IFRAME_PATTERN = Pattern.compile("(<iframe [^>]*(?!(width|height)))>(</iframe>)", Pattern.CASE_INSENSITIVE);
+	private static final Pattern NOSCRIPT_PATTERN = Pattern.compile("<noscript>.*?</noscript>", Pattern.CASE_INSENSITIVE);
     private static final Pattern ADS_PATTERN = Pattern.compile("<div class=['\"]mf-viral['\"]><table border=['\"]0['\"]>.*", Pattern.CASE_INSENSITIVE);
     private static final Pattern EMPTY_IMAGE_PATTERN = Pattern.compile("<img\\s+(height=['\"]1['\"]\\s+width=['\"]1['\"]|width=['\"]1['\"]\\s+height=['\"]1['\"])\\s+[^>]*src=\\s*['\"]([^'\"]+)['\"][^>]*>", Pattern.CASE_INSENSITIVE);
-    private static final Pattern RELATIVE_IMAGE_PATTERN = Pattern.compile("\\s+(href|src)=\\s*?[\"'](//[^'\">\\s]+)[\"']", Pattern.CASE_INSENSITIVE);
+    private static final Pattern RELATIVE_IMAGE_PATTERN = Pattern.compile("\\s+(href|src)=\\s*?[\"']//([^'\">\\s]+)[\"']", Pattern.CASE_INSENSITIVE);
     private static final Pattern RELATIVE_IMAGE_PATTERN_2 = Pattern.compile("\\s+(href|src)=\\s*?[\"'](/[^/][^'\">\\s]+)[\"']", Pattern.CASE_INSENSITIVE);
     private static final Pattern ALT_IMAGE_PATTERN = Pattern.compile("amp-img\\s", Pattern.CASE_INSENSITIVE);
     private static final Pattern BAD_IMAGE_PATTERN = Pattern.compile("<img\\s+[^>]*src=\\s*['\"]([^'\"]+)\\.img['\"][^>]*>", Pattern.CASE_INSENSITIVE);
@@ -144,6 +145,8 @@ public class HtmlUtils {
             content = buffer.toString();
 //            content = IMG_PATTERN.matcher(content).replaceAll("<a href=\"https://acorncommunity.sg/api/v1/resizeImage?url=$2&aid=" + aid + "&link=" + link + "\">$1\"https://acorncommunity.sg/api/v1/resizeImage?url=$2&aid=" + aid + "&link=" + link + "\">");
 
+			content = IFRAME_PATTERN.matcher(content).replaceAll("<div class=\"default-iframe-container\">$1 class=\"default-iframe\">$3</div>");
+
             // remove empty or bad images
             content = EMPTY_IMAGE_PATTERN.matcher(content).replaceAll("");
             content = BAD_IMAGE_PATTERN.matcher(content).replaceAll("");
@@ -191,6 +194,8 @@ public class HtmlUtils {
                 + "div.container {width: 100%; overflow: auto; white-space: nowrap;} "
                 + "table, th, td {border-collapse: collapse; border: 1px solid darkgray; font-size: 90%} "
                 + "th, td {padding: .2em 0.5em;} "
+				+ ".default-iframe-container {position: relative; width: 100%; height: 0; padding-top: 56.25%} "
+				+ ".default-iframe {position: absolute; top: 0; left: 0; bottom: 0; right: 0; width: 100%; height: 100%; border:0} "
                 + ".button-section p {margin: 0.1cm 0 0.2cm 0} "
                 + ".button-section p.marginfix {margin: 0.5cm 0 0.5cm 0} "
                 + ".button-section input, .button-section a {font-family: roboto; font-size: 100%; color: #FFFFFF; background-color: " + BUTTON_COLOR + "; text-decoration: none; border: none; border-radius:0.2cm; padding: 0.3cm} "
