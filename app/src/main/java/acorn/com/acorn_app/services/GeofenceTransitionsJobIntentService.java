@@ -14,15 +14,18 @@ import android.text.TextUtils;
 import android.util.Log;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.core.app.JobIntentService;
 import androidx.core.app.NotificationCompat;
 import androidx.core.app.NotificationManagerCompat;
 import androidx.core.app.TaskStackBuilder;
+import androidx.core.util.Consumer;
 
 import com.google.android.gms.location.FusedLocationProviderClient;
 import com.google.android.gms.location.Geofence;
 import com.google.android.gms.location.GeofencingEvent;
 import com.google.android.gms.location.LocationServices;
+import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.android.gms.tasks.Task;
 import com.google.android.gms.tasks.TaskCompletionSource;
@@ -82,6 +85,8 @@ public class GeofenceTransitionsJobIntentService extends JobIntentService {
     private NetworkDataSource mDataSource;
     private AddressRoomDatabase mRoomDb;
 
+    private GeofenceUtils mGeofenceUtils;
+
     private FirebaseAuth auth = FirebaseAuth.getInstance();
 
     /**
@@ -108,78 +113,110 @@ public class GeofenceTransitionsJobIntentService extends JobIntentService {
         mRoomDb = AddressRoomDatabase.getInstance(getApplicationContext());
 
         FusedLocationProviderClient fusedLocationClient = LocationServices.getFusedLocationProviderClient(getApplicationContext());
-        GeofenceUtils geofenceUtils = GeofenceUtils.getInstance(this, mDataSource);
+        mGeofenceUtils = GeofenceUtils.getInstance(getApplicationContext(), mDataSource);
 
         fusedLocationClient.getLastLocation().addOnSuccessListener(location -> {
-            boolean stationGeofenceHandled = false;
-            GeofencingEvent geofencingEvent = GeofencingEvent.fromIntent(intent);
-            if (geofencingEvent.hasError()) {
-                String errorMessage = GeofenceErrorMessages.getErrorString(getApplicationContext(),
-                        geofencingEvent.getErrorCode());
-                Log.e(TAG, errorMessage);
-                return;
-            }
+            handleGeofenceTriggerEvent(intent, location);
+        }).addOnFailureListener(e -> {
+            handleGeofenceTriggerEvent(intent, null);
+        });
+    }
 
-            // Get the transition type.
-            int geofenceTransition = geofencingEvent.getGeofenceTransition();
-            if (geofenceTransition == Geofence.GEOFENCE_TRANSITION_DWELL
-                    || geofenceTransition == Geofence.GEOFENCE_TRANSITION_ENTER) {
+    private void handleGeofenceTriggerEvent(Intent intent, @Nullable Location location) {
+        boolean stationGeofenceHandled = false;
+        GeofencingEvent geofencingEvent = GeofencingEvent.fromIntent(intent);
+        if (geofencingEvent.hasError()) {
+            String errorMessage = GeofenceErrorMessages.getErrorString(getApplicationContext(),
+                    geofencingEvent.getErrorCode());
+            Log.e(TAG, errorMessage);
+            return;
+        }
 
-                // Get the geofences that were triggered. A single event can trigger multiple geofences.
-                List<Geofence> triggeringGeofences = geofencingEvent.getTriggeringGeofences();
+        // Get the transition type.
+        int geofenceTransition = geofencingEvent.getGeofenceTransition();
+        if (geofenceTransition == Geofence.GEOFENCE_TRANSITION_DWELL
+                || geofenceTransition == Geofence.GEOFENCE_TRANSITION_ENTER) {
 
-                List<Article> savedArticleList = new ArrayList<>();
-                Map<String, List<String>> postcodeMap = new HashMap<>();
-                List<Task<Boolean>> taskList = new ArrayList<>();
+            // Get the geofences that were triggered. A single event can trigger multiple geofences.
+            List<Geofence> triggeringGeofences = geofencingEvent.getTriggeringGeofences();
 
-                // Get the transition details.
-                for (Geofence geofence : triggeringGeofences) {
-                    String geofenceId = geofence.getRequestId();
-                    Log.d(TAG, "geofence entered/dwelled: " + geofenceId);
+            List<Article> savedArticleList = new ArrayList<>();
+            Map<String, List<String>> postcodeMap = new HashMap<>();
+            List<Task<Boolean>> taskList = new ArrayList<>();
 
-                    if (!geofenceId.startsWith("article")) {
-                        // mrt geofence triggered
-                        if (stationGeofenceHandled) continue;
-                        // Get articles near stationName
+            // Get the transition details.
+            for (Geofence geofence : triggeringGeofences) {
+                String geofenceId = geofence.getRequestId();
+                Log.d(TAG, "geofence entered/dwelled: " + geofenceId);
+
+                if (!geofenceId.startsWith("article")) {
+                    // mrt geofence triggered
+                    if (stationGeofenceHandled) continue;
+
+                    if (location != null) {
+                        // Get articles near location
                         mExecutors.diskRead().execute(() -> {
                             List<dbStation> stations = mRoomDb.addressDAO().getAllStations();
-                            geofenceUtils.getNearestStationsFrom(location, 1, stations, station -> {
+
+                            Consumer<Map<String, Location>> handleStation = station -> {
                                 if (station.size() > 0) {
                                     Log.d(TAG, "geofence station: " + station.toString());
                                     Map.Entry<String, Location> entry = station.entrySet().iterator().next();
                                     double latitude = entry.getValue().getLatitude();
                                     double longitude = entry.getValue().getLongitude();
-                                    mDataSource.getNearbyArticles(latitude, longitude, RADIUS, null, true,
-                                            3, articles -> {
-                                                mExecutors.networkIO().execute(() -> {
-                                                    sendNotification(entry.getKey(), articles);
+                                    mExecutors.networkIO().execute(() -> {
+                                        mDataSource.getNearbyArticles(latitude, longitude, RADIUS, null, true,
+                                                3, articles -> {
+                                                    mExecutors.networkIO().execute(() -> {
+                                                        sendNotification(entry.getKey(), articles);
+                                                    });
                                                 });
-                                            });
+                                    });
                                 }
-                            });
+                            };
+
+                            mGeofenceUtils.getNearestStationsFrom(location, 1, stations, handleStation::accept);
                         });
                         stationGeofenceHandled = true;
                     } else {
-                        // saved address geofence triggered
-                        String articleId = geofenceId.substring(8);
-                        Log.d(TAG, "geofence articleId: " + articleId);
-                        // Get article triggered
-
-                        TaskCompletionSource<Boolean> savedArticleTaskSource = new TaskCompletionSource<>();
-                        Task<Boolean> savedArticleTask = savedArticleTaskSource.getTask();
-                        taskList.add(savedArticleTask);
-
-                        mExecutors.networkIO().execute(() -> {
-                            TaskCompletionSource<Boolean> articleTaskSource = new TaskCompletionSource<>();
-                            Task<Boolean> articleTask = articleTaskSource.getTask();
-                            mDataSource.getSingleArticle(articleId, article -> {
-                                savedArticleList.add(article);
-                                articleTaskSource.setResult(true);
+                        // get articles near station
+                        mExecutors.diskRead().execute(() -> {
+                            dbStation station = mRoomDb.addressDAO().getStation(geofenceId);
+                            Log.d(TAG, "geofence station: " + station.toString());
+                            double latitude = station.latitude;
+                            double longitude = station.longitude;
+                            mExecutors.networkIO().execute(() -> {
+                                mDataSource.getNearbyArticles(latitude, longitude, RADIUS, null, true,
+                                        3, articles -> {
+                                            mExecutors.networkIO().execute(() -> {
+                                                sendNotification(station.stationLocale, articles);
+                                            });
+                                        });
                             });
+                        });
+                    }
+                } else {
+                    // saved address geofence triggered
+                    String articleId = geofenceId.substring(8);
+                    Log.d(TAG, "geofence articleId: " + articleId);
+                    // Get article triggered
 
-                            TaskCompletionSource<Boolean> addressTaskSource = new TaskCompletionSource<>();
-                            Task<Boolean> addressTask = addressTaskSource.getTask();
-                            List<String> postcodeList = new ArrayList<>();
+                    TaskCompletionSource<Boolean> savedArticleTaskSource = new TaskCompletionSource<>();
+                    Task<Boolean> savedArticleTask = savedArticleTaskSource.getTask();
+                    taskList.add(savedArticleTask);
+
+                    mExecutors.networkIO().execute(() -> {
+                        TaskCompletionSource<Boolean> articleTaskSource = new TaskCompletionSource<>();
+                        Task<Boolean> articleTask = articleTaskSource.getTask();
+                        mDataSource.getSingleArticle(articleId, article -> {
+                            savedArticleList.add(article);
+                            articleTaskSource.trySetResult(true);
+                        });
+
+                        TaskCompletionSource<Boolean> addressTaskSource = new TaskCompletionSource<>();
+                        Task<Boolean> addressTask = addressTaskSource.getTask();
+                        List<String> postcodeList = new ArrayList<>();
+                        if (location != null) {
                             mDataSource.getSavedAddressFor(articleId, addresses -> {
                                 for (dbAddress address : addresses) {
                                     Location addressLoc = new Location("");
@@ -192,70 +229,71 @@ public class GeofenceTransitionsJobIntentService extends JobIntentService {
                                         postcodeList.add(postcode);
                                     }
                                 }
-                                addressTaskSource.setResult(true);
+                                addressTaskSource.trySetResult(true);
                             });
+                        } else {
+                            addressTaskSource.trySetResult(false);
+                        }
 
-                            Tasks.whenAll(articleTask, addressTask).addOnSuccessListener(aVoid -> {
-                                postcodeMap.put(articleId, postcodeList);
-                                savedArticleTaskSource.setResult(true);
+                        Tasks.whenAll(articleTask, addressTask).addOnSuccessListener(aVoid -> {
+                            postcodeMap.put(articleId, postcodeList);
+                            savedArticleTaskSource.trySetResult(true);
+                        });
+                    });
+                }
+            }
+
+            Tasks.whenAll(taskList).addOnSuccessListener(aVoid -> {
+                mExecutors.networkIO().execute(() -> {
+                    sendSavedAddressNotification(savedArticleList, postcodeMap);
+                });
+            });
+        } else if (geofenceTransition == Geofence.GEOFENCE_TRANSITION_EXIT) {
+            boolean hasStationGeofence = false;
+            final String geofenceId;
+            // Get the geofences that were triggered. A single event can trigger multiple geofences.
+            List<Geofence> triggeringGeofences = geofencingEvent.getTriggeringGeofences();
+            for (Geofence geofence : triggeringGeofences) {
+                Log.d(TAG, "geofence exited: " + geofence);
+                if (!geofence.getRequestId().startsWith("article")) {
+                    hasStationGeofence = true;
+                    geofenceId = geofence.getRequestId();
+
+                    if (location == null) {
+                        mExecutors.diskRead().execute(() -> {
+                            dbStation station = mRoomDb.addressDAO().getStation(geofenceId);
+                            Log.d(TAG, "geofence station: " + station.toString());
+                            double latitude = station.latitude;
+                            double longitude = station.longitude;
+
+
+                            Location stationLocation = new Location("");
+                            stationLocation.setLatitude(latitude);
+                            stationLocation.setLongitude(longitude);
+
+                            mGeofenceUtils.mPendingGeofenceTask = GeofenceUtils.PendingGeofenceTask.REMOVE;
+                            mGeofenceUtils.performPendingGeofenceTask(this, () -> {
+                                mGeofenceUtils.mPendingGeofenceTask = GeofenceUtils.PendingGeofenceTask.ADD;
+                                mGeofenceUtils.performPendingGeofenceTask(this, stationLocation);
                             });
                         });
+                        return;
                     }
+                    break;
                 }
-
-                Tasks.whenAll(taskList).addOnSuccessListener(aVoid -> {
-                    mExecutors.networkIO().execute(() -> {
-                        sendSavedAddressNotification(savedArticleList, postcodeMap);
-                    });
-                });
-            } else if (geofenceTransition == Geofence.GEOFENCE_TRANSITION_EXIT) {
-                boolean hasStationGeofence = false;
-                // Get the geofences that were triggered. A single event can trigger multiple geofences.
-                List<Geofence> triggeringGeofences = geofencingEvent.getTriggeringGeofences();
-                for (Geofence geofence : triggeringGeofences) {
-                    Log.d(TAG, "geofence exited: " + geofence);
-                    if (!geofence.getRequestId().startsWith("article")) hasStationGeofence = true;
-                }
-
-                if (hasStationGeofence) {
-                    geofenceUtils.mPendingGeofenceTask = GeofenceUtils.PendingGeofenceTask.REMOVE;
-                    geofenceUtils.performPendingGeofenceTask(this, () -> {
-                        geofenceUtils.mPendingGeofenceTask = GeofenceUtils.PendingGeofenceTask.ADD;
-                        geofenceUtils.performPendingGeofenceTask(this, location);
-                    });
-                }
-            } else {
-                // Log the error.
-                Log.e(TAG, getString(R.string.geofence_transition_invalid_type, geofenceTransition));
             }
-        });
-    }
 
-    /**
-     * Gets transition details and returns them as a formatted string.
-     *
-     * @param geofenceTransition    The ID of the geofence transition.
-     * @param triggeringGeofences   The geofence(s) triggered.
-     * @return                      The transition details formatted as String.
-     */
-    private String getGeofenceTransitionDetails(
-            int geofenceTransition,
-            List<Geofence> triggeringGeofences) {
-
-        String geofenceTransitionString = getTransitionString(geofenceTransition);
-
-        // Get the Ids of each geofence that was triggered.
-        ArrayList<String> triggeringGeofencesIdsList = new ArrayList<>();
-        for (Geofence geofence : triggeringGeofences) {
-            triggeringGeofencesIdsList.add(geofence.getRequestId());
+            if (hasStationGeofence) {
+                mGeofenceUtils.mPendingGeofenceTask = GeofenceUtils.PendingGeofenceTask.REMOVE;
+                mGeofenceUtils.performPendingGeofenceTask(this, () -> {
+                    mGeofenceUtils.mPendingGeofenceTask = GeofenceUtils.PendingGeofenceTask.ADD;
+                    mGeofenceUtils.performPendingGeofenceTask(this, location);
+                });
+            }
+        } else {
+            // Log the error.
+            Log.e(TAG, getString(R.string.geofence_transition_invalid_type, geofenceTransition));
         }
-        String triggeringGeofencesIdsString = TextUtils.join(", ",  triggeringGeofencesIdsList);
-
-        return geofenceTransitionString + ": " + triggeringGeofencesIdsString;
-    }
-
-    private String getFirstTriggeredGeofence(List<Geofence> triggeringGeofences) {
-        return triggeringGeofences.get(0).getRequestId();
     }
 
     /**

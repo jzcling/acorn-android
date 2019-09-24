@@ -1,6 +1,7 @@
 package acorn.com.acorn_app.ui.viewModels;
 
 import android.app.Application;
+import android.content.Context;
 import android.content.SharedPreferences;
 import android.util.Log;
 import android.widget.Toast;
@@ -199,7 +200,7 @@ public class UserViewModel extends AndroidViewModel {
                         long now = (new Date()).getTime();
                         // store stations on device, updated every week
                         long lastUpdatedStations = mSharedPreferences.getLong("lastUpdatedStations", 0);
-                        if (lastUpdatedStations < now - 7L * 24L * 60L * 60L * 1000L) {
+                        if (lastUpdatedStations < now - 7L * 24L * 60L * 60L * 1000L) { // 7 days
                             mExecutors.networkIO().execute(() -> {
                                 mDataSource.getMrtStations(stationMap -> {
                                     for (Map.Entry<String, Map<String, Object>> entry : stationMap.entrySet()) {
@@ -222,28 +223,32 @@ public class UserViewModel extends AndroidViewModel {
 
                         // store saved addresses on device, updated every 3 days
                         long lastUpdatedSavedAddresses = mSharedPreferences.getLong("lastUpdatedSavedAddresses", 0);
-                        if (lastUpdatedSavedAddresses < now - 3L * 24L * 60L * 60L * 1000L) {
+                        if (lastUpdatedSavedAddresses < now - 3L * 24L * 60L * 60L * 1000L) { // 3 days
                             mExecutors.networkIO().execute(() -> {
                                 mDataSource.getSavedItemsAddresses(addresses -> {
                                     Log.d(TAG, "savedAddresses: " + addresses.size());
                                     mExecutors.diskWrite().execute(() -> {
                                         mAddressRoomDb.addressDAO().insertAddresses(addresses);
                                         mSharedPreferences.edit().putLong("lastUpdatedSavedAddresses", now).apply();
-
-                                        mExecutors.networkIO().execute(() -> {
-                                            mLocationPermissionsUtils.checkLocationSettings((location) -> {
-                                                mGeofenceUtils.mPendingGeofenceTask = GeofenceUtils.PendingGeofenceTask.ADD;
-                                                mGeofenceUtils.performPendingGeofenceTask(getApplication(), location);
-                                            });
-                                        });
                                     });
                                 });
                             });
                         }
 
-                        //TEMP: add geofences
-                        mSharedPreferences.edit().remove("hasAddedGeofences").apply();
-                        mSharedPreferences.edit().remove("addedGeofences").apply();
+                        // Refresh geofences every day
+                        long lastUpdatedGeofences = mSharedPreferences.getLong("lastUpdatedGeofences", 0);
+                        if (lastUpdatedGeofences < now - 24L * 60L * 60L * 1000L) { // 1 day
+                            if (mSharedPreferences.getBoolean(getApplication().getString(R.string.pref_key_notif_location), false)) {
+                                mLocationPermissionsUtils.checkLocationSettings((location) -> {
+                                    Context context = getApplication().getApplicationContext();
+                                    mGeofenceUtils.mPendingGeofenceTask = GeofenceUtils.PendingGeofenceTask.REMOVE;
+                                    mGeofenceUtils.performPendingGeofenceTask(context, () -> {
+                                        mGeofenceUtils.mPendingGeofenceTask = GeofenceUtils.PendingGeofenceTask.ADD;
+                                        mGeofenceUtils.performPendingGeofenceTask(context, location);
+                                    });
+                                });
+                            }
+                        }
 
                         if (user.openedArticles.keySet().size() > 50) {
                             boolean hasSeenSurveyRequest = mSharedPreferences.getBoolean("hasSeenSurveyRequest", false);

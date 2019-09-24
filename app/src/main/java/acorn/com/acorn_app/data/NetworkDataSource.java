@@ -474,7 +474,7 @@ public class NetworkDataSource {
             resultRef.addListenerForSingleValueEvent(new ValueEventListener() {
                 @Override
                 public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
-                    if (dataSnapshot.getValue() == null) {
+                    if (!dataSnapshot.exists()) {
                         searchThemeArticles(themeSearchKey, themeSearchFilter, bindToUi);
                     } else {
                         Long timeNow = (new Date().getTime());
@@ -686,21 +686,26 @@ public class NetworkDataSource {
                     if (themeSearchKey.equals("")) { return; }
                     Query query = mDatabaseReference.child("search")
                             .child(themeSearchKey).child("hits").orderByChild("trendingIndex");
-                    query.addListenerForSingleValueEvent(new ValueEventListener() {
+                    query.addValueEventListener(new ValueEventListener() {
                         @Override
                         public void onDataChange(@NonNull DataSnapshot articlesSnap) {
                             Log.d(TAG, "articles fetched");
-                            List<String> doneList = new ArrayList<>();
+                            query.removeEventListener(this);
+
+                            List<Task<Boolean>> taskList = new ArrayList<>();
                             for (DataSnapshot snap : articlesSnap.getChildren()) {
                                 Article algArticle = snap.getValue(Article.class);
                                 if (algArticle == null) continue;
+
+                                TaskCompletionSource<Boolean> articleTaskSource = new TaskCompletionSource<>();
+                                Task<Boolean> articleTask = articleTaskSource.getTask();
+                                taskList.add(articleTask);
 
                                 String articleId = algArticle.getObjectID();
                                 mDatabaseReference.child(ARTICLE_REF).child(articleId)
                                         .addListenerForSingleValueEvent(new ValueEventListener() {
                                     @Override
                                     public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
-                                        doneList.add(snap.getKey());
                                         Article article = dataSnapshot.getValue(Article.class);
                                         if (article != null) {
                                             if (article.htmlContent != null && !article.htmlContent.equals("")) {
@@ -709,16 +714,17 @@ public class NetworkDataSource {
                                                 dbArticle localArticle = new dbArticle(mContext, article);
                                                 articleList.add(localArticle);
                                             }
-                                        }
-
-                                        if (doneList.size() >= articlesSnap.getChildrenCount()) {
-                                            Log.d(TAG, "articlesDownloaded: " + articleList.size());
-                                            onComplete.accept(articleList);
+                                            articleTaskSource.trySetResult(true);
                                         }
                                     }
 
                                     @Override
                                     public void onCancelled(@NonNull DatabaseError databaseError) { }
+                                });
+
+                                Tasks.whenAll(taskList).addOnSuccessListener(aVoid -> {
+                                    Log.d(TAG, "articlesDownloaded: " + articleList.size());
+                                    onComplete.accept(articleList);
                                 });
                             }
                         }

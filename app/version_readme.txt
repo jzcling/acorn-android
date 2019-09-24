@@ -1,8 +1,15 @@
 Android
 
+v2.0.0
+Fixed rendering of embedded instagram and twitter frames
+Fixed Business Insider image captions
+Improvements to location based notifications
+Improvements to offline reading
+
 v1.9.9
 Added viewing history
 Users can now see own upvote, downvote, comment and post history
+Checks for internet connection before attempting to load article
 Fixed some crashes
 
 v1.9.8/a/b/c

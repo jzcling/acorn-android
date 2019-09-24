@@ -5,9 +5,13 @@ import android.util.Log;
 
 import androidx.annotation.Nullable;
 import org.jsoup.Jsoup;
+import org.jsoup.nodes.Document;
+import org.jsoup.nodes.Element;
 import org.jsoup.safety.Whitelist;
 
 import java.net.URLEncoder;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -20,14 +24,18 @@ public class HtmlUtils {
 
     private static final Whitelist JSOUP_WHITELIST = Whitelist.relaxed().preserveRelativeLinks(true)
 //            .addProtocols("img", "src", "http", "https")
-            .addTags("iframe", "video", "audio", "source", "track", "img", "span", "figcaption")
+            .addTags("iframe", "video", "audio", "source", "track", "img", "span", "figcaption", "script", "blockquote")
             .addAttributes("iframe", "src", "frameborder", "height", "width", "allowfullscreen", "allow")
             .addAttributes("video", "src", "controls", "height", "width", "poster")
             .addAttributes("audio", "src", "controls")
             .addAttributes("source", "src", "type")
             .addAttributes("track", "src", "kind", "srclang", "label")
             .addAttributes("img", "src", "alt", "srcset", "class")
-            .addAttributes("span", "style");
+            .addAttributes("span", "style")
+            .addAttributes("script", "async", "src", "charset")
+            .addAttributes("blockquote", "class", "data-instgrm-permalink", "data-instgrm-version")
+            .addAttributes("dt", "class")
+            .addAttributes("dd", "class");
 
     private static final Pattern IMG_PATTERN = Pattern.compile("(<img)[^>]*\\ssrc=\\s*['\"]([^'\"]+)['\"][^>]*>", Pattern.CASE_INSENSITIVE);
     private static final Pattern LAZY_LOADING_PATTERN = Pattern.compile("(<img)[^>]*\\s(data-lazy-src|original-src|data-src|original[^>\\s]*?src|data[^>\\s]*?src|data-original)=\\s*['\"]([^'\"]+)['\"]", Pattern.CASE_INSENSITIVE);
@@ -97,12 +105,12 @@ public class HtmlUtils {
             StringBuffer buffer = new StringBuffer();
             Matcher matcher = IMG_PATTERN.matcher(content);
             while(matcher.find()) {
-                Log.d(TAG, matcher.group(0));
+//                Log.d(TAG, matcher.group(0));
                 Pattern srcsetPattern = Pattern.compile("<img[^>]*srcset=\\s*['\"]([^>'\"]*)['\"][^>]*>", Pattern.CASE_INSENSITIVE);
                 Matcher srcMatcher = srcsetPattern.matcher(matcher.group(0));
                 boolean hasSrc = false;
                 while (srcMatcher.find()) {
-                    Log.d(TAG, srcMatcher.group(0));
+//                    Log.d(TAG, srcMatcher.group(0));
                     String[] srcset = srcMatcher.group(1).split("[xw],");
                     int smallestAboveWidth = 10000;
                     String srcUrl = "";
@@ -121,7 +129,7 @@ public class HtmlUtils {
                     }
                     if (hasSrc) {
                         String replacement = "<img src=\"" + srcUrl + "\">";
-                        Log.d(TAG, "replacement: " + replacement);
+//                        Log.d(TAG, "replacement: " + replacement);
                         matcher.appendReplacement(buffer, replacement);
                     }
                 }
@@ -136,7 +144,7 @@ public class HtmlUtils {
                     }
                     if (encodedImageUrl != null && encodedLink != null) {
                         String replacement = "<img src=\"https://acorncommunity.sg/api/v1/resizeImage?url=" + encodedImageUrl + "&aid=" + aid + "&link=" + encodedLink + "\">";
-                        Log.d(TAG, "replacement: " + replacement);
+//                        Log.d(TAG, "replacement: " + replacement);
                         matcher.appendReplacement(buffer, replacement);
                     }
                 }
@@ -161,7 +169,37 @@ public class HtmlUtils {
             content = TABLE_END_PATTERN.matcher(content).replaceAll("$1</div>");
         }
 
-        return content;
+        // remove empty tags
+        if (content != null) {
+            Document doc = Jsoup.parse(content);
+            List<String> tags = new ArrayList<>();
+            tags.add("p");
+            tags.add("a");
+            tags.add("ul");
+            tags.add("ol");
+            tags.add("li");
+            tags.add("span");
+            tags.add("table");
+            tags.add("caption");
+            tags.add("div");
+            boolean emptyElementsFullyRemoved = false;
+            while (!emptyElementsFullyRemoved) {
+                emptyElementsFullyRemoved = true;
+                for (Element element : doc.select("*")) {
+                    if (tags.contains(element.tagName()) && !element.hasText()
+                            && element.html().trim().length() == 0) {
+                        element.remove();
+                        emptyElementsFullyRemoved = false;
+                    }
+                }
+            }
+            content = doc.toString();
+
+//            Log.d(TAG, "pre-generate content: " + content);
+            return content;
+        }
+
+        return null;
     }
 
     public static String generateHtmlContent(Context context, String title, String link, String contentText,
@@ -194,11 +232,17 @@ public class HtmlUtils {
                 + "div.container {width: 100%; overflow: auto; white-space: nowrap;} "
                 + "table, th, td {border-collapse: collapse; border: 1px solid darkgray; font-size: 90%} "
                 + "th, td {padding: .2em 0.5em;} "
+                + "iframe {width: 100%} "
 				+ ".default-iframe-container {position: relative; width: 100%; height: 0; padding-top: 56.25%} "
 				+ ".default-iframe {position: absolute; top: 0; left: 0; bottom: 0; right: 0; width: 100%; height: 100%; border:0} "
                 + ".button-section p {margin: 0.1cm 0 0.2cm 0} "
                 + ".button-section p.marginfix {margin: 0.5cm 0 0.5cm 0} "
                 + ".button-section input, .button-section a {font-family: roboto; font-size: 100%; color: #FFFFFF; background-color: " + BUTTON_COLOR + "; text-decoration: none; border: none; border-radius:0.2cm; padding: 0.3cm} "
+                // for business insider images
+                + ".image-caption-label, .image-source-label {display:none;} "
+                + ".image-caption-value, .image-source-value {display:inline; margin-left: 0;} "
+                + ".image-caption-value {font-weight: 700; font-size: 80%; color: #111516;} "
+                + ".image-source-value {color: #848f91; font-size: 80%;} "
                 + "</style><meta name='viewport' content='width=device-width'/></head>";
 
         StringBuilder content = new StringBuilder(CSS).append(BODY_START);

@@ -4,6 +4,9 @@ import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.Intent;
 import android.graphics.Point;
+import android.net.ConnectivityManager;
+import android.net.Network;
+import android.net.NetworkCapabilities;
 import android.net.Uri;
 import android.os.Bundle;
 import android.util.Log;
@@ -70,6 +73,8 @@ import static acorn.com.acorn_app.ui.activities.AcornActivity.mUid;
 import static acorn.com.acorn_app.ui.activities.AcornActivity.mUserToken;
 import static acorn.com.acorn_app.utils.UiUtils.createToast;
 import static acorn.com.acorn_app.utils.UiUtils.increaseTouchArea;
+import static android.net.ConnectivityManager.TYPE_WIFI;
+import static android.net.NetworkCapabilities.TRANSPORT_WIFI;
 
 public class WebViewActivity extends AppCompatActivity {
     private static final String TAG = "WebViewActivity";
@@ -221,11 +226,7 @@ public class WebViewActivity extends AppCompatActivity {
                     if (lastScrollPercent > maxScrollPercent) maxScrollPercent = lastScrollPercent;
                 });
         webView.setFindListener((i, i1, b) -> {
-            if (b && (i < i1 - 1)) {
-                hasNext = true;
-            } else {
-                hasNext = false;
-            }
+            hasNext = b && (i < i1 - 1);
         });
 
         // Set up action buttons
@@ -337,11 +338,19 @@ public class WebViewActivity extends AppCompatActivity {
                         loadFromLocalDb();
                     } else {
                         Log.d(TAG, "in db but no html content");
-                        loadFromFirebaseDb();
+                        if (isConnected()) {
+                            loadFromFirebaseDb();
+                        } else {
+                            createToast(this, "Error loading article: You may not be connected to the internet.", Toast.LENGTH_SHORT);
+                        }
                     }
                 } else {
                     Log.d(TAG, "not in db");
-                    loadFromFirebaseDb();
+                    if (isConnected()) {
+                        loadFromFirebaseDb();
+                    } else {
+                        createToast(this, "Error loading article: You may not be connected to the internet.", Toast.LENGTH_SHORT);
+                    }
                 }
             });
         });
@@ -598,6 +607,23 @@ public class WebViewActivity extends AppCompatActivity {
                 }
             });
         });
+    }
+
+    private boolean isConnected() {
+        ConnectivityManager cm = (ConnectivityManager)
+                getSystemService(Context.CONNECTIVITY_SERVICE);
+        boolean isConnected = false;
+        if (cm != null) {
+            Network n = cm.getActiveNetwork();
+            if (n != null) {
+                NetworkCapabilities nc = cm.getNetworkCapabilities(n);
+                if ( nc != null) {
+                    isConnected = nc.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR)
+                            || nc.hasTransport(TRANSPORT_WIFI);
+                }
+            }
+        }
+        return isConnected;
     }
 
     private void loadFromFirebaseDb() {

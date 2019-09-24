@@ -278,7 +278,16 @@ public class ArticleTextExtractor {
     private static void removeScriptsAndStyles(Document doc) {
         Elements scripts = doc.getElementsByTag("script");
         for (Element item : scripts) {
-            item.remove();
+            String src = item.attr("src");
+            if (src.contains("instagram.com/embed.js") || src.contains("twitter.com/widgets.js")) {
+                Log.d(TAG, "attributes: " + item.attributes());
+                if (src.startsWith("//")) {
+                    item.attr("src", "https:" + src);
+                }
+                Log.d(TAG, "attributes: " + item.attributes());
+            } else {
+                item.remove();
+            }
         }
 
         Elements noscripts = doc.getElementsByTag("noscript");
@@ -465,21 +474,6 @@ public class ArticleTextExtractor {
         for (Element item : misc) {
             item.remove();
         }
-
-        // remove empty tags
-		List<String> tags = new ArrayList<>();
-		tags.add("p");
-		tags.add("ul");
-		tags.add("ol");
-		tags.add("li");
-		tags.add("span");
-		tags.add("table");
-		tags.add("caption");
-        for (Element element : doc.select("*")) {
-            if (tags.contains(element.tagName()) && !element.hasText() && element.isBlock()) {
-                element.remove();
-            }
-        }
     }
 
     private static void handleImages(Document doc, String baseUrl) {
@@ -508,6 +502,13 @@ public class ArticleTextExtractor {
         }
     }
 
+    private static void handleIFrames(Document doc) {
+        Elements iframes = doc.getElementsByTag("iframe");
+        for (Element iframe : iframes) {
+
+        }
+    }
+
     /**
      * @return a set of all meta nodes
      */
@@ -524,7 +525,7 @@ public class ArticleTextExtractor {
         if (selector == null) { selector = "body"; }
         Collection<Element> nodes = new HashSet<>(64);
         List<Element> elements;
-        if (selector == "body") {
+        if (selector.equals("body")) {
             elements = doc.select(selector).select("*");
         } else {
             elements = doc.select(selector);

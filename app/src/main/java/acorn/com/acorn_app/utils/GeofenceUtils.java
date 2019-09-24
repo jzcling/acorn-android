@@ -24,6 +24,7 @@ import com.google.android.gms.tasks.Tasks;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -54,6 +55,8 @@ public class GeofenceUtils {
     private GeofencingClient mGeofencingClient;
     public enum PendingGeofenceTask { ADD, REMOVE, NONE }
     private ArrayList<Geofence> mGeofenceList = new ArrayList<>();
+    private ArrayList<Geofence> mStationGeofenceList = new ArrayList<>();
+    private ArrayList<Geofence> mAddressGeofenceList = new ArrayList<>();
     private PendingIntent mGeofencePendingIntent = null;
     public PendingGeofenceTask mPendingGeofenceTask = PendingGeofenceTask.NONE;
 
@@ -156,7 +159,7 @@ public class GeofenceUtils {
                 for (Map.Entry<String, Location> entry : addresses.entrySet()) {
                     double latitude = entry.getValue().getLatitude();
                     double longitude = entry.getValue().getLongitude();
-                    mGeofenceList.add(new Geofence.Builder()
+                    mAddressGeofenceList.add(new Geofence.Builder()
                             .setRequestId("article_" + entry.getKey())
                             .setCircularRegion(
                                     latitude,
@@ -180,7 +183,7 @@ public class GeofenceUtils {
                 for (Map.Entry<String, Location> entry : stationMap.entrySet()) {
                     double latitude = entry.getValue().getLatitude();
                     double longitude = entry.getValue().getLongitude();
-                    mGeofenceList.add(new Geofence.Builder()
+                    mStationGeofenceList.add(new Geofence.Builder()
                             .setRequestId(entry.getKey())
                             .setCircularRegion(
                                     latitude,
@@ -198,7 +201,12 @@ public class GeofenceUtils {
             });
 
             Tasks.whenAll(savedAddressTask, mrtTask).addOnSuccessListener(aVoid -> {
+                mGeofenceList.addAll(mStationGeofenceList);
+                mGeofenceList.addAll(mAddressGeofenceList);
                 Log.d(TAG, "Geofence List: " + mGeofenceList.size() + ", " + mGeofenceList.toString());
+
+                mStationGeofenceList.clear();
+                mAddressGeofenceList.clear();
                 onComplete.run();
             });
         });
@@ -236,7 +244,7 @@ public class GeofenceUtils {
         Task<Boolean> mrtTask = mrtSource.getTask();
         mExecutors.diskRead().execute(() -> {
             List<dbStation> stations = mRoomDb.addressDAO().getAllStations();
-            Log.d(TAG, "stations: " + stations);
+//            Log.d(TAG, "stations: " + stations);
             getNearestStationsFrom(location, 6, stations, stationMap -> {
                 for (Map.Entry<String, Location> entry : stationMap.entrySet()) {
                     double latitude = entry.getValue().getLatitude();
@@ -266,7 +274,7 @@ public class GeofenceUtils {
         });
     }
 
-    private void getNearestStationsFrom(String station, int limit,
+    public void getNearestStationsFrom(String station, int limit,
                                         List<dbStation> stations,
                                         Consumer<Map<String, Location>> onComplete) {
         mExecutors.diskRead().execute(() -> {
@@ -422,8 +430,10 @@ public class GeofenceUtils {
     }
 
     private void updateGeofencesAdded(Context context, boolean added) {
+        long now = (new Date()).getTime();
         mSharedPreferences.edit()
                 .putBoolean(context.getString(R.string.pref_key_notif_location), added)
+                .putLong("lastUpdatedGeofences", now)
                 .apply();
     }
 

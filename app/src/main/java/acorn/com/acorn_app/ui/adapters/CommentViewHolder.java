@@ -5,6 +5,8 @@ import android.content.Context;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.net.ConnectivityManager;
+import android.net.Network;
+import android.net.NetworkCapabilities;
 import android.net.Uri;
 import android.text.Html;
 import android.text.method.LinkMovementMethod;
@@ -37,6 +39,7 @@ import acorn.com.acorn_app.utils.IOUtils;
 import acorn.com.acorn_app.utils.UiUtils;
 
 import static android.net.ConnectivityManager.TYPE_WIFI;
+import static android.net.NetworkCapabilities.TRANSPORT_WIFI;
 
 public class CommentViewHolder extends RecyclerView.ViewHolder {
     private static final String TAG = "CommentViewHolder";
@@ -86,7 +89,16 @@ public class CommentViewHolder extends RecyclerView.ViewHolder {
     public void bind(String articleId, Comment comment) {
         ConnectivityManager cm = (ConnectivityManager)
                 mContext.getSystemService(Context.CONNECTIVITY_SERVICE);
-        boolean isWifi = cm.getNetworkInfo(TYPE_WIFI).isConnected();
+        boolean isWifi = false;
+        if (cm != null) {
+          Network n = cm.getActiveNetwork();
+          if (n != null) {
+              NetworkCapabilities nc = cm.getNetworkCapabilities(n);
+              if ( nc != null) {
+                  isWifi = nc.hasTransport(TRANSPORT_WIFI);
+              }
+          }
+        }
 
         if (comment.isReported) {
             urlLayout.setVisibility(View.GONE);
