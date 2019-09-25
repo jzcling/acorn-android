@@ -52,7 +52,7 @@ public class ArticleTextExtractor {
         return extractContent(Jsoup.parse(input), selector, baseUrl);
     }
 
-    public static String extractContent(Document doc, @Nullable String selector, String baseUrl) {
+    private static String extractContent(Document doc, @Nullable String selector, String baseUrl) {
         if (doc == null)
             throw new NullPointerException("missing document");
 
@@ -109,7 +109,7 @@ public class ArticleTextExtractor {
         return cleanContent(Jsoup.parse(input), baseUrl);
     }
 
-    public static String cleanContent(Document doc, String baseUrl) {
+    private static String cleanContent(Document doc, String baseUrl) {
         if (doc == null) {
             throw new NullPointerException("missing document");
         }
@@ -249,8 +249,15 @@ public class ArticleTextExtractor {
      * @param doc document to prepare. Passed as reference, and changed inside
      *            of function
      */
-    private static void prepareDocument(Document doc, String baseUrl) {
+    public static void prepareDocument(Document doc, String baseUrl) {
         // stripUnlikelyCandidates(doc);
+        Elements scripts = doc.getElementsByTag("script");
+        for (Element item : scripts) {
+            String src = item.attr("src");
+            if (src.contains("instagram.com/embed.js") || src.contains("twitter.com/widgets.js")) {
+                Log.d(TAG, "pre-prepare attributes: " + item.attributes());
+            }
+        }
         removeNav(doc);
         removeSelectsAndOptions(doc);
         removeScriptsAndStyles(doc);
@@ -260,6 +267,13 @@ public class ArticleTextExtractor {
         removeTitle(doc);
         removeMisc(doc);
         handleImages(doc, baseUrl);
+        scripts = doc.getElementsByTag("script");
+        for (Element item : scripts) {
+            String src = item.attr("src");
+            if (src.contains("instagram.com/embed.js") || src.contains("twitter.com/widgets.js")) {
+                Log.d(TAG, "post-prepare attributes: " + item.attributes());
+            }
+        }
     }
 
     /**
@@ -499,13 +513,6 @@ public class ArticleTextExtractor {
             } else if (src.startsWith("/")) {
                 image.attr("src", baseUrl + src);
             }
-        }
-    }
-
-    private static void handleIFrames(Document doc) {
-        Elements iframes = doc.getElementsByTag("iframe");
-        for (Element iframe : iframes) {
-
         }
     }
 

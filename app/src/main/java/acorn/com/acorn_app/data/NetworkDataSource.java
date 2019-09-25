@@ -709,8 +709,10 @@ public class NetworkDataSource {
                                         Article article = dataSnapshot.getValue(Article.class);
                                         if (article != null) {
                                             if (article.htmlContent != null && !article.htmlContent.equals("")) {
+                                                Log.d(TAG, "pre-clean htmlContent: " + article.htmlContent);
                                                 article.htmlContent = HtmlUtils.cleanHtmlContent(article.htmlContent,
                                                         article.getLink(), article.selector, article.getObjectID(), imageWidth);
+                                                Log.d(TAG, "post-clean htmlContent: " + article.htmlContent);
                                                 dbArticle localArticle = new dbArticle(mContext, article);
                                                 articleList.add(localArticle);
                                             }

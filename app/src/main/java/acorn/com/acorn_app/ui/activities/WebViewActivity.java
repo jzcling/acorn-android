@@ -99,6 +99,8 @@ public class WebViewActivity extends AppCompatActivity {
     private String selector;
     private boolean isArticleLoaded = false;
 
+    private int width;
+
     // Room Database;
     private ArticleRoomDatabase mRoomDb;
 
@@ -156,6 +158,12 @@ public class WebViewActivity extends AppCompatActivity {
 
         // Set up data source
         mDataSource = NetworkDataSource.getInstance(this, mExecutors);
+
+        // get width
+        Display display = getWindowManager().getDefaultDisplay();
+        Point size = new Point();
+        display.getSize(size);
+        width = size.x;
 
         progressBar = (ProgressBar) findViewById(R.id.webview_progress_bar);
         messageOverlayCard = (CardView) findViewById(R.id.message_overlay_card);
@@ -332,7 +340,7 @@ public class WebViewActivity extends AppCompatActivity {
                     source = mDbArticle.source;
                     date = DateUtils.parseDate(mDbArticle.pubDate);
                     htmlContent = mDbArticle.htmlContent;
-                    Log.d(TAG, "htmlContent: " + htmlContent);
+//                    Log.d(TAG, "htmlContent: " + htmlContent);
                     if (htmlContent != null && !htmlContent.equals("")) {
                         Log.d(TAG, "in db with html content");
                         loadFromLocalDb();
@@ -525,31 +533,31 @@ public class WebViewActivity extends AppCompatActivity {
 
     private void loadFromLocalDb() {
         Log.d(TAG, "loaded from roomDb");
-        String generatedHtml = HtmlUtils.generateHtmlContent(this, title, link,
-                htmlContent, author, source, date);
+        String generatedHtml = HtmlUtils.regenArticleHtml(this, link, title, author, source,
+                date, htmlContent, selector, articleId, width);
         webView.loadDataWithBaseURL(null, generatedHtml, "text/html", "utf-8", null);
 
-        double wordCount = generatedHtml.split("\\s+").length;
-        int readTime = (int) Math.ceil(wordCount / 200D);
-
-        mArticleRef.runTransaction(new Transaction.Handler() {
-            @NonNull
-            @Override
-            public Transaction.Result doTransaction(@NonNull MutableData mutableData) {
-                Article article = mutableData.getValue(Article.class);
-                if (article == null) {
-                    return Transaction.success(mutableData);
-                }
-
-                article.setReadTime(readTime);
-                mutableData.setValue(article);
-                return Transaction.success(mutableData);
-            }
-
-            @Override
-            public void onComplete(@Nullable DatabaseError databaseError, boolean b, @Nullable DataSnapshot dataSnapshot) {
-            }
-        });
+//        double wordCount = generatedHtml.split("\\s+").length;
+//        int readTime = (int) Math.ceil(wordCount / 200D);
+//
+//        mArticleRef.runTransaction(new Transaction.Handler() {
+//            @NonNull
+//            @Override
+//            public Transaction.Result doTransaction(@NonNull MutableData mutableData) {
+//                Article article = mutableData.getValue(Article.class);
+//                if (article == null) {
+//                    return Transaction.success(mutableData);
+//                }
+//
+//                article.setReadTime(readTime);
+//                mutableData.setValue(article);
+//                return Transaction.success(mutableData);
+//            }
+//
+//            @Override
+//            public void onComplete(@Nullable DatabaseError databaseError, boolean b, @Nullable DataSnapshot dataSnapshot) {
+//            }
+//        });
 
         mExecutors.networkIO().execute(() -> {
             mArticleListener = mArticleRef.addValueEventListener(new ValueEventListener() {
@@ -643,7 +651,7 @@ public class WebViewActivity extends AppCompatActivity {
                             source = mArticle.getSource();
                             date = DateUtils.parseDate(mArticle.getPubDate());
                             selector = mArticle.selector;
-//                                        htmlContent = mArticle.htmlContent;
+                            htmlContent = mArticle.htmlContent;
                             if (!isArticleLoaded) {
                                 if (mArticle.getType() != null && mArticle.getType().equals("article")) {
                                     mExecutors.mainThread().execute(() -> genHtml());
@@ -706,13 +714,16 @@ public class WebViewActivity extends AppCompatActivity {
     public void genHtml() {
         Log.d(TAG, "genHtml");
 //        Log.d(TAG, "htmlContent: " + htmlContent.substring(0, 20));
-        Display display = getWindowManager().getDefaultDisplay();
-        Point size = new Point();
-        display.getSize(size);
-        int width = size.x;
         mExecutors.networkIO().execute(() -> {
-            String generatedHtml = HtmlUtils.regenArticleHtml(this, link, title, author, source, date, //htmlContent,
-                    selector, articleId, width);
+            String generatedHtml;
+
+            if (htmlContent == null) {
+                generatedHtml = HtmlUtils.regenArticleHtml(this, link, title, author, source,
+                        date, null, selector, articleId, width);
+            } else {
+                generatedHtml = HtmlUtils.regenArticleHtml(this, link, title, author, source,
+                        date, htmlContent, selector, articleId, width);
+            }
 
             boolean isSuccessful = generatedHtml != null && !generatedHtml.equals("");
 
@@ -721,28 +732,28 @@ public class WebViewActivity extends AppCompatActivity {
                     webView.loadDataWithBaseURL(null, generatedHtml, "text/html", "utf-8", null);
                 });
 
-                double wordCount = generatedHtml.split("\\s+").length;
-                int readTime = (int) Math.ceil(wordCount / 200D);
-
-                mArticleRef.runTransaction(new Transaction.Handler() {
-                    @NonNull
-                    @Override
-                    public Transaction.Result doTransaction(@NonNull MutableData mutableData) {
-                        Article article = mutableData.getValue(Article.class);
-                        if (article == null) {
-                            return Transaction.success(mutableData);
-                        }
-
-                        article.setReadTime(readTime);
-                        mutableData.setValue(article);
-                        return Transaction.success(mutableData);
-                    }
-
-                    @Override
-                    public void onComplete(@Nullable DatabaseError databaseError, boolean b, @Nullable DataSnapshot dataSnapshot) {
+//                double wordCount = generatedHtml.split("\\s+").length;
+//                int readTime = (int) Math.ceil(wordCount / 200D);
 //
-                    }
-                });
+//                mArticleRef.runTransaction(new Transaction.Handler() {
+//                    @NonNull
+//                    @Override
+//                    public Transaction.Result doTransaction(@NonNull MutableData mutableData) {
+//                        Article article = mutableData.getValue(Article.class);
+//                        if (article == null) {
+//                            return Transaction.success(mutableData);
+//                        }
+//
+//                        article.setReadTime(readTime);
+//                        mutableData.setValue(article);
+//                        return Transaction.success(mutableData);
+//                    }
+//
+//                    @Override
+//                    public void onComplete(@Nullable DatabaseError databaseError, boolean b, @Nullable DataSnapshot dataSnapshot) {
+////
+//                    }
+//                });
             } else {
                 if (link != null && !link.equals("")) {
                     mExecutors.mainThread().execute(() -> { webView.loadUrl(link); });

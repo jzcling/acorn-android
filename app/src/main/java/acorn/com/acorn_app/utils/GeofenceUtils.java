@@ -451,13 +451,15 @@ public class GeofenceUtils {
             if (locationReference instanceof String) {
                 populateGeofenceList((String) locationReference, () -> {
                     if (mSharedPreferences.getBoolean(
-                            context.getString(R.string.pref_key_notif_location), false))
+                            context.getString(R.string.pref_key_notif_location), false)
+                            && mGeofenceList.size() > 0)
                         addGeofences(context);
                 });
             } else if (locationReference instanceof Location) {
                 populateGeofenceList((Location) locationReference, () -> {
                     if (mSharedPreferences.getBoolean(
-                            context.getString(R.string.pref_key_notif_location), false))
+                            context.getString(R.string.pref_key_notif_location), false)
+                            && mGeofenceList.size() > 0)
                         addGeofences(context);
                 });
             }

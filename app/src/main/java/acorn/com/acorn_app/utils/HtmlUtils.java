@@ -55,6 +55,8 @@ public class HtmlUtils {
     private static final Pattern EMPTY_LINK_PATTERN = Pattern.compile("<a\\s+[^>]*></a>", Pattern.CASE_INSENSITIVE);
     private static final Pattern TABLE_START_PATTERN = Pattern.compile("(<table)", Pattern.CASE_INSENSITIVE);
     private static final Pattern TABLE_END_PATTERN = Pattern.compile("(</table>)", Pattern.CASE_INSENSITIVE);
+    private static final Pattern INSTAGRAM_EMBED_PATTERN = Pattern.compile("<blockquote [^>]*?class=['\"][^>'\"]*?instagram[^>'\"]*?['\"]", Pattern.CASE_INSENSITIVE);
+    private static final Pattern TWITTER_EMBED_PATTERN = Pattern.compile("<blockquote [^>]*?class=['\"][^>'\"]*?twitter[^>'\"]*?['\"]", Pattern.CASE_INSENSITIVE);
 
     private static final String QUOTE_LEFT_COLOR = "#a6a6a6";
     private static final String QUOTE_TEXT_COLOR = "#565656";
@@ -69,6 +71,9 @@ public class HtmlUtils {
     private static final String TITLE_END = "</a></h1>";
     private static final String SUBTITLE_START = "<p class='subtitle'>";
     private static final String SUBTITLE_END = "</p>";
+
+    private static final String INSTAGRAM_SCRIPT = "<script async src=\"https://www.instagram.com/embed.js\"></script>";
+    private static final String TWITTER_SCRIPT = "<script async src=\"https://platform.twitter.com/widgets.js\" charset=\"utf-8\"></script>";
 
 
     public static String improveHtmlContent(String content, String baseUrl, String aid, String link, int width) {
@@ -232,9 +237,9 @@ public class HtmlUtils {
                 + "div.container {width: 100%; overflow: auto; white-space: nowrap;} "
                 + "table, th, td {border-collapse: collapse; border: 1px solid darkgray; font-size: 90%} "
                 + "th, td {padding: .2em 0.5em;} "
-                + "iframe {width: 100%} "
+                + "iframe {width: 100%; border: 0} "
 				+ ".default-iframe-container {position: relative; width: 100%; height: 0; padding-top: 56.25%} "
-				+ ".default-iframe {position: absolute; top: 0; left: 0; bottom: 0; right: 0; width: 100%; height: 100%; border:0} "
+				+ ".default-iframe {position: absolute; top: 0; left: 0; bottom: 0; right: 0; width: 100%; height: 100%;} "
                 + ".button-section p {margin: 0.1cm 0 0.2cm 0} "
                 + ".button-section p.marginfix {margin: 0.5cm 0 0.5cm 0} "
                 + ".button-section input, .button-section a {font-family: roboto; font-size: 100%; color: #FFFFFF; background-color: " + BUTTON_COLOR + "; text-decoration: none; border: none; border-radius:0.2cm; padding: 0.3cm} "
@@ -275,38 +280,45 @@ public class HtmlUtils {
         if (hasSubtitle) {
             content.append(SUBTITLE_END);
         }
-        content.append(contentText).append(BODY_END);
+        content.append(contentText);
+        Log.d(TAG, "content: " + contentText);
+        if (INSTAGRAM_EMBED_PATTERN.matcher(contentText).find()) {
+            Log.d(TAG, "instagram embed");
+            content.append(INSTAGRAM_SCRIPT);
+        }
+        if (TWITTER_EMBED_PATTERN.matcher(contentText).find()) {
+            Log.d(TAG, "twitter embed");
+            content.append(TWITTER_SCRIPT);
+        }
+        content.append(BODY_END);
 
         return content.toString();
     }
 
     @Nullable
     public static String regenArticleHtml(Context context, String url, String title, String author,
-                                          String source, String date, //@Nullable String htmlContent,
+                                          String source, String date, @Nullable String htmlContent,
                                           @Nullable String selector, String aid, int width) {
         Log.d(TAG, "regenArticleHtml");
         Pattern baseUrlPattern = Pattern.compile("(https?://[^/]+?/).*", Pattern.CASE_INSENSITIVE);
         String baseUrl = baseUrlPattern.matcher(url).replaceAll("$1");
-        String parsedHtml;
-        String extractedHtml;
-        try {
-            String input = getInputStream(context, url);
-            extractedHtml = ArticleTextExtractor.extractContent(input, selector, baseUrl);
+        String cleanHtml;
+        String improvedHtml;
 
-//            Log.d(TAG, "extractedHtml: " + extractedHtml);
-            if (extractedHtml != null && !extractedHtml.equals("")) {
-                parsedHtml = improveHtmlContent(extractedHtml, baseUrl, aid, url, width);
-                return generateHtmlContent(context, title, url, parsedHtml, author, source, date);
-            } else {
-                return null;
-            }
-        } catch (Exception e) {
-            Log.d(TAG, "error: " + e.getLocalizedMessage());
+        if (htmlContent != null) {
+            cleanHtml = cleanHtmlContent(htmlContent, url, selector, aid, width);
+        } else {
+            cleanHtml = getCleanedHtml(context, url, selector, aid, width);
+        }
+
+        if (cleanHtml != null && !cleanHtml.equals("")) {
+            improvedHtml = improveHtmlContent(cleanHtml, baseUrl, aid, url, width);
+            return generateHtmlContent(context, title, url, improvedHtml, author, source, date);
         }
         return null;
     }
 
-    public static String getCleanedHtml(Context context, String url, @Nullable String selector, String aid, int width) {
+    private static String getCleanedHtml(Context context, String url, @Nullable String selector, String aid, int width) {
         if (url != null) {
             Pattern baseUrlPattern = Pattern.compile("(https?://.*?/).*", Pattern.CASE_INSENSITIVE);
             String baseUrl = baseUrlPattern.matcher(url).replaceAll("$1");
